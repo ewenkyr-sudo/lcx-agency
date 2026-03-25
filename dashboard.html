@@ -388,7 +388,7 @@
     background: var(--green);
     border-color: var(--green);
   }
-  .task-check.done::after { content: 'â'; color: white; font-size: 11px; font-weight: 700; }
+  .task-check.done::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
 
   .task-content { flex: 1; }
   .task-title { font-size: 13px; font-weight: 500; }
@@ -556,7 +556,7 @@
   }
   .search-box input:focus { border-color: var(--accent); }
   .search-box::before {
-    content: 'ð';
+    content: '🔍';
     position: absolute;
     left: 10px;
     top: 50%;
@@ -806,7 +806,7 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="logo">
-    <div class="logo-icon">ð</div>
+    <div class="logo-icon">👑</div>
     <div>
       <h1>LCX Agency</h1>
       <span>Management Suite</span>
@@ -816,43 +816,43 @@
   <div id="nav-principal" class="nav-section">
     <div class="nav-label">Principal</div>
     <div class="nav-item active" data-section="dashboard" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Dashboard
+      <span class="nav-icon">📊</span> Dashboard
     </div>
     <div class="nav-item" data-section="planning" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Planning
+      <span class="nav-icon">📅</span> Planning
     </div>
     <div class="nav-item" data-section="tasks" onclick="switchSection(event)">
-      <span class="nav-icon">â</span> TÃ¢ches
+      <span class="nav-icon">✅</span> Tâches
       <span class="nav-badge" id="tasks-badge">5</span>
     </div>
   </div>
 
   <div id="nav-teams" class="nav-section">
-    <div class="nav-label">Ãquipes</div>
+    <div class="nav-label">Équipes</div>
     <div class="nav-item" data-section="models" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> ModÃ¨les
+      <span class="nav-icon">💎</span> Modèles
     </div>
     <div class="nav-item" data-section="chatters" onclick="switchSection(event)">
-      <span class="nav-icon">ð¬</span> Chatters
+      <span class="nav-icon">💬</span> Chatters
     </div>
     <div class="nav-item" data-section="outreach" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Outreach
+      <span class="nav-icon">🚀</span> Outreach
     </div>
     <div class="nav-item" data-section="va" onclick="switchSection(event)">
-      <span class="nav-icon">âï¸</span> VA
+      <span class="nav-icon">⚙️</span> VA
     </div>
   </div>
 
   <div id="nav-tools" class="nav-section">
     <div class="nav-label">Outils</div>
     <div class="nav-item" data-section="stats" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Stats & Subs
+      <span class="nav-icon">📊</span> Stats & Subs
     </div>
     <div class="nav-item" data-section="coaching" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Coaching
+      <span class="nav-icon">🎓</span> Coaching
     </div>
     <div class="nav-item" data-section="performances" onclick="switchSection(event)">
-      <span class="nav-icon">ð</span> Performances
+      <span class="nav-icon">📈</span> Performances
     </div>
   </div>
 
@@ -887,7 +887,7 @@
     <div class="page-header">
       <div>
         <div class="page-title">Planning</div>
-        <div class="page-subtitle">Horaires de ton Ã©quipe</div>
+        <div class="page-subtitle">Horaires de ton équipe</div>
       </div>
     </div>
     <div class="panel">
@@ -899,8 +899,8 @@
   <div class="section" id="section-tasks">
     <div class="page-header">
       <div>
-        <div class="page-title">TÃ¢ches</div>
-        <div class="page-subtitle">Gestion des tÃ¢ches et deadlines</div>
+        <div class="page-title">Tâches</div>
+        <div class="page-subtitle">Gestion des tâches et deadlines</div>
       </div>
       <div class="header-actions" id="tasks-actions"></div>
     </div>
@@ -914,8 +914,8 @@
   <div class="section" id="section-models">
     <div class="page-header">
       <div>
-        <div class="page-title">ModÃ¨les</div>
-        <div class="page-subtitle">Gestion de tes crÃ©atrices de contenu</div>
+        <div class="page-title">Modèles</div>
+        <div class="page-subtitle">Gestion de tes créatrices de contenu</div>
       </div>
       <div class="header-actions" id="models-actions"></div>
     </div>
@@ -927,13 +927,13 @@
     <div class="page-header">
       <div>
         <div class="page-title">Chatters</div>
-        <div class="page-subtitle">Ãquipe de chat</div>
+        <div class="page-subtitle">Équipe de chat</div>
       </div>
       <div class="header-actions" id="chatters-actions"></div>
     </div>
     <div class="panel">
       <table class="table" id="chatters-table">
-        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+        <thead><tr><th>Membre</th><th>Rôle</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -944,13 +944,13 @@
     <div class="page-header">
       <div>
         <div class="page-title">Outreach</div>
-        <div class="page-subtitle">Ãquipe d'outreach</div>
+        <div class="page-subtitle">Équipe d'outreach</div>
       </div>
       <div class="header-actions" id="outreach-actions"></div>
     </div>
     <div class="panel">
       <table class="table" id="outreach-table">
-        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Plateformes</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Membre</th><th>Rôle</th><th>Shift</th><th>Plateformes</th><th>Status</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -961,13 +961,13 @@
     <div class="page-header">
       <div>
         <div class="page-title">VA (Virtual Assistants)</div>
-        <div class="page-subtitle">Ãquipe d'assistants virtuels</div>
+        <div class="page-subtitle">Équipe d'assistants virtuels</div>
       </div>
       <div class="header-actions" id="va-actions"></div>
     </div>
     <div class="panel">
       <table class="table" id="va-table">
-        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+        <thead><tr><th>Membre</th><th>Rôle</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -989,13 +989,13 @@
     <div class="page-header">
       <div>
         <div class="page-title">Coaching</div>
-        <div class="page-subtitle">Appels et coaching avec les Ã©tudiants</div>
+        <div class="page-subtitle">Appels et coaching avec les étudiants</div>
       </div>
       <div class="header-actions" id="coaching-actions"></div>
     </div>
     <div class="panel">
       <table class="table" id="coaching-table">
-        <thead><tr><th>Ãtudiant</th><th>Type d'appel</th><th>Date/Heure</th><th>Notes</th><th></th></tr></thead>
+        <thead><tr><th>Étudiant</th><th>Type d'appel</th><th>Date/Heure</th><th>Notes</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -1020,8 +1020,8 @@
 <div class="modal-overlay" id="modal-add-student">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Ajouter un Ã©lÃ¨ve</div>
-      <button class="modal-close" onclick="closeModal('add-student')">â</button>
+      <div class="modal-title">Ajouter un élève</div>
+      <button class="modal-close" onclick="closeModal('add-student')">✕</button>
     </div>
     <div class="modal-body">
       <form id="form-add-student">
@@ -1039,7 +1039,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Date de dÃ©but</label>
+          <label class="form-label">Date de début</label>
           <input class="form-input" type="date" name="start_date">
         </div>
         <div class="form-group">
@@ -1060,7 +1060,7 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Ajouter un membre</div>
-      <button class="modal-close" onclick="closeModal('add-member')">â</button>
+      <button class="modal-close" onclick="closeModal('add-member')">✕</button>
     </div>
     <div class="modal-body">
       <form id="form-add-member">
@@ -1069,7 +1069,7 @@
           <input class="form-input" type="text" name="name" placeholder="Ex: Sarah" required>
         </div>
         <div class="form-group">
-          <label class="form-label">RÃ´le</label>
+          <label class="form-label">Rôle</label>
           <select class="form-select" name="role" required>
             <option value="chatter">Chatter</option>
             <option value="outreach">Outreach</option>
@@ -1101,8 +1101,8 @@
 <div class="modal-overlay" id="modal-add-task">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Ajouter une tÃ¢che</div>
-      <button class="modal-close" onclick="closeModal('add-task')">â</button>
+      <div class="modal-title">Ajouter une tâche</div>
+      <button class="modal-close" onclick="closeModal('add-task')">✕</button>
     </div>
     <div class="modal-body">
       <form id="form-add-task">
@@ -1111,7 +1111,7 @@
           <input class="form-input" type="text" name="title" placeholder="Ex: Poster du contenu" required>
         </div>
         <div class="form-group">
-          <label class="form-label">PrioritÃ©</label>
+          <label class="form-label">Priorité</label>
           <select class="form-select" name="priority" required>
             <option value="low">Basse</option>
             <option value="medium">Moyenne</option>
@@ -1119,7 +1119,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">AssignÃ©e Ã </label>
+          <label class="form-label">Assignée à</label>
           <input class="form-input" type="text" name="assigned_to" placeholder="Nom du membre">
         </div>
         <div class="form-group">
@@ -1128,7 +1128,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Notes</label>
-          <input class="form-input" type="text" name="notes" placeholder="DÃ©tails...">
+          <input class="form-input" type="text" name="notes" placeholder="Détails...">
         </div>
       </form>
     </div>
@@ -1143,8 +1143,8 @@
 <div class="modal-overlay" id="modal-add-model">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Ajouter un modÃ¨le</div>
-      <button class="modal-close" onclick="closeModal('add-model')">â</button>
+      <div class="modal-title">Ajouter un modèle</div>
+      <button class="modal-close" onclick="closeModal('add-model')">✕</button>
     </div>
     <div class="modal-body">
       <form id="form-add-model">
@@ -1153,7 +1153,7 @@
           <input class="form-input" type="text" name="name" placeholder="Ex: Luna" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Plateformes (sÃ©parÃ©es par des virgules)</label>
+          <label class="form-label">Plateformes (séparées par des virgules)</label>
           <input class="form-input" type="text" name="platforms" placeholder="Ex: onlyfans, fansly">
         </div>
         <div class="form-group">
@@ -1178,12 +1178,12 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Ajouter un compte</div>
-      <button class="modal-close" onclick="closeModal('add-account')">â</button>
+      <button class="modal-close" onclick="closeModal('add-account')">✕</button>
     </div>
     <div class="modal-body">
       <form id="form-add-account">
         <div class="form-group">
-          <label class="form-label">ModÃ¨le</label>
+          <label class="form-label">Modèle</label>
           <select class="form-select" name="model_id" id="account-model-select" required></select>
         </div>
         <div class="form-group">
@@ -1201,7 +1201,7 @@
           <input class="form-input" type="text" name="handle" placeholder="@username" required>
         </div>
         <div class="form-group">
-          <label class="form-label">AbonnÃ©s actuels</label>
+          <label class="form-label">Abonnés actuels</label>
           <input class="form-input" type="number" name="current_followers" placeholder="Ex: 500">
         </div>
       </form>
@@ -1462,14 +1462,14 @@ function renderDashboard() {
     // Student dashboard
     const student = allStudents[0];
     if (!student) {
-      container.innerHTML = '<div class="loading">Pas de donnÃ©es Ã©tudiant</div>';
+      container.innerHTML = '<div class="loading">Pas de données étudiant</div>';
       return;
     }
 
     container.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card purple">
-          <div class="stat-label">ModÃ¨les signÃ©s</div>
+          <div class="stat-label">Modèles signés</div>
           <div class="stat-value">${student.models_signed}</div>
         </div>
         <div class="stat-card green">
@@ -1501,15 +1501,15 @@ function renderDashboard() {
         <div class="stat-value">${(dash.totalFollowers || 0).toLocaleString()}</div>
       </div>
       <div class="stat-card green">
-        <div class="stat-label">ModÃ¨les actives</div>
+        <div class="stat-label">Modèles actives</div>
         <div class="stat-value">${dash.modelsCount || 0}</div>
       </div>
       <div class="stat-card pink">
-        <div class="stat-label">Ãquipe totale</div>
+        <div class="stat-label">Équipe totale</div>
         <div class="stat-value">${dash.teamCount || 0}</div>
       </div>
       <div class="stat-card blue">
-        <div class="stat-label">Ãtudiants</div>
+        <div class="stat-label">Étudiants</div>
         <div class="stat-value">${dash.studentsCount || 0}</div>
       </div>
     </div>
@@ -1517,10 +1517,10 @@ function renderDashboard() {
     <div class="two-col">
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Ãquipe en ligne</div>
+          <div class="panel-title">Équipe en ligne</div>
         </div>
         <table class="table">
-          <thead><tr><th>Membre</th><th>RÃ´le</th><th>Status</th></tr></thead>
+          <thead><tr><th>Membre</th><th>Rôle</th><th>Status</th></tr></thead>
           <tbody>
             ${allTeam.filter(m => m.status === 'online').slice(0, 4).map(m => `
               <tr>
@@ -1531,7 +1531,7 @@ function renderDashboard() {
                   </div>
                 </td>
                 <td>${m.role}</td>
-                <td><span class="badge badge-online">â En ligne</span></td>
+                <td><span class="badge badge-online">● En ligne</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -1540,7 +1540,7 @@ function renderDashboard() {
 
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">TÃ¢ches urgentes</div>
+          <div class="panel-title">Tâches urgentes</div>
         </div>
         <div class="task-list">
           ${allTasks.filter(t => t.priority === 'high').slice(0, 4).map(t => `
@@ -1548,7 +1548,7 @@ function renderDashboard() {
               <div class="priority-dot priority-high"></div>
               <div class="task-content">
                 <div class="task-title">${t.title}</div>
-                <div class="task-meta">Deadline: ${t.deadline || 'Non dÃ©finie'}</div>
+                <div class="task-meta">Deadline: ${t.deadline || 'Non définie'}</div>
               </div>
               <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
             </div>
@@ -1585,12 +1585,12 @@ function renderTasks() {
   tabsContainer.innerHTML = `
     <button class="tab active" onclick="filterTasks(this, 'all')">Toutes</button>
     <button class="tab" onclick="filterTasks(this, 'pending')">En attente</button>
-    <button class="tab" onclick="filterTasks(this, 'done')">TerminÃ©es</button>
+    <button class="tab" onclick="filterTasks(this, 'done')">Terminées</button>
   `;
 
   if (currentUser.role === 'admin') {
     document.getElementById('tasks-actions').innerHTML =
-      `<button class="btn btn-primary" onclick="openModal('add-task')">+ Nouvelle tÃ¢che</button>`;
+      `<button class="btn btn-primary" onclick="openModal('add-task')">+ Nouvelle tâche</button>`;
   }
 
   container.innerHTML = `
@@ -1600,10 +1600,10 @@ function renderTasks() {
           <div class="priority-dot priority-${t.priority}"></div>
           <div class="task-content">
             <div class="task-title ${t.status === 'done' ? 'done' : ''}">${t.title}</div>
-            <div class="task-meta">Deadline: ${t.deadline || 'Non dÃ©finie'}</div>
+            <div class="task-meta">Deadline: ${t.deadline || 'Non définie'}</div>
           </div>
           <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
-          ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTask(${t.id})">â</button>` : ''}
+          ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTask(${t.id})">✕</button>` : ''}
         </div>
       `).join('')}
     </div>
@@ -1627,7 +1627,7 @@ function renderModels() {
   const actions = document.getElementById('models-actions');
 
   if (currentUser.role === 'admin') {
-    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">+ Nouveau modÃ¨le</button>`;
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">+ Nouveau modèle</button>`;
   }
 
   container.innerHTML = `
@@ -1653,7 +1653,7 @@ function renderModels() {
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).reduce((s, a) => s + a.current_followers, 0)}</div>
               </div>
             </div>
-            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">â Supprimer</button>` : ''}
+            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">✕ Supprimer</button>` : ''}
           </div>
         `).join('')}
       </div>
@@ -1690,7 +1690,7 @@ function renderTeamTable(tableId, members) {
       <td>${m.shift || 'N/A'}</td>
       <td>${m.platform || 'N/A'}</td>
       <td><span class="badge badge-${m.status}">${m.status}</span></td>
-      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">â</button>` : ''}</td>
+      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
     </tr>
   `).join('');
 }
@@ -1720,7 +1720,7 @@ function renderStats() {
                 <div class="val" style="color:var(--green)">+0</div>
               </div>
             </div>
-            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteAccount(${acc.id})" style="margin-top:10px;width:100%">â Supprimer</button>` : ''}
+            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteAccount(${acc.id})" style="margin-top:10px;width:100%">✕ Supprimer</button>` : ''}
           </div>
         `).join('')}
       </div>
@@ -1741,7 +1741,7 @@ function renderCoaching() {
       <td>${c.type}</td>
       <td>${c.scheduled_at}</td>
       <td>${c.notes || 'N/A'}</td>
-      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">â</button>` : ''}</td>
+      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">✕</button>` : ''}</td>
     </tr>
   `).join('');
 
@@ -1758,7 +1758,7 @@ function renderPerformances() {
       <div class="panel-header"><div class="panel-title">Analyse de performance</div></div>
       <table class="table">
         <thead>
-          <tr><th>ModÃ¨le</th><th>Plateforme</th><th>Followers</th><th>Croissance 7j</th><th>Status</th></tr>
+          <tr><th>Modèle</th><th>Plateforme</th><th>Followers</th><th>Croissance 7j</th><th>Status</th></tr>
         </thead>
         <tbody>
           ${allAccounts.map(acc => {
@@ -1782,7 +1782,7 @@ function renderPerformances() {
 
 // ========== DELETE OPERATIONS ==========
 async function deleteStudent(id) {
-  if (!confirm('Supprimer cet Ã©lÃ¨ve?')) return;
+  if (!confirm('Supprimer cet élève?')) return;
   const res = await fetch(`/api/students/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -1800,7 +1800,7 @@ async function deleteTeamMember(id) {
 }
 
 async function deleteTask(id) {
-  if (!confirm('Supprimer cette tÃ¢che?')) return;
+  if (!confirm('Supprimer cette tâche?')) return;
   const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -1809,7 +1809,7 @@ async function deleteTask(id) {
 }
 
 async function deleteModel(id) {
-  if (!confirm('Supprimer ce modÃ¨le?')) return;
+  if (!confirm('Supprimer ce modèle?')) return;
   const res = await fetch(`/api/models/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
