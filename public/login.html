@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCX Agency — Connexion</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f0f13; --bg2: #1a1a24; --bg3: #22222f;
+    --accent: #8b5cf6; --accent2: #a78bfa;
+    --green: #10b981; --red: #ef4444; --pink: #ec4899;
+    --text: #e4e4eb; --text2: #9898ab; --text3: #6b6b80;
+    --border: #2a2a3a;
+  }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-container {
+    width: 400px;
+    max-width: 90vw;
+  }
+  .login-logo {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .login-logo-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    border-radius: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+  .login-logo h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -1px;
+  }
+  .login-logo p {
+    color: var(--text2); font-size: 14px; margin-top: 6px;
+  }
+  .login-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+  }
+  .form-group { margin-bottom: 20px; }
+  .form-label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text2); margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%; padding: 12px 16px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--text3); }
+  .btn-login {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), #7c4ee4);
+    color: white; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(139,92,246,0.3); }
+  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .error-msg {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--red);
+    padding: 10px 14px; border-radius: 8px;
+    font-size: 13px; margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  .login-footer {
+    text-align: center; margin-top: 24px;
+    color: var(--text3); font-size: 12px;
+  }
+  .credentials-hint {
+    margin-top: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--text3);
+  }
+  .credentials-hint strong { color: var(--text2); }
+  .credentials-hint .cred-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0;
+  }
+  .credentials-hint .cred-role { color: var(--accent2); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="login-container">
+  <div class="login-logo">
+    <div class="login-logo-icon">👑</div>
+    <h1>LCX Agency</h1>
+    <p>Connecte-toi pour accéder au dashboard</p>
+  </div>
+
+  <div class="login-card">
+    <div class="error-msg" id="error-msg"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label">Nom d'utilisateur</label>
+        <input class="form-input" type="text" id="username" placeholder="Ton pseudo" required autocomplete="username" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" type="password" id="password" placeholder="Ton mot de passe" required autocomplete="current-password">
+      </div>
+      <button class="btn-login" type="submit" id="btn-login">Se connecter</button>
+    </form>
+  </div>
+
+  <div class="credentials-hint">
+    <strong>Accès par défaut :</strong>
+    <div style="margin-top:8px">
+      <div class="cred-row"><span class="cred-role">Admin</span><span>ewen / admin123</span></div>
+      <div class="cred-row"><span class="cred-role">Équipe</span><span>prénom / team123</span></div>
+      <div class="cred-row"><span class="cred-role">Modèle</span><span>prénom / team123</span></div>
+      <div class="cred-row"><span class="cred-role">Élève</span><span>prénom / eleve123</span></div>
+    </div>
+  </div>
+
+  <div class="login-footer">
+    LCX Agency Dashboard v1.0
+  </div>
+</div>
+
+<script>
+  // Check if already logged in
+  fetch('/api/me').then(r => {
+    if (r.ok) window.location.href = '/dashboard';
+  }).catch(() => {});
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-login');
+    const err = document.getElementById('error-msg');
+    btn.disabled = true;
+    btn.textContent = 'Connexion...';
+    err.classList.remove('show');
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('username').value.toLowerCase().trim(),
+          password: document.getElementById('password').value
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        window.location.href = '/dashboard';
+      } else {
+        err.textContent = data.error || 'Erreur de connexion';
+        err.classList.add('show');
+      }
+    } catch (ex) {
+      err.textContent = 'Erreur réseau — vérifie ta connexion';
+      err.classList.add('show');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Se connecter';
+  });
+</script>
+
+</body>
+</html>
