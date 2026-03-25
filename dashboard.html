@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCX Agency - Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f0f13;
+    --bg2: #1a1a24;
+    --bg3: #22222f;
+    --bg4: #2a2a3a;
+    --accent: #8b5cf6;
+    --accent2: #a78bfa;
+    --accent-glow: rgba(139,92,246,0.15);
+    --green: #10b981;
+    --green-bg: rgba(16,185,129,0.12);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.12);
+    --yellow: #f59e0b;
+    --yellow-bg: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-bg: rgba(59,130,246,0.12);
+    --pink: #ec4899;
+    --pink-bg: rgba(236,72,153,0.12);
+    --text: #e4e4eb;
+    --text2: #9898ab;
+    --text3: #6b6b80;
+    --border: #2a2a3a;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    width: 260px;
+    height: 100vh;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .logo span { color: var(--text2); font-size: 11px; font-weight: 400; }
+
+  .nav-section { margin-bottom: 24px; }
+  .nav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    padding: 0 12px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent2);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 50%; transform: translateY(-50%);
+    width: 3px; height: 20px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 12px;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .user-info {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .user-avatar {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--accent), var(--pink));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role { font-size: 11px; color: var(--text3); }
+
+  .main {
+    margin-left: 260px;
+    padding: 28px 32px;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-subtitle { color: var(--text2); font-size: 13px; margin-top: 4px; }
+
+  .header-actions { display: flex; gap: 10px; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #7c4ee4; transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--bg4); }
+
+  .btn-delete {
+    background: var(--red-bg);
+    color: var(--red);
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .btn-delete:hover { background: var(--red); color: white; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.purple::after { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .stat-card.green::after { background: linear-gradient(90deg, var(--green), #34d399); }
+  .stat-card.pink::after { background: linear-gradient(90deg, var(--pink), #f472b6); }
+  .stat-card.blue::after { background: linear-gradient(90deg, var(--blue), #60a5fa); }
+
+  .stat-label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  .stat-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .stat-change.up { background: var(--green-bg); color: var(--green); }
+  .stat-change.down { background: var(--red-bg); color: var(--red); }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--bg2);
+    padding: 4px;
+    border-radius: 10px;
+    width: fit-content;
+    border: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title { font-size: 14px; font-weight: 700; }
+
+  .table { width: 100%; border-collapse: collapse; }
+  .table th {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .table td {
+    padding: 14px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .table tr:last-child td { border-bottom: none; }
+  .table tr:hover td { background: rgba(139,92,246,0.03); }
+
+  .member-info { display: flex; align-items: center; gap: 10px; }
+  .member-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    color: white;
+  }
+  .member-name { font-weight: 600; }
+  .member-sub { font-size: 11px; color: var(--text3); }
+
+  .badge {
+    display: inline-flex;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-online { background: var(--green-bg); color: var(--green); }
+  .badge-offline { background: var(--bg3); color: var(--text3); }
+  .badge-busy { background: var(--yellow-bg); color: var(--yellow); }
+  .badge-break { background: var(--red-bg); color: var(--red); }
+
+  .progress-bar {
+    width: 100px; height: 6px;
+    background: var(--bg4);
+    border-radius: 3px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+  }
+
+  .task-list { padding: 0; }
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .task-item:hover { background: rgba(139,92,246,0.03); }
+  .task-item:last-child { border-bottom: none; }
+
+  .task-check {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .task-check.done::after { content: 'â'; color: white; font-size: 11px; font-weight: 700; }
+
+  .task-content { flex: 1; }
+  .task-title { font-size: 13px; font-weight: 500; }
+  .task-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .task-title.done { text-decoration: line-through; color: var(--text3); }
+
+  .priority-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .priority-high { background: var(--red); }
+  .priority-medium { background: var(--yellow); }
+  .priority-low { background: var(--green); }
+
+  .task-assignee {
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--bg3);
+    padding: 3px 8px;
+    border-radius: 12px;
+  }
+
+  .models-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .model-card {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  .model-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+  .model-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .model-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pink), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700;
+  }
+
+  .model-name { font-weight: 700; font-size: 15px; }
+  .model-platform { font-size: 11px; color: var(--text3); }
+
+  .model-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .model-stat {
+    background: var(--bg2);
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .model-stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .model-stat-value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg3);
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .modal-body { padding: 24px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-select option { background: var(--bg3); color: var(--text); }
+
+  .modal-footer {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .search-box {
+    position: relative;
+  }
+  .search-box input {
+    width: 240px;
+    padding: 8px 14px 8px 34px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box::before {
+    content: 'ð';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+  }
+
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .schedule-cell {
+    background: var(--bg2);
+    padding: 10px 8px;
+    font-size: 12px;
+    min-height: 50px;
+  }
+
+  .schedule-header {
+    background: var(--bg3);
+    padding: 12px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  .schedule-name {
+    font-weight: 600;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .schedule-shift {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .shift-morning { background: var(--blue-bg); color: var(--blue); }
+  .shift-afternoon { background: var(--yellow-bg); color: var(--yellow); }
+  .shift-evening { background: var(--accent-glow); color: var(--accent2); }
+  .shift-night { background: var(--pink-bg); color: var(--pink); }
+  .shift-off { background: var(--bg3); color: var(--text3); font-style: italic; }
+
+  .accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .account-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    transition: all 0.2s;
+  }
+  .account-card:hover { border-color: var(--accent); }
+
+  .account-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  }
+  .account-name { font-weight: 700; font-size: 14px; }
+  .account-handle { font-size: 11px; color: var(--text3); }
+
+  .account-stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-bottom: 14px;
+  }
+  .account-mini-stat {
+    background: var(--bg2); border-radius: 8px; padding: 8px 10px;
+  }
+  .account-mini-stat .label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.3px; }
+  .account-mini-stat .val { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+  .daily-chart {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 120px; padding: 0 4px;
+  }
+  .chart-bar-wrap {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .chart-bar {
+    width: 100%; min-width: 20px;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.4s ease, background 0.3s;
+    cursor: pointer;
+    position: relative;
+  }
+  .chart-bar:hover { opacity: 0.85; }
+  .chart-bar .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--bg4);
+    color: var(--text);
+    font-size: 11px; font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 10;
+    border: 1px solid var(--border);
+  }
+  .chart-bar:hover .tooltip { display: block; }
+  .chart-day {
+    font-size: 10px; color: var(--text3); font-weight: 600;
+  }
+
+  .platform-tabs {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .platform-tab {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+    font-family: inherit;
+  }
+  .platform-tab:hover { border-color: var(--accent); color: var(--text); }
+  .platform-tab.active { border-color: var(--accent); background: var(--accent-glow); color: var(--accent2); }
+
+  .platform-icon {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+  }
+  .icon-of { background: #00AFF0; }
+  .icon-ig { background: linear-gradient(135deg, #833AB4, #E1306C, #F77737); }
+  .icon-tiktok { background: #000; border: 1px solid #333; }
+  .icon-telegram { background: #0088cc; }
+
+  .daily-table { width: 100%; border-collapse: collapse; }
+  .daily-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text3);
+    border-bottom: 1px solid var(--border); background: var(--bg3);
+  }
+  .daily-table td {
+    padding: 10px 16px; font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  .daily-table tr:last-child td { border-bottom: none; }
+
+  .delta { font-size: 11px; font-weight: 600; }
+  .delta.pos { color: var(--green); }
+  .delta.neg { color: var(--red); }
+
+  .filter-row {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .filter-chip {
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    background: var(--bg3); color: var(--text2);
+    border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.2s;
+    font-family: inherit;
+  }
+  .filter-chip:hover, .filter-chip.active { background: var(--accent-glow); color: var(--accent2); border-color: var(--accent); }
+
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .btn-delete-small {
+    background: var(--red-bg);
+    color: var(--red);
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-delete-small:hover {
+    background: var(--red);
+    color: white;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text2);
+  }
+
+  .spinner {
+    border: 3px solid var(--bg3);
+    border-top: 3px solid var(--accent);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 1200px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .section.active { animation: fadeIn 0.3s ease; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">ð</div>
+    <div>
+      <h1>LCX Agency</h1>
+      <span>Management Suite</span>
+    </div>
+  </div>
+
+  <div id="nav-principal" class="nav-section">
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" data-section="dashboard" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Dashboard
+    </div>
+    <div class="nav-item" data-section="planning" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Planning
+    </div>
+    <div class="nav-item" data-section="tasks" onclick="switchSection(event)">
+      <span class="nav-icon">â</span> TÃ¢ches
+      <span class="nav-badge" id="tasks-badge">5</span>
+    </div>
+  </div>
+
+  <div id="nav-teams" class="nav-section">
+    <div class="nav-label">Ãquipes</div>
+    <div class="nav-item" data-section="models" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> ModÃ¨les
+    </div>
+    <div class="nav-item" data-section="chatters" onclick="switchSection(event)">
+      <span class="nav-icon">ð¬</span> Chatters
+    </div>
+    <div class="nav-item" data-section="outreach" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Outreach
+    </div>
+    <div class="nav-item" data-section="va" onclick="switchSection(event)">
+      <span class="nav-icon">âï¸</span> VA
+    </div>
+  </div>
+
+  <div id="nav-tools" class="nav-section">
+    <div class="nav-label">Outils</div>
+    <div class="nav-item" data-section="stats" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Stats & Subs
+    </div>
+    <div class="nav-item" data-section="coaching" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Coaching
+    </div>
+    <div class="nav-item" data-section="performances" onclick="switchSection(event)">
+      <span class="nav-icon">ð</span> Performances
+    </div>
+  </div>
+
+  <div class="sidebar-footer" onclick="handleLogout()">
+    <div class="user-info">
+      <div class="user-avatar" id="user-avatar">E</div>
+      <div>
+        <div class="user-name" id="user-name">Loading...</div>
+        <div class="user-role" id="user-role">Loading...</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- DASHBOARD SECTION -->
+  <div class="section active" id="section-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Vue d'ensemble de ton agence</div>
+      </div>
+      <div class="header-actions" id="dashboard-actions"></div>
+    </div>
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- PLANNING SECTION -->
+  <div class="section" id="section-planning">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Planning</div>
+        <div class="page-subtitle">Horaires de ton Ã©quipe</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div id="planning-content"></div>
+    </div>
+  </div>
+
+  <!-- TASKS SECTION -->
+  <div class="section" id="section-tasks">
+    <div class="page-header">
+      <div>
+        <div class="page-title">TÃ¢ches</div>
+        <div class="page-subtitle">Gestion des tÃ¢ches et deadlines</div>
+      </div>
+      <div class="header-actions" id="tasks-actions"></div>
+    </div>
+    <div class="panel">
+      <div class="tabs" id="task-tabs"></div>
+      <div id="tasks-content"></div>
+    </div>
+  </div>
+
+  <!-- MODELS SECTION -->
+  <div class="section" id="section-models">
+    <div class="page-header">
+      <div>
+        <div class="page-title">ModÃ¨les</div>
+        <div class="page-subtitle">Gestion de tes crÃ©atrices de contenu</div>
+      </div>
+      <div class="header-actions" id="models-actions"></div>
+    </div>
+    <div id="models-content"></div>
+  </div>
+
+  <!-- CHATTERS SECTION -->
+  <div class="section" id="section-chatters">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Chatters</div>
+        <div class="page-subtitle">Ãquipe de chat</div>
+      </div>
+      <div class="header-actions" id="chatters-actions"></div>
+    </div>
+    <div class="panel">
+      <table class="table" id="chatters-table">
+        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OUTREACH SECTION -->
+  <div class="section" id="section-outreach">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Outreach</div>
+        <div class="page-subtitle">Ãquipe d'outreach</div>
+      </div>
+      <div class="header-actions" id="outreach-actions"></div>
+    </div>
+    <div class="panel">
+      <table class="table" id="outreach-table">
+        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Plateformes</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VA SECTION -->
+  <div class="section" id="section-va">
+    <div class="page-header">
+      <div>
+        <div class="page-title">VA (Virtual Assistants)</div>
+        <div class="page-subtitle">Ãquipe d'assistants virtuels</div>
+      </div>
+      <div class="header-actions" id="va-actions"></div>
+    </div>
+    <div class="panel">
+      <table class="table" id="va-table">
+        <thead><tr><th>Membre</th><th>RÃ´le</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STATS SECTION -->
+  <div class="section" id="section-stats">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Stats & Subs</div>
+        <div class="page-subtitle">Suivi des abonnements et statistiques</div>
+      </div>
+    </div>
+    <div id="stats-content"></div>
+  </div>
+
+  <!-- COACHING SECTION -->
+  <div class="section" id="section-coaching">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Coaching</div>
+        <div class="page-subtitle">Appels et coaching avec les Ã©tudiants</div>
+      </div>
+      <div class="header-actions" id="coaching-actions"></div>
+    </div>
+    <div class="panel">
+      <table class="table" id="coaching-table">
+        <thead><tr><th>Ãtudiant</th><th>Type d'appel</th><th>Date/Heure</th><th>Notes</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PERFORMANCES SECTION -->
+  <div class="section" id="section-performances">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Performances</div>
+        <div class="page-subtitle">Analyse des performances</div>
+      </div>
+    </div>
+    <div id="performances-content"></div>
+  </div>
+
+</div>
+
+<!-- MODALS -->
+
+<!-- Modal: Add Student -->
+<div class="modal-overlay" id="modal-add-student">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un Ã©lÃ¨ve</div>
+      <button class="modal-close" onclick="closeModal('add-student')">â</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-student">
+        <div class="form-group">
+          <label class="form-label">Nom / Pseudo</label>
+          <input class="form-input" type="text" name="name" placeholder="Ex: Lucas" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Programme</label>
+          <select class="form-select" name="program" required>
+            <option value="starter">Starter (1 mois)</option>
+            <option value="pro">Pro (3 mois)</option>
+            <option value="elite">Elite (6 mois)</option>
+            <option value="vip">VIP (12 mois)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date de dÃ©but</label>
+          <input class="form-input" type="date" name="start_date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact (Discord / Telegram)</label>
+          <input class="form-input" type="text" name="contact" placeholder="@username">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-student')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitForm('add-student')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Team Member -->
+<div class="modal-overlay" id="modal-add-member">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un membre</div>
+      <button class="modal-close" onclick="closeModal('add-member')">â</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-member">
+        <div class="form-group">
+          <label class="form-label">Nom</label>
+          <input class="form-input" type="text" name="name" placeholder="Ex: Sarah" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">RÃ´le</label>
+          <select class="form-select" name="role" required>
+            <option value="chatter">Chatter</option>
+            <option value="outreach">Outreach</option>
+            <option value="va">VA</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shift</label>
+          <input class="form-input" type="text" name="shift" placeholder="Ex: 08h-16h">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact</label>
+          <input class="form-input" type="text" name="contact" placeholder="@username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plateforme (si outreach)</label>
+          <input class="form-input" type="text" name="platform" placeholder="Ex: Instagram, TikTok">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-member')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitForm('add-member')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Task -->
+<div class="modal-overlay" id="modal-add-task">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter une tÃ¢che</div>
+      <button class="modal-close" onclick="closeModal('add-task')">â</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-task">
+        <div class="form-group">
+          <label class="form-label">Titre</label>
+          <input class="form-input" type="text" name="title" placeholder="Ex: Poster du contenu" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PrioritÃ©</label>
+          <select class="form-select" name="priority" required>
+            <option value="low">Basse</option>
+            <option value="medium">Moyenne</option>
+            <option value="high">Haute</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AssignÃ©e Ã </label>
+          <input class="form-input" type="text" name="assigned_to" placeholder="Nom du membre">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input class="form-input" type="datetime-local" name="deadline">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input class="form-input" type="text" name="notes" placeholder="DÃ©tails...">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-task')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitForm('add-task')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Model -->
+<div class="modal-overlay" id="modal-add-model">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un modÃ¨le</div>
+      <button class="modal-close" onclick="closeModal('add-model')">â</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-model">
+        <div class="form-group">
+          <label class="form-label">Nom</label>
+          <input class="form-input" type="text" name="name" placeholder="Ex: Luna" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plateformes (sÃ©parÃ©es par des virgules)</label>
+          <input class="form-input" type="text" name="platforms" placeholder="Ex: onlyfans, fansly">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" name="status" required>
+            <option value="active">Active</option>
+            <option value="onboarding">Onboarding</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-model')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitForm('add-model')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Account -->
+<div class="modal-overlay" id="modal-add-account">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un compte</div>
+      <button class="modal-close" onclick="closeModal('add-account')">â</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-add-account">
+        <div class="form-group">
+          <label class="form-label">ModÃ¨le</label>
+          <select class="form-select" name="model_id" id="account-model-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plateforme</label>
+          <select class="form-select" name="platform" required>
+            <option value="onlyfans">OnlyFans</option>
+            <option value="fansly">Fansly</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom d'utilisateur / Handle</label>
+          <input class="form-input" type="text" name="handle" placeholder="@username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AbonnÃ©s actuels</label>
+          <input class="form-input" type="number" name="current_followers" placeholder="Ex: 500">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-account')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitForm('add-account')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== GLOBAL STATE ==========
+let currentUser = null;
+let allTeam = [];
+let allStudents = [];
+let allTasks = [];
+let allCalls = [];
+let allModels = [];
+let allAccounts = [];
+let allStats = [];
+
+// ========== INITIALIZE ==========
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await fetchCurrentUser();
+    await loadAllData();
+    initializeNavigation();
+    applyRoleBasedAccess();
+    renderAllSections();
+  } catch (err) {
+    console.error('Init error:', err);
+    window.location.href = '/';
+  }
+});
+
+// ========== AUTH ==========
+async function fetchCurrentUser() {
+  const res = await fetch('/api/me', { credentials: 'include' });
+  if (res.status === 401) window.location.href = '/';
+  if (!res.ok) throw new Error('Failed to fetch user');
+  currentUser = await res.json();
+  updateUserUI();
+}
+
+function updateUserUI() {
+  document.getElementById('user-name').textContent = currentUser.display_name || 'User';
+  document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Admin' : currentUser.role;
+  document.getElementById('user-avatar').textContent = (currentUser.display_name || 'U').charAt(0).toUpperCase();
+}
+
+async function handleLogout() {
+  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/';
+}
+
+// ========== DATA LOADING ==========
+async function loadAllData() {
+  try {
+    const [dashboard, students, team, tasks, calls, models, accounts, stats] = await Promise.all([
+      fetch('/api/dashboard', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/students', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/team', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/tasks', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/calls', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/models', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/accounts', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/stats', { credentials: 'include' }).then(r => r.json()),
+    ]);
+
+    window.dashboardData = dashboard;
+    allStudents = students;
+    allTeam = team;
+    allTasks = tasks;
+    allCalls = calls;
+    allModels = models;
+    allAccounts = accounts;
+    allStats = stats;
+  } catch (err) {
+    console.error('Data loading error:', err);
+  }
+}
+
+// ========== ROLE-BASED ACCESS ==========
+function applyRoleBasedAccess() {
+  const role = currentUser.role;
+  const showNav = {
+    admin: ['nav-principal', 'nav-teams', 'nav-tools'],
+    model: ['nav-principal'],
+    chatter: ['nav-principal', 'nav-teams'],
+    outreach: ['nav-principal', 'nav-teams'],
+    va: ['nav-principal', 'nav-teams'],
+    student: []
+  };
+
+  const visibleSections = {
+    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances'],
+    model: ['planning', 'tasks'],
+    chatter: ['planning', 'tasks', 'chatters'],
+    outreach: ['planning', 'tasks', 'outreach'],
+    va: ['planning', 'tasks', 'va'],
+    student: ['dashboard']
+  };
+
+  // Show/hide nav sections
+  ['nav-principal', 'nav-teams', 'nav-tools'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
+  });
+
+  // Hide inappropriate nav items
+  document.querySelectorAll('[data-section]').forEach(item => {
+    const section = item.getAttribute('data-section');
+    item.style.display = visibleSections[role]?.includes(section) ? '' : 'none';
+  });
+
+  // Hide action buttons for non-admin
+  if (role !== 'admin') {
+    document.querySelectorAll('[id*="-actions"]').forEach(el => {
+      el.innerHTML = '';
+    });
+  }
+}
+
+// ========== NAVIGATION ==========
+function initializeNavigation() {
+  document.querySelectorAll('[data-section]').forEach(item => {
+    item.addEventListener('click', (e) => {
+      switchSection(e);
+    });
+  });
+}
+
+function switchSection(e) {
+  const section = e.currentTarget.getAttribute('data-section');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('[data-section]').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + section).classList.add('active');
+  e.currentTarget.classList.add('active');
+}
+
+// ========== MODALS ==========
+function openModal(name) {
+  document.getElementById('modal-' + name).classList.add('show');
+}
+
+function closeModal(name) {
+  document.getElementById('modal-' + name).classList.remove('show');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) {
+      const modalName = this.id.replace('modal-', '');
+      closeModal(modalName);
+    }
+  });
+});
+
+// ========== FORMS ==========
+async function submitForm(formName) {
+  const form = document.getElementById('form-' + formName);
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
+
+  try {
+    let endpoint = '';
+    let body = data;
+
+    if (formName === 'add-student') {
+      endpoint = '/api/students';
+      body = {
+        name: data.name,
+        program: data.program,
+        start_date: data.start_date,
+        contact: data.contact
+      };
+    } else if (formName === 'add-member') {
+      endpoint = '/api/team';
+      body = {
+        name: data.name,
+        role: data.role,
+        shift: data.shift,
+        contact: data.contact,
+        platform: data.platform || null
+      };
+    } else if (formName === 'add-task') {
+      endpoint = '/api/tasks';
+      body = {
+        title: data.title,
+        priority: data.priority,
+        assigned_to: data.assigned_to,
+        deadline: data.deadline,
+        notes: data.notes
+      };
+    } else if (formName === 'add-model') {
+      endpoint = '/api/models';
+      body = {
+        name: data.name,
+        platforms: data.platforms.split(',').map(p => p.trim().toLowerCase()),
+        status: data.status
+      };
+    } else if (formName === 'add-account') {
+      endpoint = '/api/accounts';
+      body = {
+        model_id: parseInt(data.model_id),
+        platform: data.platform,
+        handle: data.handle,
+        current_followers: parseInt(data.current_followers) || 0
+      };
+    }
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body)
+    });
+
+    if (res.status === 401) {
+      window.location.href = '/';
+      return;
+    }
+
+    if (res.ok) {
+      closeModal(formName);
+      form.reset();
+      await loadAllData();
+      renderAllSections();
+    } else {
+      const error = await res.json();
+      alert('Erreur: ' + (error.error || 'Impossible d\'ajouter'));
+    }
+  } catch (err) {
+    console.error('Form submission error:', err);
+    alert('Erreur lors de la soumission');
+  }
+}
+
+// ========== RENDERING SECTIONS ==========
+function renderAllSections() {
+  renderDashboard();
+  renderPlanning();
+  renderTasks();
+  renderModels();
+  renderChatters();
+  renderOutreach();
+  renderVA();
+  renderStats();
+  renderCoaching();
+}
+
+function renderDashboard() {
+  const container = document.getElementById('dashboard-content');
+  const actions = document.getElementById('dashboard-actions');
+
+  if (currentUser.role === 'student') {
+    // Student dashboard
+    const student = allStudents[0];
+    if (!student) {
+      container.innerHTML = '<div class="loading">Pas de donnÃ©es Ã©tudiant</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card purple">
+          <div class="stat-label">ModÃ¨les signÃ©s</div>
+          <div class="stat-value">${student.models_signed}</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Discussions actives</div>
+          <div class="stat-value">${student.active_discussions}</div>
+        </div>
+        <div class="stat-card pink">
+          <div class="stat-label">Progression</div>
+          <div class="stat-value">${student.progression}%</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Status</div>
+          <div class="stat-value">${student.status}</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Admin dashboard
+  const dash = window.dashboardData || {};
+  actions.innerHTML = currentUser.role === 'admin' ?
+    `<button class="btn btn-primary" onclick="openModal('add-member')">+ Ajouter un membre</button>` : '';
+
+  container.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card purple">
+        <div class="stat-label">Total followers</div>
+        <div class="stat-value">${(dash.totalFollowers || 0).toLocaleString()}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">ModÃ¨les actives</div>
+        <div class="stat-value">${dash.modelsCount || 0}</div>
+      </div>
+      <div class="stat-card pink">
+        <div class="stat-label">Ãquipe totale</div>
+        <div class="stat-value">${dash.teamCount || 0}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Ãtudiants</div>
+        <div class="stat-value">${dash.studentsCount || 0}</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Ãquipe en ligne</div>
+        </div>
+        <table class="table">
+          <thead><tr><th>Membre</th><th>RÃ´le</th><th>Status</th></tr></thead>
+          <tbody>
+            ${allTeam.filter(m => m.status === 'online').slice(0, 4).map(m => `
+              <tr>
+                <td>
+                  <div class="member-info">
+                    <div class="member-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">${m.name.charAt(0)}</div>
+                    <div><div class="member-name">${m.name}</div></div>
+                  </div>
+                </td>
+                <td>${m.role}</td>
+                <td><span class="badge badge-online">â En ligne</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">TÃ¢ches urgentes</div>
+        </div>
+        <div class="task-list">
+          ${allTasks.filter(t => t.priority === 'high').slice(0, 4).map(t => `
+            <div class="task-item">
+              <div class="priority-dot priority-high"></div>
+              <div class="task-content">
+                <div class="task-title">${t.title}</div>
+                <div class="task-meta">Deadline: ${t.deadline || 'Non dÃ©finie'}</div>
+              </div>
+              <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlanning() {
+  const container = document.getElementById('planning-content');
+  const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  let html = '<div class="schedule-grid">';
+  html += '<div class="schedule-cell" style="background:var(--bg3)"></div>';
+  days.forEach(d => html += `<div class="schedule-header">${d}</div>`);
+
+  allTeam.slice(0, 10).forEach(member => {
+    html += `<div class="schedule-name">${member.name}</div>`;
+    for (let i = 0; i < 7; i++) {
+      html += `<div class="schedule-cell"><div class="schedule-shift shift-off">OFF</div></div>`;
+    }
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function renderTasks() {
+  const container = document.getElementById('tasks-content');
+  const tabsContainer = document.getElementById('task-tabs');
+
+  tabsContainer.innerHTML = `
+    <button class="tab active" onclick="filterTasks(this, 'all')">Toutes</button>
+    <button class="tab" onclick="filterTasks(this, 'pending')">En attente</button>
+    <button class="tab" onclick="filterTasks(this, 'done')">TerminÃ©es</button>
+  `;
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('tasks-actions').innerHTML =
+      `<button class="btn btn-primary" onclick="openModal('add-task')">+ Nouvelle tÃ¢che</button>`;
+  }
+
+  container.innerHTML = `
+    <div class="task-list">
+      ${allTasks.map(t => `
+        <div class="task-item" data-status="${t.status}">
+          <div class="priority-dot priority-${t.priority}"></div>
+          <div class="task-content">
+            <div class="task-title ${t.status === 'done' ? 'done' : ''}">${t.title}</div>
+            <div class="task-meta">Deadline: ${t.deadline || 'Non dÃ©finie'}</div>
+          </div>
+          <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
+          ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTask(${t.id})">â</button>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function filterTasks(tab, status) {
+  document.querySelectorAll('#task-tabs .tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  document.querySelectorAll('.task-item').forEach(item => {
+    if (status === 'all') {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = item.dataset.status === status ? 'flex' : 'none';
+    }
+  });
+}
+
+function renderModels() {
+  const container = document.getElementById('models-content');
+  const actions = document.getElementById('models-actions');
+
+  if (currentUser.role === 'admin') {
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">+ Nouveau modÃ¨le</button>`;
+  }
+
+  container.innerHTML = `
+    <div class="panel">
+      <div class="models-grid">
+        ${allModels.map(m => `
+          <div class="model-card">
+            <div class="model-header">
+              <div class="model-avatar">${m.name.charAt(0)}</div>
+              <div>
+                <div class="model-name">${m.name}</div>
+                <div class="model-platform">${(m.platforms || []).join(' + ')}</div>
+              </div>
+              <span class="badge badge-online" style="margin-left:auto">${m.status}</span>
+            </div>
+            <div class="model-stats">
+              <div class="model-stat">
+                <div class="model-stat-label">Accounts</div>
+                <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).length}</div>
+              </div>
+              <div class="model-stat">
+                <div class="model-stat-label">Total followers</div>
+                <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).reduce((s, a) => s + a.current_followers, 0)}</div>
+              </div>
+            </div>
+            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">â Supprimer</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderChatters() {
+  const chatters = allTeam.filter(m => m.role === 'chatter');
+  renderTeamTable('chatters-table', chatters);
+}
+
+function renderOutreach() {
+  const outreach = allTeam.filter(m => m.role === 'outreach');
+  renderTeamTable('outreach-table', outreach);
+}
+
+function renderVA() {
+  const vas = allTeam.filter(m => m.role === 'va');
+  renderTeamTable('va-table', vas);
+}
+
+function renderTeamTable(tableId, members) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = members.map(m => `
+    <tr>
+      <td>
+        <div class="member-info">
+          <div class="member-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">${m.name.charAt(0)}</div>
+          <div><div class="member-name">${m.name}</div></div>
+        </div>
+      </td>
+      <td>${m.role}</td>
+      <td>${m.shift || 'N/A'}</td>
+      <td>${m.platform || 'N/A'}</td>
+      <td><span class="badge badge-${m.status}">${m.status}</span></td>
+      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">â</button>` : ''}</td>
+    </tr>
+  `).join('');
+}
+
+function renderStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = `
+    <div class="panel">
+      <div class="accounts-grid">
+        ${allAccounts.map(acc => `
+          <div class="account-card">
+            <div class="account-header">
+              <div class="account-name">${acc.model_name} - ${acc.platform}</div>
+              <span class="badge badge-online" style="margin-left:auto">${acc.handle}</span>
+            </div>
+            <div class="account-stats-row">
+              <div class="account-mini-stat">
+                <div class="label">Followers</div>
+                <div class="val">${acc.current_followers}</div>
+              </div>
+              <div class="account-mini-stat">
+                <div class="label">Auj.</div>
+                <div class="val" style="color:var(--green)">+0</div>
+              </div>
+              <div class="account-mini-stat">
+                <div class="label">7 jours</div>
+                <div class="val" style="color:var(--green)">+0</div>
+              </div>
+            </div>
+            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteAccount(${acc.id})" style="margin-top:10px;width:100%">â Supprimer</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ${currentUser.role === 'admin' ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:20px">+ Ajouter un compte</button>` : ''}
+  `;
+
+  // Populate model select in add-account modal
+  const select = document.getElementById('account-model-select');
+  select.innerHTML = allModels.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function renderCoaching() {
+  const tbody = document.querySelector('#coaching-table tbody');
+  tbody.innerHTML = allCalls.map(c => `
+    <tr>
+      <td>${c.student_name}</td>
+      <td>${c.type}</td>
+      <td>${c.scheduled_at}</td>
+      <td>${c.notes || 'N/A'}</td>
+      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">â</button>` : ''}</td>
+    </tr>
+  `).join('');
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('coaching-actions').innerHTML =
+      `<button class="btn btn-primary" onclick="openModal('add-call')">+ Programmer un call</button>`;
+  }
+}
+
+function renderPerformances() {
+  const container = document.getElementById('performances-content');
+  container.innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">Analyse de performance</div></div>
+      <table class="table">
+        <thead>
+          <tr><th>ModÃ¨le</th><th>Plateforme</th><th>Followers</th><th>Croissance 7j</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          ${allAccounts.map(acc => {
+            const stats7d = allStats.filter(s => s.account_id === acc.id);
+            const total7d = stats7d.reduce((sum, s) => sum + s.new_followers, 0);
+            return `
+              <tr>
+                <td>${acc.model_name}</td>
+                <td>${acc.platform}</td>
+                <td>${acc.current_followers}</td>
+                <td class="delta pos">+${total7d}</td>
+                <td><span class="badge badge-online">Active</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ========== DELETE OPERATIONS ==========
+async function deleteStudent(id) {
+  if (!confirm('Supprimer cet Ã©lÃ¨ve?')) return;
+  const res = await fetch(`/api/students/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+
+async function deleteTeamMember(id) {
+  if (!confirm('Supprimer ce membre?')) return;
+  const res = await fetch(`/api/team/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Supprimer cette tÃ¢che?')) return;
+  const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+
+async function deleteModel(id) {
+  if (!confirm('Supprimer ce modÃ¨le?')) return;
+  const res = await fetch(`/api/models/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+
+async function deleteAccount(id) {
+  if (!confirm('Supprimer ce compte?')) return;
+  const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+
+async function deleteCall(id) {
+  if (!confirm('Supprimer cet appel?')) return;
+  const res = await fetch(`/api/calls/${id}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadAllData();
+    renderAllSections();
+  }
+}
+</script>
+
+</body>
+</html>
