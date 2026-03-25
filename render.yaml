@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lcx-agency-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /opt/render/project/data/agency.db
+    disk:
+      name: agency-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1
