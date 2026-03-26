@@ -1146,10 +1146,16 @@
     <div class="page-header">
       <div>
         <div class="page-title">Stats & Subs</div>
-        <div class="page-subtitle">Suivi des abonnements et statistiques</div>
+        <div class="page-subtitle">Suivi des abonnements et statistiques — Auto-refresh toutes les 15 min</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="refreshFollowers()">Rafraîchir maintenant</button>
       </div>
     </div>
-    <div id="stats-content"></div>
+    <!-- KPIs globaux -->
+    <div class="stats-grid" id="followers-kpis" style="margin-bottom:24px"></div>
+    <!-- Comptes par modèle -->
+    <div id="followers-cards"></div>
   </div>
 
   <!-- COACHING SECTION -->
@@ -2131,41 +2137,91 @@ function renderTeamTable(tableId, members) {
 }
 
 function renderStats() {
-  const container = document.getElementById('stats-content');
-  container.innerHTML = `
-    <div class="panel">
-      <div class="accounts-grid">
-        ${allAccounts.map(acc => `
-          <div class="account-card">
-            <div class="account-header">
-              <div class="account-name">${acc.model_name} - ${acc.platform}</div>
-              <span class="badge badge-online" style="margin-left:auto">${acc.handle}</span>
-            </div>
-            <div class="account-stats-row">
-              <div class="account-mini-stat">
-                <div class="label">Followers</div>
-                <div class="val">${acc.current_followers}</div>
-              </div>
-              <div class="account-mini-stat">
-                <div class="label">Auj.</div>
-                <div class="val" style="color:var(--green)">+0</div>
-              </div>
-              <div class="account-mini-stat">
-                <div class="label">7 jours</div>
-                <div class="val" style="color:var(--green)">+0</div>
-              </div>
-            </div>
-            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteAccount(${acc.id})" style="margin-top:10px;width:100%">✕ Supprimer</button>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    </div>
-    ${currentUser.role === 'admin' ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:20px">+ Ajouter un compte</button>` : ''}
+  const platformIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '⭐', telegram: '✈️' };
+  const platformColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#00AFF0', fansly: '#1FA2F1', telegram: '#229ED9' };
+
+  // KPIs globaux
+  const totalFollowers = allAccounts.reduce((sum, a) => sum + (a.current_followers || 0), 0);
+  const igTotal = allAccounts.filter(a => a.platform === 'instagram').reduce((sum, a) => sum + (a.current_followers || 0), 0);
+  const tkTotal = allAccounts.filter(a => a.platform === 'tiktok').reduce((sum, a) => sum + (a.current_followers || 0), 0);
+  const ofTotal = allAccounts.filter(a => a.platform === 'onlyfans').reduce((sum, a) => sum + (a.current_followers || 0), 0);
+
+  const kpisDiv = document.getElementById('followers-kpis');
+  kpisDiv.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${totalFollowers.toLocaleString()}</div><div class="stat-label">Total followers</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#E4405F">${igTotal.toLocaleString()}</div><div class="stat-label">Instagram</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#00f2ea">${tkTotal.toLocaleString()}</div><div class="stat-label">TikTok</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#00AFF0">${ofTotal.toLocaleString()}</div><div class="stat-label">OnlyFans</div></div>
   `;
+
+  // Cartes par modèle
+  const cardsDiv = document.getElementById('followers-cards');
+  const modelGroups = {};
+  allAccounts.forEach(a => {
+    if (!modelGroups[a.model_name]) modelGroups[a.model_name] = [];
+    modelGroups[a.model_name].push(a);
+  });
+
+  cardsDiv.innerHTML = Object.entries(modelGroups).map(([modelName, accounts]) => {
+    const modelTotal = accounts.reduce((sum, a) => sum + (a.current_followers || 0), 0);
+    return `
+    <div class="panel" style="padding:20px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <strong style="font-size:16px">${modelName}</strong>
+          <span style="color:var(--text3);font-size:13px;margin-left:10px">${modelTotal.toLocaleString()} followers total</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px">
+        ${accounts.map(acc => {
+          const prev = acc.previous_followers || acc.current_followers || 0;
+          const curr = acc.current_followers || 0;
+          const diff = curr - prev;
+          const pct = prev > 0 ? ((diff / prev) * 100).toFixed(1) : '0.0';
+          const isUp = diff > 0;
+          const isDown = diff < 0;
+          const color = isUp ? 'var(--green)' : isDown ? 'var(--red)' : 'var(--text3)';
+          const arrow = isUp ? '↑' : isDown ? '↓' : '—';
+          const sign = isUp ? '+' : '';
+          const autoUpdated = acc.platform === 'instagram' || acc.platform === 'tiktok';
+          const lastUpdate = acc.last_scraped ? new Date(acc.last_scraped).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+
+          return `
+          <div style="background:var(--bg3);border-radius:10px;padding:14px;border-left:3px solid ${platformColors[acc.platform] || 'var(--accent)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:13px;font-weight:600">${platformIcons[acc.platform] || '📱'} ${acc.platform}</span>
+              <span style="font-size:11px;color:var(--text3)">${acc.handle}</span>
+            </div>
+            <div style="font-size:24px;font-weight:800;margin-bottom:4px">${curr.toLocaleString()}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;font-weight:600;color:${color}">${arrow} ${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
+              ${autoUpdated && lastUpdate ? `<span style="font-size:10px;color:var(--text3)">màj ${lastUpdate}</span>` : ''}
+            </div>
+            ${autoUpdated ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh</div>' : '<div style="font-size:9px;color:var(--text3);margin-top:4px">Manuel</div>'}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  cardsDiv.innerHTML += currentUser.role === 'admin' ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:8px">+ Ajouter un compte</button>` : '';
 
   // Populate model select in add-account modal
   const select = document.getElementById('account-model-select');
-  select.innerHTML = allModels.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  if (select) select.innerHTML = allModels.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+async function refreshFollowers() {
+  showToast('Mise à jour des followers lancée...', 'info');
+  await fetch('/api/admin/refresh-followers', { method: 'POST', credentials: 'include' });
+}
+
+async function reloadAccounts() {
+  try {
+    const res = await fetch('/api/accounts', { credentials: 'include' });
+    if (res.ok) allAccounts = await res.json();
+    renderStats();
+  } catch (e) {}
 }
 
 function renderCoaching() {
@@ -2435,6 +2491,10 @@ function connectWebSocket() {
       renderChatters();
       await loadChatterKPIs();
       if (currentUser.role === 'admin') loadDashboardChatterStats();
+    }
+    if (msg.event === 'followers-updated') {
+      await reloadAccounts();
+      showToast(`Followers mis à jour (${msg.data.updated} comptes)`, 'success');
     }
   });
 
