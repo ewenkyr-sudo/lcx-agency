@@ -641,19 +641,38 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
       'signed': 'signed'
     };
 
-    // Colonnes: Username, link, Type, Status, Script, Account, Notes
+    // Colonnes: Username, link, Type, Status, Script, Account, Notes, (vides...), reply rate, %
+    // Le lien IG peut contenir "==" donc on parse intelligemment les 7 premières colonnes
     let imported = 0;
+    let updated = 0;
     for (let i = 1; i < lines.length; i++) {
-      // Parser le CSV (sans guillemets cette fois)
-      const cols = lines[i].split(',');
-      const username = (cols[0] || '').replace(/"/g, '').trim();
-      const igLink = (cols[1] || '').replace(/"/g, '').trim();
-      const leadType = (cols[2] || '').replace(/"/g, '').trim().toLowerCase() || 'model';
-      const rawStatus = (cols[3] || '').replace(/"/g, '').trim().toLowerCase();
-      const script = (cols[4] || '').replace(/"/g, '').trim();
-      const account = (cols[5] || '').replace(/"/g, '').trim();
-      const notes = (cols[6] || '').replace(/"/g, '').trim();
+      const line = lines[i];
+      // Extraire username (avant la première virgule)
+      const firstComma = line.indexOf(',');
+      if (firstComma === -1) continue;
+      const username = line.substring(0, firstComma).replace(/"/g, '').trim();
       if (!username) continue;
+
+      // Extraire le lien (entre première et deuxième virgule — peut contenir ==)
+      const afterUsername = line.substring(firstComma + 1);
+      // Le lien finit avant ",Type" — chercher le pattern après le lien IG
+      const linkMatch = afterUsername.match(/^(https?:\/\/[^,]*(?:={0,2})),(.*)/);
+      let igLink = '', rest = afterUsername;
+      if (linkMatch) {
+        igLink = linkMatch[1].replace(/"/g, '').trim();
+        rest = linkMatch[2];
+      } else {
+        // Pas de lien, tout est dans rest
+        rest = afterUsername;
+      }
+
+      // Parser le reste : Type, Status, Script, Account, Notes
+      const restCols = rest.split(',');
+      const leadType = (restCols[0] || '').replace(/"/g, '').trim().toLowerCase() || 'model';
+      const rawStatus = (restCols[1] || '').replace(/"/g, '').trim().toLowerCase();
+      const script = (restCols[2] || '').replace(/"/g, '').trim();
+      const account = (restCols[3] || '').replace(/"/g, '').trim();
+      const notes = (restCols[4] || '').replace(/"/g, '').trim();
 
       const status = statusMap[rawStatus] || 'sent';
 
@@ -661,17 +680,25 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
       const exists = await pool.query(
         'SELECT id FROM outreach_leads WHERE username = $1 AND user_id = $2', [username, gaby.id]
       );
-      if (exists.rows.length > 0) continue;
 
-      await pool.query(
-        'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-        [gaby.id, username, igLink, leadType, script, account, notes, status]
-      );
-      imported++;
+      if (exists.rows.length > 0) {
+        // Mettre à jour le lead existant avec les bonnes données
+        await pool.query(
+          `UPDATE outreach_leads SET ig_link = $1, lead_type = $2, status = $3, script_used = $4, ig_account_used = $5, notes = $6, updated_at = NOW() WHERE id = $7`,
+          [igLink, leadType, status, script, account, notes, exists.rows[0].id]
+        );
+        updated++;
+      } else {
+        await pool.query(
+          'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [gaby.id, username, igLink, leadType, script, account, notes, status]
+        );
+        imported++;
+      }
     }
 
     broadcast('lead-added', { bulk: true });
-    res.json({ ok: true, imported, total: lines.length - 1, user: 'Gaby' });
+    res.json({ ok: true, imported, updated, total: lines.length - 1, user: 'Gaby' });
   } catch (e) {
     console.error('Import error:', e);
     res.status(500).json({ error: 'Erreur lors de l\'import' });

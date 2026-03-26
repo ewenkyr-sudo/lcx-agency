@@ -2348,7 +2348,7 @@ async function importCSV() {
     const res = await fetch('/api/admin/import-csv', { method: 'POST', credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
-      alert(`Import terminé : ${data.imported} nouveaux leads importés sur ${data.total} lignes`);
+      alert(`Import terminé : ${data.imported} nouveaux, ${data.updated} mis à jour sur ${data.total} lignes`);
       await loadLeads();
       renderLeads();
       await loadOutreachKPIs();
