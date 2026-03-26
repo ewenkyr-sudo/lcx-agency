@@ -2197,7 +2197,10 @@ function renderStats() {
               <span style="font-size:13px;font-weight:600;color:${color}">${arrow} ${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
               ${autoUpdated && lastUpdate ? `<span style="font-size:10px;color:var(--text3)">màj ${lastUpdate}</span>` : ''}
             </div>
-            ${autoUpdated ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh</div>' : '<div style="font-size:9px;color:var(--text3);margin-top:4px">Manuel</div>'}
+            ${autoUpdated ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh</div>' : `<div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+              <input type="number" id="manual-followers-${acc.id}" class="form-input" style="padding:4px 8px;font-size:12px;width:100px" placeholder="${curr}" min="0">
+              <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateManualFollowers(${acc.id})">OK</button>
+            </div>`}
           </div>`;
         }).join('')}
       </div>
@@ -2209,6 +2212,22 @@ function renderStats() {
   // Populate model select in add-account modal
   const select = document.getElementById('account-model-select');
   if (select) select.innerHTML = allModels.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+async function updateManualFollowers(accId) {
+  const input = document.getElementById('manual-followers-' + accId);
+  const val = parseInt(input.value);
+  if (isNaN(val) || val < 0) return showToast('Nombre invalide', 'error');
+  const res = await fetch('/api/accounts/' + accId, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ current_followers: val })
+  });
+  if (res.ok) {
+    showToast('Followers mis à jour !', 'success');
+    await reloadAccounts();
+  }
 }
 
 async function refreshFollowers() {

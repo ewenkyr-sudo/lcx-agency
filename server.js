@@ -629,9 +629,13 @@ app.put('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
 
 app.put('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
   const { handle, current_followers } = req.body;
-  await pool.query(`UPDATE accounts SET
-    handle = COALESCE($1, handle), current_followers = COALESCE($2, current_followers) WHERE id = $3`,
-    [handle, current_followers, req.params.id]);
+  if (current_followers !== undefined) {
+    await pool.query(`UPDATE accounts SET previous_followers = current_followers, current_followers = $1, handle = COALESCE($2, handle) WHERE id = $3`,
+      [current_followers, handle, req.params.id]);
+  } else {
+    await pool.query(`UPDATE accounts SET handle = COALESCE($1, handle) WHERE id = $2`,
+      [handle, req.params.id]);
+  }
   res.json({ ok: true });
 });
 
