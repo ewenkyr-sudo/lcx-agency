@@ -2185,23 +2185,24 @@ function renderStats() {
           const sign = isUp ? '+' : '';
           const autoUpdated = acc.platform === 'instagram' || acc.platform === 'tiktok';
           const lastUpdate = acc.last_scraped ? new Date(acc.last_scraped).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+          let bottomHTML = '';
+          if (autoUpdated) {
+            bottomHTML = '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh' + (lastUpdate ? ' — màj ' + lastUpdate : '') + '</div>';
+          } else {
+            bottomHTML = '<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="number" id="manual-followers-' + acc.id + '" class="form-input" style="padding:4px 8px;font-size:12px;width:100px" placeholder="' + curr + '" min="0"><button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateManualFollowers(' + acc.id + ')">OK</button></div>';
+          }
 
-          return `
-          <div style="background:var(--bg3);border-radius:10px;padding:14px;border-left:3px solid ${platformColors[acc.platform] || 'var(--accent)'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span style="font-size:13px;font-weight:600">${platformIcons[acc.platform] || '📱'} ${acc.platform}</span>
-              <span style="font-size:11px;color:var(--text3)">${acc.handle}</span>
-            </div>
-            <div style="font-size:24px;font-weight:800;margin-bottom:4px">${curr.toLocaleString()}</div>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:13px;font-weight:600;color:${color}">${arrow} ${sign}${diff.toLocaleString()} (${sign}${pct}%)</span>
-              ${autoUpdated && lastUpdate ? `<span style="font-size:10px;color:var(--text3)">màj ${lastUpdate}</span>` : ''}
-            </div>
-            ${autoUpdated ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh</div>' : `<div style="display:flex;align-items:center;gap:6px;margin-top:6px">
-              <input type="number" id="manual-followers-${acc.id}" class="form-input" style="padding:4px 8px;font-size:12px;width:100px" placeholder="${curr}" min="0">
-              <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateManualFollowers(${acc.id})">OK</button>
-            </div>`}
-          </div>`;
+          return '<div style="background:var(--bg3);border-radius:10px;padding:14px;border-left:3px solid ' + (platformColors[acc.platform] || 'var(--accent)') + '">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+            + '<span style="font-size:13px;font-weight:600">' + (platformIcons[acc.platform] || '📱') + ' ' + acc.platform + '</span>'
+            + '<span style="font-size:11px;color:var(--text3)">' + acc.handle + '</span>'
+            + '</div>'
+            + '<div style="font-size:24px;font-weight:800;margin-bottom:4px">' + curr.toLocaleString() + '</div>'
+            + '<div style="display:flex;justify-content:space-between;align-items:center">'
+            + '<span style="font-size:13px;font-weight:600;color:' + color + '">' + arrow + ' ' + sign + diff.toLocaleString() + ' (' + sign + pct + '%)</span>'
+            + '</div>'
+            + bottomHTML
+            + '</div>';
         }).join('')}
       </div>
     </div>`;
