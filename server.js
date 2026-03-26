@@ -728,11 +728,11 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
 // Add lead
 app.post('/api/leads', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { username, ig_link, lead_type, script_used, ig_account_used, notes } = req.body;
+  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
   const { rows } = await pool.query(
-    'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes]
+    'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+    [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes, status || 'to-send']
   );
   broadcast('lead-added', rows[0]);
   res.json(rows[0]);

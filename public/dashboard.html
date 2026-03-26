@@ -1002,11 +1002,7 @@
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Script utilisé</label>
-          <input type="text" id="lead-script" class="form-input" placeholder="Ex: Script A, Script B...">
-        </div>
-        <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Compte Instagram utilisé</label>
-          <input type="text" id="lead-ig-account" class="form-input" placeholder="@compte_outreach">
+          <input type="text" id="lead-script" class="form-input" value="Script 2" readonly style="opacity:0.7;cursor:not-allowed">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Notes</label>
@@ -2302,15 +2298,13 @@ async function addLead() {
       ig_link: document.getElementById('lead-ig-link').value.trim(),
       lead_type: document.getElementById('lead-type').value,
       script_used: document.getElementById('lead-script').value.trim(),
-      ig_account_used: document.getElementById('lead-ig-account').value.trim(),
-      notes: document.getElementById('lead-notes').value.trim()
+      notes: document.getElementById('lead-notes').value.trim(),
+      status: 'to-send'
     })
   });
   if (res.ok) {
     document.getElementById('lead-username').value = '';
     document.getElementById('lead-ig-link').value = '';
-    document.getElementById('lead-script').value = '';
-    document.getElementById('lead-ig-account').value = '';
     document.getElementById('lead-notes').value = '';
     document.getElementById('add-lead-form').style.display = 'none';
     await loadLeads();
