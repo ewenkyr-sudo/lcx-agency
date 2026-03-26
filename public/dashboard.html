@@ -1029,6 +1029,11 @@
       <button class="btn lead-filter" data-filter="signed" onclick="filterLeads('signed', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Signé</button>
     </div>
 
+    <!-- Recherche -->
+    <div style="margin-bottom:16px">
+      <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderLeads()" style="max-width:350px">
+    </div>
+
     <!-- Tableau des leads -->
     <div class="panel">
       <table class="table" id="leads-table">
@@ -2168,11 +2173,15 @@ async function loadOutreachKPIs() {
       const res = await fetch('/api/leads/my-stats', { credentials: 'include' });
       if (res.ok) {
         const s = await res.json();
+        const totalSent = allLeads.length;
+        const replies = allLeads.filter(l => ['talking-cold','talking-warm','call-booked','signed'].includes(l.status)).length;
+        const replyRate = totalSent > 0 ? ((replies / totalSent) * 100).toFixed(1) : '0';
         kpisDiv.innerHTML = `
           <div class="stat-card"><div class="stat-value">${s.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
           <div class="stat-card"><div class="stat-value">${s.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${s.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.call_booked}</div><div class="stat-label">Call Booked</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRate}%</div><div class="stat-label">Taux de réponse</div></div>
         `;
       }
     } catch (e) {}
@@ -2192,12 +2201,16 @@ async function loadOutreachKPIs() {
           total: acc.total + parseInt(a.total_leads)
         }), { leads_today: 0, dm_sent_today: 0, talking_warm: 0, call_booked: 0, signed: 0, total: 0 });
 
+        const totalAll = allLeads.length;
+        const repliesAll = allLeads.filter(l => ['talking-cold','talking-warm','call-booked','signed'].includes(l.status)).length;
+        const replyRateAll = totalAll > 0 ? ((repliesAll / totalAll) * 100).toFixed(1) : '0';
         kpisDiv.innerHTML = `
           <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
           <div class="stat-card"><div class="stat-value">${totals.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRateAll}%</div><div class="stat-label">Taux de réponse</div></div>
           <div class="stat-card"><div class="stat-value">${totals.total}</div><div class="stat-label">Total leads</div></div>
         `;
 
@@ -2235,7 +2248,9 @@ function renderLeads() {
   const agentCol = document.getElementById('lead-col-agent');
   if (agentCol) agentCol.style.display = isAdmin ? '' : 'none';
 
-  const filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
+  const search = (document.getElementById('lead-search')?.value || '').toLowerCase().trim();
+  let filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
+  if (search) filtered = filtered.filter(l => l.username.toLowerCase().includes(search));
   const tbody = document.querySelector('#leads-table tbody');
   tbody.innerHTML = filtered.map(l => {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
