@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -633,6 +635,7 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
     'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
     [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes]
   );
+  broadcast('lead-added', rows[0]);
   res.json(rows[0]);
 });
 
@@ -647,6 +650,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   }
   await pool.query('UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3',
     [status, notes, req.params.id]);
+  broadcast('lead-updated', { id: parseInt(req.params.id), status, notes });
   res.json({ ok: true });
 });
 
@@ -659,6 +663,7 @@ app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'Accès refusé' });
   }
   await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
+  broadcast('lead-deleted', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
 
@@ -715,11 +720,22 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// ============ WEBSOCKET ============
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+function broadcast(event, data) {
+  const message = JSON.stringify({ event, data });
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) client.send(message);
+  });
+}
+
 // ============ START ============
 async function start() {
   await initDB();
   await seedData();
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`
   ╔══════════════════════════════════════╗
   ║    LCX Agency Dashboard               ║

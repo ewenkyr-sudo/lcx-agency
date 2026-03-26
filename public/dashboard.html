@@ -2121,6 +2121,29 @@ async function deleteCall(id) {
   }
 }
 
+// ========== WEBSOCKET TEMPS RÉEL ==========
+function connectWebSocket() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${protocol}//${location.host}`);
+
+  ws.addEventListener('message', async (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted') {
+      await loadLeads();
+      renderLeads();
+      await loadOutreachKPIs();
+      // Rafraîchir aussi le dashboard admin si on est dessus
+      if (currentUser.role === 'admin') loadDashboardOutreachStats();
+    }
+  });
+
+  ws.addEventListener('close', () => {
+    // Reconnexion automatique après 2s
+    setTimeout(connectWebSocket, 2000);
+  });
+}
+connectWebSocket();
+
 // ========== OUTREACH LEADS ==========
 let allLeads = [];
 let currentLeadFilter = 'all';
