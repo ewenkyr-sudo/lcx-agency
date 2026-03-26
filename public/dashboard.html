@@ -808,8 +808,8 @@
   <div class="logo">
     <div class="logo-icon">👑</div>
     <div>
-      <h1>LCX Agency</h1>
-      <span>Management Suite</span>
+      <h1 id="logo-agency-name">LCX Agency</h1>
+      <span id="logo-agency-subtitle">Management Suite</span>
     </div>
   </div>
 
@@ -1998,8 +1998,12 @@ function renderSettings() {
   if (currentUser.role !== 'admin') return;
 
   // Agency settings
-  document.getElementById('setting-agency-name').value = agencySettings.agency_name || 'LCX Agency';
-  document.getElementById('setting-agency-subtitle').value = agencySettings.agency_subtitle || 'Management Suite';
+  const agName = agencySettings.agency_name || 'LCX Agency';
+  const agSub = agencySettings.agency_subtitle || 'Management Suite';
+  document.getElementById('setting-agency-name').value = agName;
+  document.getElementById('setting-agency-subtitle').value = agSub;
+  document.getElementById('logo-agency-name').textContent = agName;
+  document.getElementById('logo-agency-subtitle').textContent = agSub;
 
   // Users table
   const tbody = document.getElementById('settings-users-table');
@@ -2060,6 +2064,8 @@ async function saveAgencySettings() {
     alert('Paramètres sauvegardés !');
     agencySettings.agency_name = name;
     agencySettings.agency_subtitle = subtitle;
+    document.getElementById('logo-agency-name').textContent = name;
+    document.getElementById('logo-agency-subtitle').textContent = subtitle;
   }
 }
 
