@@ -856,6 +856,13 @@
     </div>
   </div>
 
+  <div id="nav-admin" class="nav-section" style="display:none">
+    <div class="nav-label">Admin</div>
+    <div class="nav-item" data-section="settings" onclick="switchSection(event)">
+      <span class="nav-icon">⚙️</span> Paramètres
+    </div>
+  </div>
+
   <div class="sidebar-footer" onclick="handleLogout()">
     <div class="user-info">
       <div class="user-avatar" id="user-avatar">E</div>
@@ -1012,6 +1019,140 @@
     <div id="performances-content"></div>
   </div>
 
+  <!-- SETTINGS SECTION (Admin Only) -->
+  <div class="section" id="section-settings">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚙️ Paramètres</div>
+        <div class="page-subtitle">Configuration de l'application — Admin uniquement</div>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:20px">
+
+      <!-- Agency Settings -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🏢 Paramètres de l'agence</h3>
+        <div style="display:grid;gap:12px;max-width:500px">
+          <div>
+            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
+            <input type="text" id="setting-agency-name" class="form-input" placeholder="LCX Agency">
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Sous-titre</label>
+            <input type="text" id="setting-agency-subtitle" class="form-input" placeholder="Management Suite">
+          </div>
+          <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
+        </div>
+      </div>
+
+      <!-- Password Management -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🔑 Mots de passe par défaut</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Réinitialiser les mots de passe de tous les utilisateurs d'un rôle</p>
+        <div style="display:grid;gap:16px;max-width:500px">
+          <div style="display:flex;gap:10px;align-items:end">
+            <div style="flex:1">
+              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Équipe</label>
+              <input type="text" id="pwd-team" class="form-input" placeholder="Nouveau mot de passe">
+            </div>
+            <button class="btn btn-primary" onclick="resetPasswords('chatter', 'pwd-team')">Appliquer aux Chatters</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:end">
+            <div style="flex:1">
+              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Outreach</label>
+              <input type="text" id="pwd-outreach" class="form-input" placeholder="Nouveau mot de passe">
+            </div>
+            <button class="btn btn-primary" onclick="resetPasswords('outreach', 'pwd-outreach')">Appliquer aux Outreach</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:end">
+            <div style="flex:1">
+              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe VA</label>
+              <input type="text" id="pwd-va" class="form-input" placeholder="Nouveau mot de passe">
+            </div>
+            <button class="btn btn-primary" onclick="resetPasswords('va', 'pwd-va')">Appliquer aux VA</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:end">
+            <div style="flex:1">
+              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Élèves</label>
+              <input type="text" id="pwd-student" class="form-input" placeholder="Nouveau mot de passe">
+            </div>
+            <button class="btn btn-primary" onclick="resetPasswords('student', 'pwd-student')">Appliquer aux Élèves</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:end">
+            <div style="flex:1">
+              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Modèles</label>
+              <input type="text" id="pwd-model" class="form-input" placeholder="Nouveau mot de passe">
+            </div>
+            <button class="btn btn-primary" onclick="resetPasswords('model', 'pwd-model')">Appliquer aux Modèles</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Management -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">👥 Gestion des utilisateurs</h3>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="openModal('add-user')">+ Ajouter un utilisateur</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table" style="width:100%">
+            <thead><tr>
+              <th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Mot de passe</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="settings-users-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Models Management -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">💎 Gestion des modèles</h3>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="btn btn-primary" onclick="openModal('add-model')">+ Ajouter un modèle</button>
+        </div>
+        <div id="settings-models-content"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Add User -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un utilisateur</div>
+      <button class="modal-close" onclick="closeModal('add-user')">✕</button>
+    </div>
+    <form id="form-add-user" onsubmit="event.preventDefault();addUser()">
+      <div class="form-group">
+        <label class="form-label">Nom affiché</label>
+        <input class="form-input" name="display_name" required placeholder="Prénom">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Identifiant (login)</label>
+        <input class="form-input" name="username" required placeholder="prenom (en minuscule)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" name="password" required placeholder="Mot de passe">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rôle</label>
+        <select class="form-input" name="role">
+          <option value="chatter">Chatter</option>
+          <option value="outreach">Outreach</option>
+          <option value="va">VA</option>
+          <option value="model">Modèle</option>
+          <option value="student">Élève</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">Créer l'utilisateur</button>
+    </form>
+  </div>
 </div>
 
 <!-- MODALS -->
@@ -1229,9 +1370,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await fetchCurrentUser();
     await loadAllData();
+    await loadSettings();
     initializeNavigation();
     applyRoleBasedAccess();
     renderAllSections();
+    renderSettings();
   } catch (err) {
     console.error('Init error:', err);
     window.location.href = '/';
@@ -1289,7 +1432,7 @@ async function loadAllData() {
 function applyRoleBasedAccess() {
   const role = currentUser.role;
   const showNav = {
-    admin: ['nav-principal', 'nav-teams', 'nav-tools'],
+    admin: ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'],
     model: ['nav-principal'],
     chatter: ['nav-principal', 'nav-teams'],
     outreach: ['nav-principal', 'nav-teams'],
@@ -1298,7 +1441,7 @@ function applyRoleBasedAccess() {
   };
 
   const visibleSections = {
-    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances'],
+    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'settings'],
     model: ['planning', 'tasks'],
     chatter: ['planning', 'tasks', 'chatters'],
     outreach: ['planning', 'tasks', 'outreach'],
@@ -1307,7 +1450,7 @@ function applyRoleBasedAccess() {
   };
 
   // Show/hide nav sections
-  ['nav-principal', 'nav-teams', 'nav-tools'].forEach(id => {
+  ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
   });
@@ -1832,6 +1975,163 @@ async function deleteCall(id) {
   if (res.ok) {
     await loadAllData();
     renderAllSections();
+  }
+}
+
+// ========== SETTINGS (Admin Only) ==========
+let allUsers = [];
+let agencySettings = {};
+
+async function loadSettings() {
+  if (currentUser.role !== 'admin') return;
+  try {
+    const [usersRes, settingsRes] = await Promise.all([
+      fetch('/api/users', { credentials: 'include' }),
+      fetch('/api/settings', { credentials: 'include' })
+    ]);
+    if (usersRes.ok) allUsers = await usersRes.json();
+    if (settingsRes.ok) agencySettings = await settingsRes.json();
+  } catch (e) { console.error('Settings load error:', e); }
+}
+
+function renderSettings() {
+  if (currentUser.role !== 'admin') return;
+
+  // Agency settings
+  document.getElementById('setting-agency-name').value = agencySettings.agency_name || 'LCX Agency';
+  document.getElementById('setting-agency-subtitle').value = agencySettings.agency_subtitle || 'Management Suite';
+
+  // Users table
+  const tbody = document.getElementById('settings-users-table');
+  const roleLabels = { admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: 'Modèle', student: 'Élève' };
+  const roleColors = { admin: 'var(--pink)', chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', model: 'var(--accent)', student: 'var(--text3)' };
+
+  tbody.innerHTML = allUsers.map(u => `
+    <tr>
+      <td><strong>${u.display_name}</strong></td>
+      <td style="color:var(--text2)">${u.username}</td>
+      <td>
+        <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:auto;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
+          ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;width:120px" placeholder="Nouveau mdp">
+          <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="changeUserPassword(${u.id})">OK</button>
+        </div>
+      </td>
+      <td>
+        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="Supprimer">✕</button>` : '<span style="color:var(--text3);font-size:11px">Toi</span>'}
+      </td>
+    </tr>
+  `).join('');
+
+  // Models management
+  const modelsDiv = document.getElementById('settings-models-content');
+  modelsDiv.innerHTML = allModels.map(m => {
+    const platforms = Array.isArray(m.platforms) ? m.platforms : JSON.parse(m.platforms || '[]');
+    const modelAccounts = allAccounts.filter(a => a.model_id === m.id);
+    return `
+    <div class="panel" style="padding:16px;margin-bottom:12px;background:var(--bg3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <strong style="font-size:15px">${m.name}</strong>
+          <span style="font-size:11px;padding:3px 8px;border-radius:6px;background:${m.status === 'active' ? 'var(--green-bg)' : 'var(--yellow-bg)'};color:${m.status === 'active' ? 'var(--green)' : 'var(--yellow)'}">${m.status}</span>
+        </div>
+        <button class="btn-delete-small" onclick="deleteModel(${m.id})">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Plateformes: ${platforms.join(', ') || 'Aucune'}</div>
+      <div style="font-size:12px;color:var(--text3)">Comptes: ${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' followers)').join(', ') || 'Aucun compte'}</div>
+    </div>`;
+  }).join('') || '<p style="color:var(--text3)">Aucun modèle</p>';
+}
+
+async function saveAgencySettings() {
+  const name = document.getElementById('setting-agency-name').value;
+  const subtitle = document.getElementById('setting-agency-subtitle').value;
+  const res = await fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ agency_name: name, agency_subtitle: subtitle })
+  });
+  if (res.ok) {
+    alert('Paramètres sauvegardés !');
+    agencySettings.agency_name = name;
+    agencySettings.agency_subtitle = subtitle;
+  }
+}
+
+async function resetPasswords(role, inputId) {
+  const input = document.getElementById(inputId);
+  const pwd = input.value.trim();
+  if (!pwd || pwd.length < 4) { alert('Mot de passe trop court (min 4 caractères)'); return; }
+  if (!confirm(`Réinitialiser le mot de passe de tous les ${role}s ?`)) return;
+  const res = await fetch('/api/admin/reset-passwords', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ role, new_password: pwd })
+  });
+  if (res.ok) {
+    const data = await res.json();
+    alert(`${data.updated} utilisateur(s) mis à jour !`);
+    input.value = '';
+  }
+}
+
+async function addUser() {
+  const form = document.getElementById('form-add-user');
+  const data = Object.fromEntries(new FormData(form));
+  const res = await fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (res.ok) {
+    closeModal('add-user');
+    form.reset();
+    await loadSettings();
+    renderSettings();
+  } else {
+    const err = await res.json();
+    alert(err.error || 'Erreur');
+  }
+}
+
+async function changeUserRole(userId, newRole) {
+  await fetch(`/api/users/${userId}/role`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ role: newRole })
+  });
+}
+
+async function changeUserPassword(userId) {
+  const input = document.getElementById(`pwd-user-${userId}`);
+  const pwd = input.value.trim();
+  if (!pwd || pwd.length < 4) { alert('Mot de passe trop court (min 4 caractères)'); return; }
+  const res = await fetch(`/api/users/${userId}/password`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ password: pwd })
+  });
+  if (res.ok) {
+    alert('Mot de passe modifié !');
+    input.value = '';
+  }
+}
+
+async function deleteUser(userId) {
+  if (!confirm('Supprimer cet utilisateur ?')) return;
+  const res = await fetch(`/api/users/${userId}`, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    await loadSettings();
+    renderSettings();
   }
 }
 </script>
