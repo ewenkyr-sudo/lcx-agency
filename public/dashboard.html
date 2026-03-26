@@ -804,6 +804,14 @@
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(100px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; transform: translateY(-10px); }
+  }
   .section.active { animation: fadeIn 0.3s ease; }
 </style>
 </head>
@@ -1671,11 +1679,11 @@ async function submitForm(formName) {
       renderAllSections();
     } else {
       const error = await res.json();
-      alert('Erreur: ' + (error.error || 'Impossible d\'ajouter'));
+      showToast('Erreur: ' + (error.error || 'Impossible d\'ajouter'), 'error');
     }
   } catch (err) {
     console.error('Form submission error:', err);
-    alert('Erreur lors de la soumission');
+    showToast('Erreur lors de la soumission', 'error');
   }
 }
 
@@ -2281,6 +2289,31 @@ function renderLeads() {
   }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
 
+function showToast(message, type = 'info') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px';
+    document.body.appendChild(container);
+  }
+  const colors = {
+    error: { bg: '#dc2626', icon: '✕' },
+    success: { bg: '#16a34a', icon: '✓' },
+    info: { bg: 'var(--accent)', icon: 'ℹ' },
+    warning: { bg: '#d97706', icon: '⚠' }
+  };
+  const c = colors[type] || colors.info;
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${c.bg};color:white;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideIn 0.3s ease;max-width:400px`;
+  toast.innerHTML = `<span style="font-size:16px">${c.icon}</span> ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 function autoFillUsername(url) {
   const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
   if (match) {
@@ -2295,10 +2328,10 @@ function showAddLeadForm() {
 
 async function addLead() {
   const username = document.getElementById('lead-username').value.trim();
-  if (!username) return alert('Username requis');
+  if (!username) return showToast('Username requis', 'error');
   const cleanName = username.replace(/^@/, '').toLowerCase();
   const duplicate = allLeads.find(l => l.username.replace(/^@/, '').toLowerCase() === cleanName);
-  if (duplicate) return alert(`Ce lead existe déjà : ${duplicate.username} (statut : ${duplicate.status})`);
+  if (duplicate) return showToast(`Ce lead existe déjà : ${duplicate.username} (statut : ${duplicate.status})`, 'error');
   const res = await fetch('/api/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2363,15 +2396,15 @@ async function importCSV() {
     const res = await fetch('/api/admin/import-csv', { method: 'POST', credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
-      alert(`Import terminé : ${data.imported} nouveaux, ${data.updated} mis à jour sur ${data.total} lignes`);
+      showToast(`Import terminé : ${data.imported} nouveaux, ${data.updated} mis à jour sur ${data.total} lignes`, 'success');
       await loadLeads();
       renderLeads();
       await loadOutreachKPIs();
     } else {
-      alert('Erreur : ' + (data.error || 'Erreur inconnue'));
+      showToast(data.error || 'Erreur inconnue', 'error');
     }
   } catch (e) {
-    alert('Erreur réseau');
+    showToast('Erreur réseau', 'error');
   }
   btn.textContent = 'Importer CSV';
   btn.disabled = false;
@@ -2465,7 +2498,7 @@ async function saveAgencySettings() {
     body: JSON.stringify({ agency_name: name, agency_subtitle: subtitle, agency_logo: logo })
   });
   if (res.ok) {
-    alert('Paramètres sauvegardés !');
+    showToast('Paramètres sauvegardés !', 'success');
     agencySettings.agency_name = name;
     agencySettings.agency_subtitle = subtitle;
     agencySettings.agency_logo = logo;
@@ -2479,7 +2512,7 @@ async function saveAgencySettings() {
 async function resetPasswords(role, inputId) {
   const input = document.getElementById(inputId);
   const pwd = input.value.trim();
-  if (!pwd || pwd.length < 4) { alert('Mot de passe trop court (min 4 caractères)'); return; }
+  if (!pwd || pwd.length < 4) { showToast('Mot de passe trop court (min 4 caractères)', 'error'); return; }
   if (!confirm(`Réinitialiser le mot de passe de tous les ${role}s ?`)) return;
   const res = await fetch('/api/admin/reset-passwords', {
     method: 'POST',
@@ -2489,7 +2522,7 @@ async function resetPasswords(role, inputId) {
   });
   if (res.ok) {
     const data = await res.json();
-    alert(`${data.updated} utilisateur(s) mis à jour !`);
+    showToast(`${data.updated} utilisateur(s) mis à jour !`, 'success');
     input.value = '';
   }
 }
@@ -2510,7 +2543,7 @@ async function addUser() {
     renderSettings();
   } else {
     const err = await res.json();
-    alert(err.error || 'Erreur');
+    showToast(err.error || 'Erreur', 'error');
   }
 }
 
@@ -2526,7 +2559,7 @@ async function changeUserRole(userId, newRole) {
 async function changeUserPassword(userId) {
   const input = document.getElementById(`pwd-user-${userId}`);
   const pwd = input.value.trim();
-  if (!pwd || pwd.length < 4) { alert('Mot de passe trop court (min 4 caractères)'); return; }
+  if (!pwd || pwd.length < 4) { showToast('Mot de passe trop court (min 4 caractères)', 'error'); return; }
   const res = await fetch(`/api/users/${userId}/password`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -2534,7 +2567,7 @@ async function changeUserPassword(userId) {
     body: JSON.stringify({ password: pwd })
   });
   if (res.ok) {
-    alert('Mot de passe modifié !');
+    showToast('Mot de passe modifié !', 'success');
     input.value = '';
   }
 }
