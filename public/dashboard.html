@@ -1022,6 +1022,7 @@
     <!-- Filtres par statut -->
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="lead-filters">
       <button class="btn lead-filter active" data-filter="all" onclick="filterLeads('all', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer">Tous</button>
+      <button class="btn lead-filter" data-filter="to-send" onclick="filterLeads('to-send', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">To Send</button>
       <button class="btn lead-filter" data-filter="sent" onclick="filterLeads('sent', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Sent</button>
       <button class="btn lead-filter" data-filter="talking-cold" onclick="filterLeads('talking-cold', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Cold</button>
       <button class="btn lead-filter" data-filter="talking-warm" onclick="filterLeads('talking-warm', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Warm</button>
@@ -1814,11 +1815,15 @@ async function loadDashboardOutreachStats() {
     const agents = await res.json();
     const totals = agents.reduce((acc, a) => ({
       leads_today: acc.leads_today + parseInt(a.leads_today),
-      dm_sent_today: acc.dm_sent_today + parseInt(a.dm_sent_today),
+      dm_sent: acc.dm_sent + parseInt(a.dm_sent),
+      talking_cold: acc.talking_cold + parseInt(a.talking_cold),
       talking_warm: acc.talking_warm + parseInt(a.talking_warm),
       call_booked: acc.call_booked + parseInt(a.call_booked),
       signed: acc.signed + parseInt(a.signed)
-    }), { leads_today: 0, dm_sent_today: 0, talking_warm: 0, call_booked: 0, signed: 0 });
+    }), { leads_today: 0, dm_sent: 0, talking_cold: 0, talking_warm: 0, call_booked: 0, signed: 0 });
+
+    const repliesDash = totals.talking_cold + totals.talking_warm + totals.call_booked + totals.signed;
+    const replyRateDash = totals.dm_sent > 0 ? ((repliesDash / totals.dm_sent) * 100).toFixed(1) : '0';
 
     const div = document.getElementById('dashboard-outreach-stats');
     if (!div) return;
@@ -1827,22 +1832,28 @@ async function loadDashboardOutreachStats() {
         <div class="panel-header"><div class="panel-title">Outreach — Temps réel</div></div>
         <div class="stats-grid" style="margin-bottom:16px">
           <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">${totals.dm_sent_today}</div><div class="stat-label">DMs envoyés</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.dm_sent}</div><div class="stat-label">DMs envoyés</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRateDash}%</div><div class="stat-label">Taux de réponse</div></div>
         </div>
         <table class="table">
-          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>Signés</th></tr></thead>
+          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>Signés</th><th>Taux</th></tr></thead>
           <tbody>
-            ${agents.map(a => `<tr>
+            ${agents.map(a => {
+              const aReplies = parseInt(a.talking_cold) + parseInt(a.talking_warm) + parseInt(a.call_booked) + parseInt(a.signed);
+              const aRate = parseInt(a.dm_sent) > 0 ? ((aReplies / parseInt(a.dm_sent)) * 100).toFixed(1) : '0';
+              return `<tr>
               <td><strong>${a.agent_name}</strong></td>
               <td>${a.leads_today}</td>
-              <td>${a.dm_sent_today}</td>
+              <td>${a.dm_sent}</td>
               <td style="color:var(--yellow)">${a.talking_warm}</td>
               <td style="color:var(--green)">${a.call_booked}</td>
               <td style="color:var(--pink)">${a.signed}</td>
-            </tr>`).join('')}
+              <td style="color:var(--accent2)">${aRate}%</td>
+            </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -2173,15 +2184,12 @@ async function loadOutreachKPIs() {
       const res = await fetch('/api/leads/my-stats', { credentials: 'include' });
       if (res.ok) {
         const s = await res.json();
-        const totalSent = allLeads.length;
-        const replies = allLeads.filter(l => ['talking-cold','talking-warm','call-booked','signed'].includes(l.status)).length;
-        const replyRate = totalSent > 0 ? ((replies / totalSent) * 100).toFixed(1) : '0';
         kpisDiv.innerHTML = `
           <div class="stat-card"><div class="stat-value">${s.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">${s.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${s.dm_sent}</div><div class="stat-label">DMs envoyés</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${s.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.call_booked}</div><div class="stat-label">Call Booked</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRate}%</div><div class="stat-label">Taux de réponse</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${s.reply_rate}%</div><div class="stat-label">Taux de réponse</div></div>
         `;
       }
     } catch (e) {}
@@ -2194,19 +2202,19 @@ async function loadOutreachKPIs() {
         const agents = await res.json();
         const totals = agents.reduce((acc, a) => ({
           leads_today: acc.leads_today + parseInt(a.leads_today),
-          dm_sent_today: acc.dm_sent_today + parseInt(a.dm_sent_today),
+          dm_sent: acc.dm_sent + parseInt(a.dm_sent),
+          talking_cold: acc.talking_cold + parseInt(a.talking_cold),
           talking_warm: acc.talking_warm + parseInt(a.talking_warm),
           call_booked: acc.call_booked + parseInt(a.call_booked),
           signed: acc.signed + parseInt(a.signed),
           total: acc.total + parseInt(a.total_leads)
-        }), { leads_today: 0, dm_sent_today: 0, talking_warm: 0, call_booked: 0, signed: 0, total: 0 });
+        }), { leads_today: 0, dm_sent: 0, talking_cold: 0, talking_warm: 0, call_booked: 0, signed: 0, total: 0 });
 
-        const totalAll = allLeads.length;
-        const repliesAll = allLeads.filter(l => ['talking-cold','talking-warm','call-booked','signed'].includes(l.status)).length;
-        const replyRateAll = totalAll > 0 ? ((repliesAll / totalAll) * 100).toFixed(1) : '0';
+        const repliesAll = totals.talking_cold + totals.talking_warm + totals.call_booked + totals.signed;
+        const replyRateAll = totals.dm_sent > 0 ? ((repliesAll / totals.dm_sent) * 100).toFixed(1) : '0';
         kpisDiv.innerHTML = `
           <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">${totals.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.dm_sent}</div><div class="stat-label">DMs envoyés</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
@@ -2221,7 +2229,7 @@ async function loadOutreachKPIs() {
         tbody.innerHTML = agents.map(a => `<tr>
           <td><strong>${a.agent_name}</strong></td>
           <td>${a.leads_today}</td>
-          <td>${a.dm_sent_today}</td>
+          <td>${a.dm_sent}</td>
           <td>${a.talking_cold}</td>
           <td style="color:var(--yellow)">${a.talking_warm}</td>
           <td style="color:var(--green)">${a.call_booked}</td>
@@ -2234,6 +2242,7 @@ async function loadOutreachKPIs() {
 }
 
 const leadStatusColors = {
+  'to-send': { bg: 'rgba(100,100,120,0.12)', color: '#64748b', label: 'To Send' },
   'sent': { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'Sent' },
   'talking-cold': { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8', label: 'Talking Cold' },
   'talking-warm': { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'Talking Warm' },

@@ -634,7 +634,7 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     // Mapping des statuts CSV → app
     const statusMap = {
       'sent': 'sent',
-      'to send': 'sent',
+      'to send': 'to-send',
       'talking - cold': 'talking-cold',
       'talking - warm': 'talking-warm',
       'call booked': 'call-booked',
@@ -771,14 +771,19 @@ app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
   const today = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
-  const sent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'sent' AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const dmSent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].count;
   const warm = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].count;
   const booked = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].count;
+  const cold = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].count;
+  const signed = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'signed'", [uid])).rows[0].count;
+  const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
+  const replyRate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
   res.json({
     leads_today: parseInt(today),
-    dm_sent_today: parseInt(sent),
+    dm_sent: parseInt(dmSent),
     talking_warm: parseInt(warm),
-    call_booked: parseInt(booked)
+    call_booked: parseInt(booked),
+    reply_rate: replyRate
   });
 });
 
@@ -790,7 +795,7 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
       u.display_name as agent_name,
       COALESCE(COUNT(*), 0) as total_leads,
       COALESCE(SUM(CASE WHEN ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as leads_today,
-      COALESCE(SUM(CASE WHEN ol.status = 'sent' AND ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as dm_sent_today,
+      COALESCE(SUM(CASE WHEN ol.status != 'to-send' THEN 1 ELSE 0 END), 0) as dm_sent,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-cold' THEN 1 ELSE 0 END), 0) as talking_cold,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-warm' THEN 1 ELSE 0 END), 0) as talking_warm,
       COALESCE(SUM(CASE WHEN ol.status = 'call-booked' THEN 1 ELSE 0 END), 0) as call_booked,
