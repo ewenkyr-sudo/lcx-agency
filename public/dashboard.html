@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>LCX Agency - Dashboard</title>
@@ -1180,10 +1181,35 @@
     <div class="page-header">
       <div>
         <div class="page-title">Performances</div>
-        <div class="page-subtitle">Analyse des performances</div>
+        <div class="page-subtitle">Graphiques et analyse des performances</div>
+      </div>
+      <div class="header-actions">
+        <div style="display:flex;gap:6px" id="perf-period-btns">
+          <button class="btn perf-period active" onclick="loadPerformances(7, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer">7 jours</button>
+          <button class="btn perf-period" onclick="loadPerformances(30, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">30 jours</button>
+          <button class="btn perf-period" onclick="loadPerformances(60, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">60 jours</button>
+          <button class="btn perf-period" onclick="loadPerformances(365, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">1 an</button>
+        </div>
       </div>
     </div>
-    <div id="performances-content"></div>
+
+    <!-- Graphique Followers -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Evolution des followers</h3>
+      <div style="position:relative;height:300px"><canvas id="chart-followers"></canvas></div>
+    </div>
+
+    <!-- Graphique Revenue Chatters -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Revenue Chatters (PPV + Tips)</h3>
+      <div style="position:relative;height:300px"><canvas id="chart-revenue"></canvas></div>
+    </div>
+
+    <!-- Graphique Outreach Leads -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Outreach — Leads par jour</h3>
+      <div style="position:relative;height:300px"><canvas id="chart-leads"></canvas></div>
+    </div>
   </div>
 
   <!-- SETTINGS SECTION (Admin Only) -->
@@ -2262,33 +2288,161 @@ function renderCoaching() {
   }
 }
 
+let chartFollowers = null;
+let chartRevenue = null;
+let chartLeads = null;
+const chartColors = ['#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#84cc16'];
+
 function renderPerformances() {
-  const container = document.getElementById('performances-content');
-  container.innerHTML = `
-    <div class="panel">
-      <div class="panel-header"><div class="panel-title">Analyse de performance</div></div>
-      <table class="table">
-        <thead>
-          <tr><th>Modèle</th><th>Plateforme</th><th>Followers</th><th>Croissance 7j</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          ${allAccounts.map(acc => {
-            const stats7d = allStats.filter(s => s.account_id === acc.id);
-            const total7d = stats7d.reduce((sum, s) => sum + s.new_followers, 0);
-            return `
-              <tr>
-                <td>${acc.model_name}</td>
-                <td>${acc.platform}</td>
-                <td>${acc.current_followers}</td>
-                <td class="delta pos">+${total7d}</td>
-                <td><span class="badge badge-online">Active</span></td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+  loadPerformances(7);
+}
+
+async function loadPerformances(days, btn) {
+  // Update active button
+  if (btn) {
+    document.querySelectorAll('.perf-period').forEach(b => {
+      b.style.background = 'var(--bg3)';
+      b.style.color = 'var(--text2)';
+    });
+    btn.style.background = 'var(--accent)';
+    btn.style.color = 'white';
+  }
+
+  const [followersRes, revenueRes, leadsRes] = await Promise.all([
+    fetch('/api/charts/followers?days=' + days, { credentials: 'include' }).then(r => r.json()),
+    fetch('/api/charts/revenue?days=' + days, { credentials: 'include' }).then(r => r.json()),
+    fetch('/api/charts/leads?days=' + days, { credentials: 'include' }).then(r => r.json())
+  ]);
+
+  renderFollowersChart(followersRes, days);
+  renderRevenueChart(revenueRes, days);
+  renderLeadsChart(leadsRes, days);
+}
+
+function renderFollowersChart(data, days) {
+  if (chartFollowers) chartFollowers.destroy();
+
+  // Grouper par modèle et cumuler les followers par jour
+  const models = {};
+  data.forEach(d => {
+    if (!models[d.model_name]) models[d.model_name] = {};
+    if (!models[d.model_name][d.date]) models[d.model_name][d.date] = 0;
+    models[d.model_name][d.date] += parseInt(d.new_followers);
+  });
+
+  const dates = [...new Set(data.map(d => d.date))].sort();
+  const datasets = Object.entries(models).map(([name, dateMap], i) => {
+    let cumulative = 0;
+    return {
+      label: name,
+      data: dates.map(date => { cumulative += (dateMap[date] || 0); return cumulative; }),
+      borderColor: chartColors[i % chartColors.length],
+      backgroundColor: chartColors[i % chartColors.length] + '20',
+      tension: 0.3,
+      fill: true
+    };
+  });
+
+  const ctx = document.getElementById('chart-followers');
+  chartFollowers = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates.map(d => formatChartDate(d, days)), datasets },
+    options: chartOptions('Nouveaux followers cumulés')
+  });
+}
+
+function renderRevenueChart(data, days) {
+  if (chartRevenue) chartRevenue.destroy();
+  const dates = data.map(d => formatChartDate(d.date, days));
+
+  const ctx = document.getElementById('chart-revenue');
+  chartRevenue = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: 'PPV',
+          data: data.map(d => parseFloat(d.ppv)),
+          backgroundColor: '#8b5cf6cc',
+          borderRadius: 4
+        },
+        {
+          label: 'Tips',
+          data: data.map(d => parseFloat(d.tips)),
+          backgroundColor: '#f59e0bcc',
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      ...chartOptions('Montant ($)'),
+      plugins: {
+        ...chartOptions('').plugins,
+        tooltip: {
+          callbacks: { label: (ctx) => ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2) }
+        }
+      }
+    }
+  });
+}
+
+function renderLeadsChart(data, days) {
+  if (chartLeads) chartLeads.destroy();
+  const dates = data.map(d => formatChartDate(d.date, days));
+
+  const ctx = document.getElementById('chart-leads');
+  chartLeads = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: 'DMs envoyés',
+          data: data.map(d => parseInt(d.dm_sent)),
+          backgroundColor: '#3b82f6cc',
+          borderRadius: 4
+        },
+        {
+          label: 'Réponses',
+          data: data.map(d => parseInt(d.replies)),
+          backgroundColor: '#10b981cc',
+          borderRadius: 4
+        }
+      ]
+    },
+    options: chartOptions('Nombre de leads')
+  });
+}
+
+function chartOptions(yTitle) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#6b6b80', maxTicksLimit: 15 }
+      },
+      y: {
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#6b6b80' },
+        title: { display: !!yTitle, text: yTitle, color: '#9898ab' },
+        beginAtZero: true
+      }
+    },
+    plugins: {
+      legend: { labels: { color: '#e4e4eb', usePointStyle: true, padding: 16 } }
+    }
+  };
+}
+
+function formatChartDate(dateStr, days) {
+  const d = new Date(dateStr);
+  if (days <= 7) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+  if (days <= 60) return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
 }
 
 // ========== DELETE OPERATIONS ==========

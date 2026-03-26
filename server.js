@@ -937,6 +937,70 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
   res.json(rows);
 });
 
+// ============ PERFORMANCE CHARTS DATA ============
+
+// Followers evolution par jour
+app.get('/api/charts/followers', authMiddleware, async (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const { rows } = await pool.query(`
+    SELECT ds.date, m.name as model_name, a.platform, SUM(ds.new_followers) as new_followers
+    FROM daily_stats ds
+    JOIN accounts a ON ds.account_id = a.id
+    JOIN models m ON a.model_id = m.id
+    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text
+    GROUP BY ds.date, m.name, a.platform
+    ORDER BY ds.date ASC
+  `, [days]);
+  res.json(rows);
+});
+
+// Revenue chatters par jour
+app.get('/api/charts/revenue', authMiddleware, async (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const { rows } = await pool.query(`
+    SELECT cs.date,
+      SUM(cs.ppv_total) as ppv,
+      SUM(cs.tips_total) as tips,
+      SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
+    FROM chatter_shifts cs
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text
+    GROUP BY cs.date
+    ORDER BY cs.date ASC
+  `, [days]);
+  res.json(rows);
+});
+
+// Revenue chatters par jour par chatter
+app.get('/api/charts/revenue-by-chatter', authMiddleware, async (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const { rows } = await pool.query(`
+    SELECT cs.date, u.display_name as chatter_name,
+      SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
+    FROM chatter_shifts cs
+    JOIN users u ON cs.user_id = u.id
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text
+    GROUP BY cs.date, u.display_name
+    ORDER BY cs.date ASC
+  `, [days]);
+  res.json(rows);
+});
+
+// Leads outreach par jour
+app.get('/api/charts/leads', authMiddleware, async (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const { rows } = await pool.query(`
+    SELECT created_at::date::text as date,
+      COUNT(*) as total,
+      SUM(CASE WHEN status != 'to-send' THEN 1 ELSE 0 END) as dm_sent,
+      SUM(CASE WHEN status IN ('talking-cold','talking-warm','call-booked','signed') THEN 1 ELSE 0 END) as replies
+    FROM outreach_leads
+    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day'
+    GROUP BY created_at::date
+    ORDER BY date ASC
+  `, [days]);
+  res.json(rows);
+});
+
 // ============ SERVE FRONTEND ============
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
