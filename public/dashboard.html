@@ -989,7 +989,7 @@
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram</label>
-          <input type="text" id="lead-ig-link" class="form-input" placeholder="https://instagram.com/...">
+          <input type="text" id="lead-ig-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value)">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Type</label>
@@ -2279,6 +2279,13 @@ function renderLeads() {
       <td><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+}
+
+function autoFillUsername(url) {
+  const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+  if (match) {
+    document.getElementById('lead-username').value = '@' + match[1];
+  }
 }
 
 function showAddLeadForm() {
