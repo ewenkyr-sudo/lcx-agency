@@ -122,6 +122,20 @@ async function initDB() {
       shift_label TEXT DEFAULT 'OFF',
       week_start TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS outreach_leads (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      username TEXT NOT NULL,
+      ig_link TEXT,
+      lead_type TEXT DEFAULT 'model',
+      script_used TEXT,
+      ig_account_used TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'sent',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 }
 
@@ -588,6 +602,102 @@ app.post('/api/admin/reset-passwords', authMiddleware, adminOnly, async (req, re
   const hash = bcrypt.hashSync(new_password, 10);
   const result = await pool.query('UPDATE users SET password = $1 WHERE role = $2 AND id != $3', [hash, role, req.user.id]);
   res.json({ ok: true, updated: result.rowCount });
+});
+
+// ============ OUTREACH LEADS ============
+
+// Get leads — outreach voit ses propres leads, admin voit tout
+app.get('/api/leads', authMiddleware, async (req, res) => {
+  if (req.user.role === 'outreach') {
+    const { rows } = await pool.query('SELECT * FROM outreach_leads WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query(`
+      SELECT ol.*, u.display_name as agent_name
+      FROM outreach_leads ol
+      JOIN users u ON ol.user_id = u.id
+      ORDER BY ol.created_at DESC
+    `);
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+// Add lead
+app.post('/api/leads', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { username, ig_link, lead_type, script_used, ig_account_used, notes } = req.body;
+  if (!username) return res.status(400).json({ error: 'Username requis' });
+  const { rows } = await pool.query(
+    'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes]
+  );
+  res.json(rows[0]);
+});
+
+// Update lead status
+app.put('/api/leads/:id', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { status, notes } = req.body;
+  // Outreach ne peut modifier que ses propres leads
+  if (req.user.role === 'outreach') {
+    const check = await pool.query('SELECT id FROM outreach_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Ce lead ne t\'appartient pas' });
+  }
+  await pool.query('UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3',
+    [status, notes, req.params.id]);
+  res.json({ ok: true });
+});
+
+// Delete lead
+app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'outreach') {
+    const check = await pool.query('SELECT id FROM outreach_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Ce lead ne t\'appartient pas' });
+  } else if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// Stats outreach personnelles (pour l'assistante connectée)
+app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const uid = req.user.id;
+  const today = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const sent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'sent' AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const warm = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].count;
+  const booked = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].count;
+  res.json({
+    leads_today: parseInt(today),
+    dm_sent_today: parseInt(sent),
+    talking_warm: parseInt(warm),
+    call_booked: parseInt(booked)
+  });
+});
+
+// Stats outreach globales (pour l'admin)
+app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT
+      u.id as user_id,
+      u.display_name as agent_name,
+      COALESCE(COUNT(*), 0) as total_leads,
+      COALESCE(SUM(CASE WHEN ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as leads_today,
+      COALESCE(SUM(CASE WHEN ol.status = 'sent' AND ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as dm_sent_today,
+      COALESCE(SUM(CASE WHEN ol.status = 'talking-cold' THEN 1 ELSE 0 END), 0) as talking_cold,
+      COALESCE(SUM(CASE WHEN ol.status = 'talking-warm' THEN 1 ELSE 0 END), 0) as talking_warm,
+      COALESCE(SUM(CASE WHEN ol.status = 'call-booked' THEN 1 ELSE 0 END), 0) as call_booked,
+      COALESCE(SUM(CASE WHEN ol.status = 'signed' THEN 1 ELSE 0 END), 0) as signed
+    FROM users u
+    LEFT JOIN outreach_leads ol ON ol.user_id = u.id
+    WHERE u.role = 'outreach'
+    GROUP BY u.id, u.display_name
+    ORDER BY u.display_name
+  `);
+  res.json(rows);
 });
 
 // ============ SERVE FRONTEND ============

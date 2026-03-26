@@ -957,13 +957,91 @@
     <div class="page-header">
       <div>
         <div class="page-title">Outreach</div>
-        <div class="page-subtitle">Équipe d'outreach</div>
+        <div class="page-subtitle">Gestion des leads et prospection</div>
       </div>
-      <div class="header-actions" id="outreach-actions"></div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="showAddLeadForm()">+ Nouveau Lead</button>
+      </div>
     </div>
+
+    <!-- KPIs personnels (outreach) / globaux (admin) -->
+    <div class="stats-grid" id="outreach-kpis" style="margin-bottom:24px"></div>
+
+    <!-- Admin: stats par assistante -->
+    <div id="outreach-admin-stats" style="margin-bottom:24px;display:none">
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par assistante</h3>
+        <table class="table" id="outreach-agents-table">
+          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs envoyés</th><th>Talking Cold</th><th>Talking Warm</th><th>Call Booked</th><th>Signés</th><th>Total leads</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Formulaire ajout lead (caché par défaut) -->
+    <div id="add-lead-form" class="panel" style="padding:20px;margin-bottom:24px;display:none">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Ajouter un lead</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username *</label>
+          <input type="text" id="lead-username" class="form-input" placeholder="@username">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram</label>
+          <input type="text" id="lead-ig-link" class="form-input" placeholder="https://instagram.com/...">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Type</label>
+          <select id="lead-type" class="form-input">
+            <option value="model">Model</option>
+            <option value="influencer">Influencer</option>
+            <option value="creator">Creator</option>
+            <option value="other">Autre</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Script utilisé</label>
+          <input type="text" id="lead-script" class="form-input" placeholder="Ex: Script A, Script B...">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Compte Instagram utilisé</label>
+          <input type="text" id="lead-ig-account" class="form-input" placeholder="@compte_outreach">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Notes</label>
+          <input type="text" id="lead-notes" class="form-input" placeholder="Notes optionnelles...">
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="addLead()">Ajouter le lead</button>
+        <button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('add-lead-form').style.display='none'">Annuler</button>
+      </div>
+    </div>
+
+    <!-- Filtres par statut -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="lead-filters">
+      <button class="btn lead-filter active" data-filter="all" onclick="filterLeads('all', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer">Tous</button>
+      <button class="btn lead-filter" data-filter="sent" onclick="filterLeads('sent', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Sent</button>
+      <button class="btn lead-filter" data-filter="talking-cold" onclick="filterLeads('talking-cold', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Cold</button>
+      <button class="btn lead-filter" data-filter="talking-warm" onclick="filterLeads('talking-warm', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Warm</button>
+      <button class="btn lead-filter" data-filter="call-booked" onclick="filterLeads('call-booked', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Call Booked</button>
+      <button class="btn lead-filter" data-filter="signed" onclick="filterLeads('signed', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Signé</button>
+    </div>
+
+    <!-- Tableau des leads -->
     <div class="panel">
-      <table class="table" id="outreach-table">
-        <thead><tr><th>Membre</th><th>Rôle</th><th>Shift</th><th>Plateformes</th><th>Status</th><th></th></tr></thead>
+      <table class="table" id="leads-table">
+        <thead><tr>
+          <th>Username</th>
+          <th>Type</th>
+          <th>Script</th>
+          <th>Compte IG</th>
+          <th>Statut</th>
+          <th>Notes</th>
+          <th id="lead-col-agent" style="display:none">Assistante</th>
+          <th>Date</th>
+          <th></th>
+        </tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -1712,7 +1790,58 @@ function renderDashboard() {
         </div>
       </div>
     </div>
+
+    <!-- Outreach stats for admin -->
+    <div id="dashboard-outreach-stats"></div>
   `;
+
+  // Load outreach stats in dashboard for admin
+  if (currentUser.role === 'admin') {
+    loadDashboardOutreachStats();
+  }
+}
+
+async function loadDashboardOutreachStats() {
+  try {
+    const res = await fetch('/api/leads/admin-stats', { credentials: 'include' });
+    if (!res.ok) return;
+    const agents = await res.json();
+    const totals = agents.reduce((acc, a) => ({
+      leads_today: acc.leads_today + parseInt(a.leads_today),
+      dm_sent_today: acc.dm_sent_today + parseInt(a.dm_sent_today),
+      talking_warm: acc.talking_warm + parseInt(a.talking_warm),
+      call_booked: acc.call_booked + parseInt(a.call_booked),
+      signed: acc.signed + parseInt(a.signed)
+    }), { leads_today: 0, dm_sent_today: 0, talking_warm: 0, call_booked: 0, signed: 0 });
+
+    const div = document.getElementById('dashboard-outreach-stats');
+    if (!div) return;
+    div.innerHTML = `
+      <div class="panel" style="margin-top:20px;padding:20px">
+        <div class="panel-header"><div class="panel-title">Outreach — Temps réel</div></div>
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.dm_sent_today}</div><div class="stat-label">DMs envoyés</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
+        </div>
+        <table class="table">
+          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>Signés</th></tr></thead>
+          <tbody>
+            ${agents.map(a => `<tr>
+              <td><strong>${a.agent_name}</strong></td>
+              <td>${a.leads_today}</td>
+              <td>${a.dm_sent_today}</td>
+              <td style="color:var(--yellow)">${a.talking_warm}</td>
+              <td style="color:var(--green)">${a.call_booked}</td>
+              <td style="color:var(--pink)">${a.signed}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {}
 }
 
 function renderPlanning() {
@@ -1822,9 +1951,10 @@ function renderChatters() {
   renderTeamTable('chatters-table', chatters);
 }
 
-function renderOutreach() {
-  const outreach = allTeam.filter(m => m.role === 'outreach');
-  renderTeamTable('outreach-table', outreach);
+async function renderOutreach() {
+  await loadLeads();
+  renderLeads();
+  await loadOutreachKPIs();
 }
 
 function renderVA() {
@@ -1989,6 +2119,183 @@ async function deleteCall(id) {
     await loadAllData();
     renderAllSections();
   }
+}
+
+// ========== OUTREACH LEADS ==========
+let allLeads = [];
+let currentLeadFilter = 'all';
+
+async function loadLeads() {
+  if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
+  try {
+    const res = await fetch('/api/leads', { credentials: 'include' });
+    if (res.ok) allLeads = await res.json();
+  } catch (e) { console.error('Leads load error:', e); }
+}
+
+async function loadOutreachKPIs() {
+  const kpisDiv = document.getElementById('outreach-kpis');
+  if (!kpisDiv) return;
+
+  if (currentUser.role === 'outreach') {
+    try {
+      const res = await fetch('/api/leads/my-stats', { credentials: 'include' });
+      if (res.ok) {
+        const s = await res.json();
+        kpisDiv.innerHTML = `
+          <div class="stat-card"><div class="stat-value">${s.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${s.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${s.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.call_booked}</div><div class="stat-label">Call Booked</div></div>
+        `;
+      }
+    } catch (e) {}
+  }
+
+  if (currentUser.role === 'admin') {
+    try {
+      const res = await fetch('/api/leads/admin-stats', { credentials: 'include' });
+      if (res.ok) {
+        const agents = await res.json();
+        const totals = agents.reduce((acc, a) => ({
+          leads_today: acc.leads_today + parseInt(a.leads_today),
+          dm_sent_today: acc.dm_sent_today + parseInt(a.dm_sent_today),
+          talking_warm: acc.talking_warm + parseInt(a.talking_warm),
+          call_booked: acc.call_booked + parseInt(a.call_booked),
+          signed: acc.signed + parseInt(a.signed),
+          total: acc.total + parseInt(a.total_leads)
+        }), { leads_today: 0, dm_sent_today: 0, talking_warm: 0, call_booked: 0, signed: 0, total: 0 });
+
+        kpisDiv.innerHTML = `
+          <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.dm_sent_today}</div><div class="stat-label">DMs envoyés aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.total}</div><div class="stat-label">Total leads</div></div>
+        `;
+
+        // Admin agents table
+        const adminDiv = document.getElementById('outreach-admin-stats');
+        adminDiv.style.display = 'block';
+        const tbody = document.querySelector('#outreach-agents-table tbody');
+        tbody.innerHTML = agents.map(a => `<tr>
+          <td><strong>${a.agent_name}</strong></td>
+          <td>${a.leads_today}</td>
+          <td>${a.dm_sent_today}</td>
+          <td>${a.talking_cold}</td>
+          <td style="color:var(--yellow)">${a.talking_warm}</td>
+          <td style="color:var(--green)">${a.call_booked}</td>
+          <td style="color:var(--pink)">${a.signed}</td>
+          <td>${a.total_leads}</td>
+        </tr>`).join('');
+      }
+    } catch (e) {}
+  }
+}
+
+const leadStatusColors = {
+  'sent': { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'Sent' },
+  'talking-cold': { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8', label: 'Talking Cold' },
+  'talking-warm': { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'Talking Warm' },
+  'call-booked': { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Call Booked' },
+  'signed': { bg: 'var(--pink-bg)', color: 'var(--pink)', label: 'Signé' }
+};
+
+function renderLeads() {
+  if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
+
+  const isAdmin = currentUser.role === 'admin';
+  const agentCol = document.getElementById('lead-col-agent');
+  if (agentCol) agentCol.style.display = isAdmin ? '' : 'none';
+
+  const filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
+  const tbody = document.querySelector('#leads-table tbody');
+  tbody.innerHTML = filtered.map(l => {
+    const st = leadStatusColors[l.status] || leadStatusColors['sent'];
+    const date = new Date(l.created_at).toLocaleDateString('fr-FR');
+    const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
+    return `<tr>
+      <td><strong>${igLink}</strong></td>
+      <td>${l.lead_type || '-'}</td>
+      <td>${l.script_used || '-'}</td>
+      <td>${l.ig_account_used || '-'}</td>
+      <td>
+        <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+          ${Object.entries(leadStatusColors).map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('')}
+        </select>
+      </td>
+      <td style="color:var(--text2);font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.notes || '').replace(/"/g, '&quot;')}">${l.notes || '-'}</td>
+      ${isAdmin ? `<td style="font-size:12px;color:var(--accent2)">${l.agent_name || '-'}</td>` : ''}
+      <td style="font-size:12px;color:var(--text3)">${date}</td>
+      <td><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+}
+
+function showAddLeadForm() {
+  const form = document.getElementById('add-lead-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function addLead() {
+  const username = document.getElementById('lead-username').value.trim();
+  if (!username) return alert('Username requis');
+  const res = await fetch('/api/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      username,
+      ig_link: document.getElementById('lead-ig-link').value.trim(),
+      lead_type: document.getElementById('lead-type').value,
+      script_used: document.getElementById('lead-script').value.trim(),
+      ig_account_used: document.getElementById('lead-ig-account').value.trim(),
+      notes: document.getElementById('lead-notes').value.trim()
+    })
+  });
+  if (res.ok) {
+    document.getElementById('lead-username').value = '';
+    document.getElementById('lead-ig-link').value = '';
+    document.getElementById('lead-script').value = '';
+    document.getElementById('lead-ig-account').value = '';
+    document.getElementById('lead-notes').value = '';
+    document.getElementById('add-lead-form').style.display = 'none';
+    await loadLeads();
+    renderLeads();
+    await loadOutreachKPIs();
+  }
+}
+
+async function updateLeadStatus(id, status) {
+  await fetch('/api/leads/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ status })
+  });
+  await loadLeads();
+  renderLeads();
+  await loadOutreachKPIs();
+}
+
+async function deleteLead(id) {
+  if (!confirm('Supprimer ce lead ?')) return;
+  await fetch('/api/leads/' + id, { method: 'DELETE', credentials: 'include' });
+  await loadLeads();
+  renderLeads();
+  await loadOutreachKPIs();
+}
+
+function filterLeads(filter, btn) {
+  currentLeadFilter = filter;
+  document.querySelectorAll('.lead-filter').forEach(b => {
+    b.style.background = 'var(--bg3)';
+    b.style.color = 'var(--text2)';
+  });
+  btn.style.background = 'var(--accent)';
+  btn.style.color = 'white';
+  renderLeads();
 }
 
 // ========== SETTINGS (Admin Only) ==========
