@@ -155,6 +155,10 @@
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 14px; font-weight: 700;
+    overflow: hidden;
+  }
+  .user-avatar img {
+    width: 100%; height: 100%; object-fit: cover;
   }
 
   .user-name { font-size: 13px; font-weight: 600; }
@@ -1262,7 +1266,7 @@
         <div style="overflow-x:auto">
           <table class="data-table" style="width:100%">
             <thead><tr>
-              <th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Mot de passe</th><th>Actions</th>
+              <th>Photo</th><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Mot de passe</th><th>Actions</th>
             </tr></thead>
             <tbody id="settings-users-table"></tbody>
           </table>
@@ -1557,7 +1561,19 @@ async function fetchCurrentUser() {
 function updateUserUI() {
   document.getElementById('user-name').textContent = currentUser.display_name || 'User';
   document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Admin' : currentUser.role;
-  document.getElementById('user-avatar').textContent = (currentUser.display_name || 'U').charAt(0).toUpperCase();
+  const avatarEl = document.getElementById('user-avatar');
+  if (currentUser.avatar_url) {
+    avatarEl.innerHTML = `<img src="${currentUser.avatar_url}">`;
+  } else {
+    avatarEl.textContent = (currentUser.display_name || 'U').charAt(0).toUpperCase();
+  }
+}
+
+function avatarHTML(user, size = 32) {
+  if (user.avatar_url) {
+    return `<img src="${user.avatar_url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">`;
+  }
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.45)}px;font-weight:700;color:white">${(user.display_name || user.name || 'U').charAt(0)}</div>`;
 }
 
 async function handleLogout() {
@@ -1829,18 +1845,20 @@ function renderDashboard() {
         <table class="table">
           <thead><tr><th>Membre</th><th>Rôle</th><th>Status</th></tr></thead>
           <tbody>
-            ${allTeam.filter(m => m.status === 'online').slice(0, 4).map(m => `
+            ${allTeam.filter(m => m.status === 'online').slice(0, 4).map(m => {
+              const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 32) : avatarHTML({ display_name: m.name }, 32);
+              return `
               <tr>
                 <td>
                   <div class="member-info">
-                    <div class="member-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">${m.name.charAt(0)}</div>
+                    ${av}
                     <div><div class="member-name">${m.name}</div></div>
                   </div>
                 </td>
                 <td>${m.role}</td>
                 <td><span class="badge badge-online">● En ligne</span></td>
               </tr>
-            `).join('')}
+            `;}).join('')}
           </tbody>
         </table>
       </div>
@@ -2093,11 +2111,13 @@ function renderVA() {
 
 function renderTeamTable(tableId, members) {
   const tbody = document.querySelector(`#${tableId} tbody`);
-  tbody.innerHTML = members.map(m => `
+  tbody.innerHTML = members.map(m => {
+    const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 32) : avatarHTML({ display_name: m.name }, 32);
+    return `
     <tr>
       <td>
         <div class="member-info">
-          <div class="member-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">${m.name.charAt(0)}</div>
+          ${av}
           <div><div class="member-name">${m.name}</div></div>
         </div>
       </td>
@@ -2106,8 +2126,8 @@ function renderTeamTable(tableId, members) {
       <td>${m.platform || 'N/A'}</td>
       <td><span class="badge badge-${m.status}">${m.status}</span></td>
       <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderStats() {
@@ -2705,6 +2725,16 @@ function renderSettings() {
 
   tbody.innerHTML = allUsers.map(u => `
     <tr>
+      <td>
+        <div style="position:relative;width:40px;height:40px;cursor:pointer" onclick="document.getElementById('avatar-input-${u.id}').click()">
+          ${u.avatar_url
+            ? `<img src="${u.avatar_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">`
+            : `<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white">${u.display_name.charAt(0)}</div>`
+          }
+          <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid var(--bg2)">+</div>
+          <input type="file" id="avatar-input-${u.id}" accept="image/*" style="display:none" onchange="uploadAvatar(${u.id}, this)">
+        </div>
+      </td>
       <td><strong>${u.display_name}</strong></td>
       <td style="color:var(--text2)">${u.username}</td>
       <td>
@@ -2802,6 +2832,45 @@ async function addUser() {
     const err = await res.json();
     showToast(err.error || 'Erreur', 'error');
   }
+}
+
+async function uploadAvatar(userId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) return showToast('Image trop lourde (max 2 Mo)', 'error');
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    // Redimensionner l'image avant upload
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const size = 200;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Crop carré centré
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2;
+      const sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+
+      const res = await fetch('/api/users/' + userId + '/avatar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ avatar_url: base64 })
+      });
+      if (res.ok) {
+        showToast('Photo de profil mise à jour !', 'success');
+        await loadSettings();
+        renderSettings();
+      }
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function changeUserRole(userId, newRole) {

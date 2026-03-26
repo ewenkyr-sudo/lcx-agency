@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lcx-agency-secret-change-me-in-production';
 
 // ============ MIDDLEWARE ============
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -32,8 +32,13 @@ async function initDB() {
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'student',
       avatar_color TEXT DEFAULT '#8b5cf6',
+      avatar_url TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    DO $$ BEGIN
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    EXCEPTION WHEN others THEN NULL;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS models (
       id SERIAL PRIMARY KEY,
@@ -340,13 +345,13 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role FROM users WHERE id = $1', [req.user.id]);
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url FROM users WHERE id = $1', [req.user.id]);
   res.json(rows[0]);
 });
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, created_at FROM users ORDER BY role, display_name');
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, created_at FROM users ORDER BY role, display_name');
   res.json(rows);
 });
 
@@ -409,11 +414,14 @@ app.delete('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ TEAM MEMBERS CRUD ============
 app.get('/api/team', authMiddleware, async (req, res) => {
   const role = req.query.role;
+  let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id`;
   if (role) {
-    const { rows } = await pool.query('SELECT * FROM team_members WHERE role = $1 ORDER BY name', [role]);
+    query += ` WHERE tm.role = $1 ORDER BY tm.name`;
+    const { rows } = await pool.query(query, [role]);
     res.json(rows);
   } else {
-    const { rows } = await pool.query('SELECT * FROM team_members ORDER BY name');
+    query += ` ORDER BY tm.name`;
+    const { rows } = await pool.query(query);
     res.json(rows);
   }
 });
@@ -590,6 +598,17 @@ app.put('/api/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/display_name', authMiddleware, adminOnly, async (req, res) => {
   const { display_name } = req.body;
   await pool.query('UPDATE users SET display_name = $1 WHERE id = $2', [display_name, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.put('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
+  const { avatar_url } = req.body;
+  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatar_url, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('UPDATE users SET avatar_url = NULL WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
