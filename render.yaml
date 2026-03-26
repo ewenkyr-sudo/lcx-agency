@@ -9,7 +9,7 @@ services:
     name: lcx-agency-dashboard
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && node build.js
     startCommand: node server.js
     envVars:
       - key: JWT_SECRET

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lcx-agency-v2';
+const CACHE_NAME = 'lcx-agency-__BUILD_HASH__';
 const ASSETS = [
   '/',
   '/login.html',
