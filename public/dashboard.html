@@ -1039,6 +1039,7 @@
     <div class="panel">
       <table class="table" id="leads-table">
         <thead><tr>
+          <th style="width:40px">#</th>
           <th>Username</th>
           <th>Type</th>
           <th>Script</th>
@@ -2261,11 +2262,12 @@ function renderLeads() {
   let filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
   if (search) filtered = filtered.filter(l => l.username.toLowerCase().includes(search));
   const tbody = document.querySelector('#leads-table tbody');
-  tbody.innerHTML = filtered.map(l => {
+  tbody.innerHTML = filtered.map((l, idx) => {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
     return `<tr>
+      <td style="color:var(--text3);font-size:12px">${idx + 1}</td>
       <td><strong>${igLink}</strong></td>
       <td>${l.lead_type || '-'}</td>
       <td>${l.script_used || '-'}</td>
@@ -2280,7 +2282,7 @@ function renderLeads() {
       <td style="font-size:12px;color:var(--text3)">${date}</td>
       <td><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
 
 function showAddLeadForm() {
