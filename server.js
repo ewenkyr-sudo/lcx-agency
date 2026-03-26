@@ -111,6 +111,11 @@ db.exec(`
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS schedule (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     member_id INTEGER,
@@ -144,12 +149,12 @@ function seedData() {
     ['sarah', defaultHash, 'Sarah', 'chatter'],
     ['tom', defaultHash, 'Tom', 'chatter'],
     ['karim', defaultHash, 'Karim', 'chatter'],
-    ['lea', defaultHash, 'L\u00e9a', 'chatter'],
+    ['lea', defaultHash, 'Léa', 'chatter'],
     ['nathan', defaultHash, 'Nathan', 'chatter'],
     ['maxime', defaultHash, 'Maxime', 'outreach'],
     ['yasmine', defaultHash, 'Yasmine', 'outreach'],
     ['dylan', defaultHash, 'Dylan', 'outreach'],
-    ['ines', defaultHash, 'In\u00e8s', 'outreach'],
+    ['ines', defaultHash, 'Inès', 'outreach'],
     ['amine', defaultHash, 'Amine', 'va'],
     ['rania', defaultHash, 'Rania', 'va'],
     ['jules', defaultHash, 'Jules', 'va'],
@@ -171,7 +176,7 @@ function seedData() {
   // Student users
   const studentUsers = [
     ['lucas', studentHash, 'Lucas', 'student'],
-    ['theo', studentHash, 'Th\u00e9o', 'student'],
+    ['theo', studentHash, 'Théo', 'student'],
     ['yassine', studentHash, 'Yassine', 'student'],
     ['enzo', studentHash, 'Enzo', 'student'],
     ['mehdi', studentHash, 'Mehdi', 'student'],
@@ -230,7 +235,7 @@ function seedData() {
   // Students
   const insertStudent = db.prepare('INSERT INTO students (user_id, name, program, start_date, models_signed, active_discussions, progression, contact, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   insertStudent.run(19, 'Lucas', 'elite', '2026-01-15', 4, 5, 75, '@lucas_dc', 'active');
-  insertStudent.run(20, 'Th\u00e9o', 'vip', '2026-02-01', 3, 4, 60, '@theo_dc', 'active');
+  insertStudent.run(20, 'Théo', 'vip', '2026-02-01', 3, 4, 60, '@theo_dc', 'active');
   insertStudent.run(21, 'Yassine', 'pro', '2026-03-01', 1, 7, 35, '@yassine_dc', 'active');
   insertStudent.run(22, 'Enzo', 'elite', '2025-12-10', 3, 2, 85, '@enzo_dc', 'active');
   insertStudent.run(23, 'Mehdi', 'starter', '2026-03-15', 0, 3, 15, '@mehdi_dc', 'active');
@@ -241,15 +246,22 @@ function seedData() {
   insertMember.run(2, 'Sarah', 'chatter', '08h-16h', '["Luna","Jade"]', null, '@sarah_dc', 'online');
   insertMember.run(3, 'Tom', 'chatter', '16h-00h', '["Luna","Mia"]', null, '@tom_dc', 'online');
   insertMember.run(4, 'Karim', 'chatter', '00h-08h', '["Jade","Clara"]', null, '@karim_dc', 'offline');
-  insertMember.run(5, 'L\u00e9a', 'chatter', '08h-16h', '["Mia","Emma"]', null, '@lea_dc', 'online');
+  insertMember.run(5, 'Léa', 'chatter', '08h-16h', '["Mia","Emma"]', null, '@lea_dc', 'online');
   insertMember.run(6, 'Nathan', 'chatter', '16h-00h', '["Luna","Clara"]', null, '@nathan_dc', 'break');
   insertMember.run(7, 'Maxime', 'outreach', '09h-17h', '[]', 'Instagram', '@maxime_dc', 'online');
   insertMember.run(8, 'Yasmine', 'outreach', '09h-17h', '[]', 'TikTok, Reddit', '@yasmine_dc', 'online');
   insertMember.run(9, 'Dylan', 'outreach', '14h-22h', '[]', 'Twitter, Reddit', '@dylan_dc', 'offline');
-  insertMember.run(10, 'In\u00e8s', 'outreach', '09h-17h', '[]', 'Instagram, TikTok', '@ines_dc', 'online');
+  insertMember.run(10, 'Inès', 'outreach', '09h-17h', '[]', 'Instagram, TikTok', '@ines_dc', 'online');
   insertMember.run(11, 'Amine', 'va', '07h-15h', '[]', null, '@amine_dc', 'online');
   insertMember.run(12, 'Rania', 'va', '09h-17h', '[]', null, '@rania_dc', 'online');
   insertMember.run(13, 'Jules', 'va', '14h-22h', '[]', null, '@jules_dc', 'offline');
+
+  // Agency settings
+  const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  insertSetting.run('agency_name', 'LCX Agency');
+  insertSetting.run('agency_subtitle', 'Management Suite');
+  insertSetting.run('default_password_team', 'team123');
+  insertSetting.run('default_password_student', 'eleve123');
 
   console.log('Seed complete!');
 }
@@ -259,7 +271,7 @@ seedData();
 // ============ AUTH MIDDLEWARE ============
 function authMiddleware(req, res, next) {
   const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Non authentifi\u00e9' });
+  if (!token) return res.status(401).json({ error: 'Non authentifié' });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -271,7 +283,7 @@ function authMiddleware(req, res, next) {
 }
 
 function adminOnly(req, res, next) {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acc\u00e8s refus\u00e9' });
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   next();
 }
 
@@ -311,7 +323,7 @@ app.post('/api/users', authMiddleware, adminOnly, (req, res) => {
     const result = db.prepare('INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)').run(username, hash, display_name, role);
     res.json({ id: result.lastInsertRowid, username, display_name, role });
   } catch (e) {
-    res.status(400).json({ error: 'Ce nom d\'utilisateur existe d\u00e9j\u00e0' });
+    res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
   }
 });
 
@@ -505,6 +517,59 @@ app.get('/api/dashboard', authMiddleware, (req, res) => {
   res.json({ totalFollowers, modelsCount, teamCount, studentsCount, todayStats, weekStats });
 });
 
+// ============ ADMIN SETTINGS ============
+app.get('/api/settings', authMiddleware, adminOnly, (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const settings = {};
+  rows.forEach(r => settings[r.key] = r.value);
+  res.json(settings);
+});
+
+app.put('/api/settings', authMiddleware, adminOnly, (req, res) => {
+  const entries = Object.entries(req.body);
+  const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+  entries.forEach(([key, value]) => stmt.run(key, String(value)));
+  res.json({ ok: true });
+});
+
+app.put('/api/users/:id/role', authMiddleware, adminOnly, (req, res) => {
+  const { role } = req.body;
+  if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas changer ton propre rôle' });
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+  res.json({ ok: true });
+});
+
+app.put('/api/users/:id/display_name', authMiddleware, adminOnly, (req, res) => {
+  const { display_name } = req.body;
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name, req.params.id);
+  res.json({ ok: true });
+});
+
+app.put('/api/models/:id', authMiddleware, adminOnly, (req, res) => {
+  const { name, platforms, status } = req.body;
+  db.prepare(`UPDATE models SET
+    name = COALESCE(?, name), platforms = COALESCE(?, platforms), status = COALESCE(?, status) WHERE id = ?`
+  ).run(name, platforms ? JSON.stringify(platforms) : null, status, req.params.id);
+  res.json({ ok: true });
+});
+
+app.put('/api/accounts/:id', authMiddleware, adminOnly, (req, res) => {
+  const { handle, current_followers } = req.body;
+  db.prepare(`UPDATE accounts SET
+    handle = COALESCE(?, handle), current_followers = COALESCE(?, current_followers) WHERE id = ?`
+  ).run(handle, current_followers, req.params.id);
+  res.json({ ok: true });
+});
+
+// Reset all passwords for a role
+app.post('/api/admin/reset-passwords', authMiddleware, adminOnly, (req, res) => {
+  const { role, new_password } = req.body;
+  if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' });
+  const hash = bcrypt.hashSync(new_password, 10);
+  const result = db.prepare('UPDATE users SET password = ? WHERE role = ? AND id != ?').run(hash, role, req.user.id);
+  res.json({ ok: true, updated: result.changes });
+});
+
 // ============ SERVE FRONTEND ============
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -523,13 +588,13 @@ app.get('*', (req, res) => {
 // ============ START ============
 app.listen(PORT, () => {
   console.log(`
-  \u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
-  \u2551    LCX Agency Dashboard             \u2551
-  \u2551    http://localhost:${PORT}             \u2551
-  \u2551                                      \u2551
-  \u2551    Admin: ewen / admin123            \u2551
-  \u2551    Team:  prenom / team123           \u2551
-  \u2551    Eleve: prenom / eleve123          \u2551
-  \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d
+  ╔══════════════════════════════════════╗
+  ║    LCX Agency Dashboard               ║
+  ║    http://localhost:${PORT}             ║
+  ║                                       ║
+  ║    Admin: ewen / admin123            ║
+  ║    Team:  prenom / team123           ║
+  ║    Eleve: prenom / eleve123          ║
+  ╚══════════════════════════════════════╝
   `);
 });
