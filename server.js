@@ -730,6 +730,8 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
+  const exists = await pool.query('SELECT id, status FROM outreach_leads WHERE LOWER(username) = LOWER($1)', [username]);
+  if (exists.rows.length > 0) return res.status(409).json({ error: `Ce lead existe déjà (statut : ${exists.rows[0].status})` });
   const { rows } = await pool.query(
     'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
     [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes, status || 'to-send']

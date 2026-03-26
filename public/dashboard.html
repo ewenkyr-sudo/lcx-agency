@@ -2296,6 +2296,8 @@ function showAddLeadForm() {
 async function addLead() {
   const username = document.getElementById('lead-username').value.trim();
   if (!username) return alert('Username requis');
+  const duplicate = allLeads.find(l => l.username.toLowerCase() === username.toLowerCase());
+  if (duplicate) return alert(`Ce lead existe déjà : ${duplicate.username} (statut : ${duplicate.status})`);
   const res = await fetch('/api/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
