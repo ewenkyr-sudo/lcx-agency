@@ -794,15 +794,59 @@
     100% { transform: rotate(360deg); }
   }
 
+  .mobile-header {
+    display: none;
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 56px; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    z-index: 200; padding: 0 16px;
+    align-items: center; justify-content: space-between;
+  }
+  .mobile-header button {
+    background: none; border: none; color: var(--text); font-size: 24px; cursor: pointer; padding: 8px;
+  }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 99;
+  }
+  .sidebar-overlay.show { display: block; }
+
   @media (max-width: 1200px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .two-col { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 768px) {
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
+    .mobile-header { display: flex; }
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 150;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 72px 14px 24px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 14px; }
+    .stat-value { font-size: 18px; }
+    .stat-label { font-size: 10px; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .page-title { font-size: 18px; }
+    .header-actions { width: 100%; }
+    .header-actions > div { flex-wrap: wrap; }
+    .panel { padding: 14px; overflow-x: auto; }
+    .table { font-size: 12px; min-width: 500px; }
+    .table th, .table td { padding: 8px 6px; }
+    .form-input { font-size: 14px; }
+    #add-lead-form > div:first-of-type,
+    #add-shift-form > div:first-of-type { grid-template-columns: 1fr !important; }
+    #perf-period-btns { flex-wrap: wrap; }
+    #toast-container { left: 10px; right: 10px; }
+    #toast-container > div { max-width: 100%; }
+  }
+
+  @media (max-width: 400px) {
     .stats-grid { grid-template-columns: 1fr; }
+    .main { padding: 64px 10px 20px; }
   }
 
   @keyframes fadeIn {
@@ -821,6 +865,14 @@
 </style>
 </head>
 <body>
+
+<!-- MOBILE HEADER -->
+<div class="mobile-header">
+  <button onclick="toggleSidebar()">☰</button>
+  <span style="font-size:15px;font-weight:700" id="mobile-title">LCX Agency</span>
+  <button onclick="handleLogout()" style="font-size:18px">⏻</button>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
@@ -1696,6 +1748,16 @@ function switchSection(e) {
   document.querySelectorAll('[data-section]').forEach(n => n.classList.remove('active'));
   document.getElementById('section-' + section).classList.add('active');
   e.currentTarget.classList.add('active');
+  // Fermer la sidebar sur mobile
+  if (window.innerWidth <= 768) {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  }
+}
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
 }
 
 // ========== MODALS ==========
