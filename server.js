@@ -547,7 +547,7 @@ app.get('/api/settings', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/settings', authMiddleware, adminOnly, async (req, res) => {
   const entries = Object.entries(req.body);
   for (const [key, value] of entries) {
-    await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, String(value)]);
+    await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, String(value)]);
   }
   res.json({ ok: true });
 });
