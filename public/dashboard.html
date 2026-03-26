@@ -2478,6 +2478,8 @@ async function deleteUser(userId) {
           if (newWorker.state === 'activated') window.location.reload();
         });
       });
+      // Vérifie les mises à jour toutes les 30 secondes
+      setInterval(() => reg.update(), 30000);
     });
   }
 </script>

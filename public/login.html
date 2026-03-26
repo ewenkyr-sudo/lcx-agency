@@ -178,6 +178,7 @@
           if (newWorker.state === 'activated') window.location.reload();
         });
       });
+      setInterval(() => reg.update(), 30000);
     });
   }
 </script>
