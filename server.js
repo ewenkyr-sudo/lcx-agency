@@ -631,15 +631,31 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     const content = fs.readFileSync(csvPath, 'utf8');
     const lines = content.split('\n').filter(l => l.trim());
 
-    // Ignorer le header
+    // Mapping des statuts CSV → app
+    const statusMap = {
+      'sent': 'sent',
+      'to send': 'sent',
+      'talking - cold': 'talking-cold',
+      'talking - warm': 'talking-warm',
+      'call booked': 'call-booked',
+      'signed': 'signed'
+    };
+
+    // Colonnes: Username, link, Type, Status, Script, Account, Notes
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
-      // Parser le CSV (gère les guillemets)
-      const match = lines[i].match(/"([^"]*)","([^"]*)"/);
-      if (!match) continue;
-      const username = match[1].trim();
-      const igLink = match[2].trim();
+      // Parser le CSV (sans guillemets cette fois)
+      const cols = lines[i].split(',');
+      const username = (cols[0] || '').replace(/"/g, '').trim();
+      const igLink = (cols[1] || '').replace(/"/g, '').trim();
+      const leadType = (cols[2] || '').replace(/"/g, '').trim().toLowerCase() || 'model';
+      const rawStatus = (cols[3] || '').replace(/"/g, '').trim().toLowerCase();
+      const script = (cols[4] || '').replace(/"/g, '').trim();
+      const account = (cols[5] || '').replace(/"/g, '').trim();
+      const notes = (cols[6] || '').replace(/"/g, '').trim();
       if (!username) continue;
+
+      const status = statusMap[rawStatus] || 'sent';
 
       // Vérifier si le lead existe déjà
       const exists = await pool.query(
@@ -648,8 +664,8 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
       if (exists.rows.length > 0) continue;
 
       await pool.query(
-        'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, status) VALUES ($1, $2, $3, $4, $5)',
-        [gaby.id, username, igLink, 'model', 'sent']
+        'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [gaby.id, username, igLink, leadType, script, account, notes, status]
       );
       imported++;
     }
