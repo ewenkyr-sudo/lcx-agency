@@ -139,6 +139,17 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS chatter_shifts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      model_name TEXT NOT NULL,
+      ppv_total NUMERIC(10,2) DEFAULT 0,
+      tips_total NUMERIC(10,2) DEFAULT 0,
+      shift_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 }
 
@@ -703,6 +714,90 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     console.error('Import error:', e);
     res.status(500).json({ error: 'Erreur lors de l\'import' });
   }
+});
+
+// ============ CHATTER SHIFTS ============
+
+// Get shifts — chatter voit ses propres shifts, admin voit tout
+app.get('/api/shifts', authMiddleware, async (req, res) => {
+  if (req.user.role === 'chatter') {
+    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 ORDER BY date DESC, created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query(`
+      SELECT cs.*, u.display_name as chatter_name
+      FROM chatter_shifts cs
+      JOIN users u ON cs.user_id = u.id
+      ORDER BY cs.date DESC, cs.created_at DESC
+    `);
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+// Add shift report
+app.post('/api/shifts', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'chatter' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { date, model_name, ppv_total, tips_total, shift_notes } = req.body;
+  if (!model_name) return res.status(400).json({ error: 'Modèle requis' });
+  const shiftDate = date || new Date().toISOString().split('T')[0];
+  const { rows } = await pool.query(
+    'INSERT INTO chatter_shifts (user_id, date, model_name, ppv_total, tips_total, shift_notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [req.user.id, shiftDate, model_name, ppv_total || 0, tips_total || 0, shift_notes]
+  );
+  broadcast('shift-added', rows[0]);
+  res.json(rows[0]);
+});
+
+// Delete shift
+app.delete('/api/shifts/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'chatter') {
+    const check = await pool.query('SELECT id FROM chatter_shifts WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Ce shift ne t\'appartient pas' });
+  } else if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  await pool.query('DELETE FROM chatter_shifts WHERE id = $1', [req.params.id]);
+  broadcast('shift-deleted', { id: parseInt(req.params.id) });
+  res.json({ ok: true });
+});
+
+// Stats chatter perso
+app.get('/api/shifts/my-stats', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'chatter' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const uid = req.user.id;
+  const today = (await pool.query("SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE user_id = $1 AND date = CURRENT_DATE::text", [uid])).rows[0];
+  const week = (await pool.query("SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE user_id = $1 AND date >= (CURRENT_DATE - INTERVAL '7 days')::date::text", [uid])).rows[0];
+  const total = (await pool.query("SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE user_id = $1", [uid])).rows[0];
+  res.json({
+    today: { ppv: parseFloat(today.ppv), tips: parseFloat(today.tips), revenue: parseFloat(today.ppv) + parseFloat(today.tips), shifts: parseInt(today.shifts) },
+    week: { ppv: parseFloat(week.ppv), tips: parseFloat(week.tips), revenue: parseFloat(week.ppv) + parseFloat(week.tips), shifts: parseInt(week.shifts) },
+    total: { ppv: parseFloat(total.ppv), tips: parseFloat(total.tips), revenue: parseFloat(total.ppv) + parseFloat(total.tips), shifts: parseInt(total.shifts) }
+  });
+});
+
+// Stats admin globales chatters
+app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT
+      u.id as user_id,
+      u.display_name as chatter_name,
+      COALESCE(SUM(cs.ppv_total), 0) as total_ppv,
+      COALESCE(SUM(cs.tips_total), 0) as total_tips,
+      COALESCE(SUM(cs.ppv_total) + SUM(cs.tips_total), 0) as total_revenue,
+      COUNT(cs.id) as total_shifts,
+      COALESCE(SUM(CASE WHEN cs.date = CURRENT_DATE::text THEN cs.ppv_total ELSE 0 END), 0) as today_ppv,
+      COALESCE(SUM(CASE WHEN cs.date = CURRENT_DATE::text THEN cs.tips_total ELSE 0 END), 0) as today_tips,
+      COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.ppv_total ELSE 0 END), 0) as week_ppv,
+      COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.tips_total ELSE 0 END), 0) as week_tips
+    FROM users u
+    LEFT JOIN chatter_shifts cs ON cs.user_id = u.id
+    WHERE u.role = 'chatter'
+    GROUP BY u.id, u.display_name
+    ORDER BY total_revenue DESC
+  `);
+  res.json(rows);
 });
 
 // ============ OUTREACH LEADS ============

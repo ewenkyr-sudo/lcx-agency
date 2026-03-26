@@ -948,13 +948,74 @@
     <div class="page-header">
       <div>
         <div class="page-title">Chatters</div>
-        <div class="page-subtitle">Équipe de chat</div>
+        <div class="page-subtitle">Suivi des shifts et revenus</div>
       </div>
-      <div class="header-actions" id="chatters-actions"></div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="showAddShiftForm()">+ Rapport de shift</button>
+      </div>
     </div>
+
+    <!-- KPIs -->
+    <div class="stats-grid" id="chatter-kpis" style="margin-bottom:24px"></div>
+
+    <!-- Admin: stats par chatter -->
+    <div id="chatter-admin-stats" style="margin-bottom:24px;display:none">
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par chatter</h3>
+        <table class="table" id="chatter-agents-table">
+          <thead><tr><th>Chatter</th><th>PPV aujourd'hui</th><th>Tips aujourd'hui</th><th>PPV semaine</th><th>Tips semaine</th><th>Revenue totale</th><th>Shifts</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Formulaire rapport de shift -->
+    <div id="add-shift-form" class="panel" style="padding:20px;margin-bottom:24px;display:none">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Rapport de fin de shift</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Modèle *</label>
+          <select id="shift-model" class="form-input">
+            <option value="">-- Choisir un modèle --</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Date</label>
+          <input type="date" id="shift-date" class="form-input">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Total PPV ($)</label>
+          <input type="number" id="shift-ppv" class="form-input" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Total Tips ($)</label>
+          <input type="number" id="shift-tips" class="form-input" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Notes du shift</label>
+          <textarea id="shift-notes" class="form-input" rows="3" placeholder="Comment s'est passé le shift, remarques..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="addShift()">Envoyer le rapport</button>
+        <button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('add-shift-form').style.display='none'">Annuler</button>
+      </div>
+    </div>
+
+    <!-- Historique des shifts -->
     <div class="panel">
-      <table class="table" id="chatters-table">
-        <thead><tr><th>Membre</th><th>Rôle</th><th>Shift</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+      <table class="table" id="shifts-table">
+        <thead><tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Modèle</th>
+          <th>PPV ($)</th>
+          <th>Tips ($)</th>
+          <th>Revenue</th>
+          <th>Notes</th>
+          <th id="shift-col-chatter" style="display:none">Chatter</th>
+          <th></th>
+        </tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -1803,12 +1864,16 @@ function renderDashboard() {
       </div>
     </div>
 
+    <!-- Chatter stats for admin -->
+    <div id="dashboard-chatter-stats"></div>
+
     <!-- Outreach stats for admin -->
     <div id="dashboard-outreach-stats"></div>
   `;
 
-  // Load outreach stats in dashboard for admin
+  // Load stats in dashboard for admin
   if (currentUser.role === 'admin') {
+    loadDashboardChatterStats();
     loadDashboardOutreachStats();
   }
 }
@@ -1859,6 +1924,45 @@ async function loadDashboardOutreachStats() {
               <td style="color:var(--accent2)">${aRate}%</td>
             </tr>`;
             }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {}
+}
+
+async function loadDashboardChatterStats() {
+  try {
+    const res = await fetch('/api/shifts/admin-stats', { credentials: 'include' });
+    if (!res.ok) return;
+    const chatters = await res.json();
+    const totals = chatters.reduce((acc, c) => ({
+      today_ppv: acc.today_ppv + parseFloat(c.today_ppv),
+      today_tips: acc.today_tips + parseFloat(c.today_tips),
+      total_revenue: acc.total_revenue + parseFloat(c.total_revenue)
+    }), { today_ppv: 0, today_tips: 0, total_revenue: 0 });
+
+    const todayRev = totals.today_ppv + totals.today_tips;
+    const div = document.getElementById('dashboard-chatter-stats');
+    if (!div) return;
+    div.innerHTML = `
+      <div class="panel" style="margin-top:20px;padding:20px">
+        <div class="panel-header"><div class="panel-title">Chatters — Temps réel</div></div>
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+        </div>
+        <table class="table">
+          <thead><tr><th>Chatter</th><th>PPV aujourd'hui</th><th>Tips aujourd'hui</th><th>Revenue totale</th></tr></thead>
+          <tbody>
+            ${chatters.map(c => `<tr>
+              <td><strong>${c.chatter_name}</strong></td>
+              <td>$${parseFloat(c.today_ppv).toFixed(2)}</td>
+              <td style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+              <td style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+            </tr>`).join('')}
           </tbody>
         </table>
       </div>
@@ -1968,9 +2072,10 @@ function renderModels() {
   `;
 }
 
-function renderChatters() {
-  const chatters = allTeam.filter(m => m.role === 'chatter');
-  renderTeamTable('chatters-table', chatters);
+async function renderChatters() {
+  await loadShifts();
+  renderShifts();
+  await loadChatterKPIs();
 }
 
 async function renderOutreach() {
@@ -2145,6 +2250,153 @@ async function deleteCall(id) {
   }
 }
 
+// ========== CHATTER SHIFTS ==========
+let allShifts = [];
+
+async function loadShifts() {
+  if (currentUser.role !== 'chatter' && currentUser.role !== 'admin') return;
+  try {
+    const res = await fetch('/api/shifts', { credentials: 'include' });
+    if (res.ok) allShifts = await res.json();
+  } catch (e) { console.error('Shifts load error:', e); }
+}
+
+async function loadChatterKPIs() {
+  const kpisDiv = document.getElementById('chatter-kpis');
+  if (!kpisDiv) return;
+
+  if (currentUser.role === 'chatter') {
+    try {
+      const res = await fetch('/api/shifts/my-stats', { credentials: 'include' });
+      if (res.ok) {
+        const s = await res.json();
+        kpisDiv.innerHTML = `
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.today.revenue.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">$${s.today.ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${s.today.tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.week.revenue.toFixed(2)}</div><div class="stat-label">Revenue semaine</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${s.total.revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+          <div class="stat-card"><div class="stat-value">${s.total.shifts}</div><div class="stat-label">Total shifts</div></div>
+        `;
+      }
+    } catch (e) {}
+  }
+
+  if (currentUser.role === 'admin') {
+    try {
+      const res = await fetch('/api/shifts/admin-stats', { credentials: 'include' });
+      if (res.ok) {
+        const chatters = await res.json();
+        const totals = chatters.reduce((acc, c) => ({
+          today_ppv: acc.today_ppv + parseFloat(c.today_ppv),
+          today_tips: acc.today_tips + parseFloat(c.today_tips),
+          week_ppv: acc.week_ppv + parseFloat(c.week_ppv),
+          week_tips: acc.week_tips + parseFloat(c.week_tips),
+          total_revenue: acc.total_revenue + parseFloat(c.total_revenue),
+          total_shifts: acc.total_shifts + parseInt(c.total_shifts)
+        }), { today_ppv: 0, today_tips: 0, week_ppv: 0, week_tips: 0, total_revenue: 0, total_shifts: 0 });
+
+        const todayRev = totals.today_ppv + totals.today_tips;
+        const weekRev = totals.week_ppv + totals.week_tips;
+        kpisDiv.innerHTML = `
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${weekRev.toFixed(2)}</div><div class="stat-label">Revenue semaine</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.total_shifts}</div><div class="stat-label">Total shifts</div></div>
+        `;
+
+        const adminDiv = document.getElementById('chatter-admin-stats');
+        adminDiv.style.display = 'block';
+        const tbody = document.querySelector('#chatter-agents-table tbody');
+        tbody.innerHTML = chatters.map(c => {
+          const todayTotal = (parseFloat(c.today_ppv) + parseFloat(c.today_tips)).toFixed(2);
+          const weekTotal = (parseFloat(c.week_ppv) + parseFloat(c.week_tips)).toFixed(2);
+          return `<tr>
+            <td><strong>${c.chatter_name}</strong></td>
+            <td>$${parseFloat(c.today_ppv).toFixed(2)}</td>
+            <td style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+            <td>$${parseFloat(c.week_ppv).toFixed(2)}</td>
+            <td style="color:var(--yellow)">$${parseFloat(c.week_tips).toFixed(2)}</td>
+            <td style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+            <td>${c.total_shifts}</td>
+          </tr>`;
+        }).join('');
+      }
+    } catch (e) {}
+  }
+}
+
+function renderShifts() {
+  if (currentUser.role !== 'chatter' && currentUser.role !== 'admin') return;
+  const isAdmin = currentUser.role === 'admin';
+  const chatterCol = document.getElementById('shift-col-chatter');
+  if (chatterCol) chatterCol.style.display = isAdmin ? '' : 'none';
+
+  const tbody = document.querySelector('#shifts-table tbody');
+  tbody.innerHTML = allShifts.map((s, idx) => {
+    const revenue = (parseFloat(s.ppv_total) + parseFloat(s.tips_total)).toFixed(2);
+    return `<tr>
+      <td style="color:var(--text3);font-size:12px">${allShifts.length - idx}</td>
+      <td>${s.date}</td>
+      <td><strong>${s.model_name}</strong></td>
+      <td>$${parseFloat(s.ppv_total).toFixed(2)}</td>
+      <td style="color:var(--yellow)">$${parseFloat(s.tips_total).toFixed(2)}</td>
+      <td style="color:var(--green)"><strong>$${revenue}</strong></td>
+      <td style="color:var(--text2);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(s.shift_notes || '').replace(/"/g, '&quot;')}">${s.shift_notes || '-'}</td>
+      ${isAdmin ? `<td style="font-size:12px;color:var(--accent2)">${s.chatter_name || '-'}</td>` : ''}
+      <td><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun rapport de shift</td></tr>';
+}
+
+function showAddShiftForm() {
+  // Remplir le select des modèles
+  const select = document.getElementById('shift-model');
+  select.innerHTML = '<option value="">-- Choisir un modèle --</option>' +
+    allModels.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  // Date du jour par défaut
+  document.getElementById('shift-date').value = new Date().toISOString().split('T')[0];
+  const form = document.getElementById('add-shift-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function addShift() {
+  const model = document.getElementById('shift-model').value;
+  if (!model) return showToast('Choisis un modèle', 'error');
+  const res = await fetch('/api/shifts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      date: document.getElementById('shift-date').value,
+      model_name: model,
+      ppv_total: parseFloat(document.getElementById('shift-ppv').value) || 0,
+      tips_total: parseFloat(document.getElementById('shift-tips').value) || 0,
+      shift_notes: document.getElementById('shift-notes').value.trim()
+    })
+  });
+  if (res.ok) {
+    showToast('Rapport de shift envoyé !', 'success');
+    document.getElementById('shift-ppv').value = '';
+    document.getElementById('shift-tips').value = '';
+    document.getElementById('shift-notes').value = '';
+    document.getElementById('add-shift-form').style.display = 'none';
+    await loadShifts();
+    renderShifts();
+    await loadChatterKPIs();
+  }
+}
+
+async function deleteShift(id) {
+  if (!confirm('Supprimer ce rapport ?')) return;
+  await fetch('/api/shifts/' + id, { method: 'DELETE', credentials: 'include' });
+  await loadShifts();
+  renderShifts();
+  await loadChatterKPIs();
+}
+
 // ========== WEBSOCKET TEMPS RÉEL ==========
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2156,8 +2408,13 @@ function connectWebSocket() {
       await loadLeads();
       renderLeads();
       await loadOutreachKPIs();
-      // Rafraîchir aussi le dashboard admin si on est dessus
       if (currentUser.role === 'admin') loadDashboardOutreachStats();
+    }
+    if (msg.event === 'shift-added' || msg.event === 'shift-deleted') {
+      await loadShifts();
+      renderChatters();
+      await loadChatterKPIs();
+      if (currentUser.role === 'admin') loadDashboardChatterStats();
     }
   });
 
