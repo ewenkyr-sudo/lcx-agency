@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 
@@ -604,6 +605,61 @@ app.post('/api/admin/reset-passwords', authMiddleware, adminOnly, async (req, re
   const hash = bcrypt.hashSync(new_password, 10);
   const result = await pool.query('UPDATE users SET password = $1 WHERE role = $2 AND id != $3', [hash, role, req.user.id]);
   res.json({ ok: true, updated: result.rowCount });
+});
+
+// Import CSV leads
+app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    // Créer Gaby si elle n'existe pas
+    let gaby = (await pool.query("SELECT id FROM users WHERE username = 'gaby'")).rows[0];
+    if (!gaby) {
+      const hash = bcrypt.hashSync('team123', 10);
+      gaby = (await pool.query(
+        "INSERT INTO users (username, password, display_name, role) VALUES ('gaby', $1, 'Gaby', 'outreach') RETURNING id", [hash]
+      )).rows[0];
+      // Créer aussi comme team member
+      await pool.query(
+        "INSERT INTO team_members (user_id, name, role, shift, models_assigned, platform, contact, status) VALUES ($1, 'Gaby', 'outreach', '09h-17h', '[]', 'Instagram', null, 'online')",
+        [gaby.id]
+      );
+    }
+
+    // Lire le CSV
+    const csvPath = path.join(__dirname, 'public', 'data.csv');
+    if (!fs.existsSync(csvPath)) return res.status(404).json({ error: 'Fichier data.csv introuvable' });
+
+    const content = fs.readFileSync(csvPath, 'utf8');
+    const lines = content.split('\n').filter(l => l.trim());
+
+    // Ignorer le header
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      // Parser le CSV (gère les guillemets)
+      const match = lines[i].match(/"([^"]*)","([^"]*)"/);
+      if (!match) continue;
+      const username = match[1].trim();
+      const igLink = match[2].trim();
+      if (!username) continue;
+
+      // Vérifier si le lead existe déjà
+      const exists = await pool.query(
+        'SELECT id FROM outreach_leads WHERE username = $1 AND user_id = $2', [username, gaby.id]
+      );
+      if (exists.rows.length > 0) continue;
+
+      await pool.query(
+        'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, status) VALUES ($1, $2, $3, $4, $5)',
+        [gaby.id, username, igLink, 'model', 'sent']
+      );
+      imported++;
+    }
+
+    broadcast('lead-added', { bulk: true });
+    res.json({ ok: true, imported, total: lines.length - 1, user: 'Gaby' });
+  } catch (e) {
+    console.error('Import error:', e);
+    res.status(500).json({ error: 'Erreur lors de l\'import' });
+  }
 });
 
 // ============ OUTREACH LEADS ============

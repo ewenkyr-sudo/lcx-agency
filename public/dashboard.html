@@ -961,6 +961,7 @@
       </div>
       <div class="header-actions">
         <button class="btn btn-primary" onclick="showAddLeadForm()">+ Nouveau Lead</button>
+        <button class="btn" id="btn-import-csv" style="background:var(--bg3);color:var(--text2);display:none" onclick="importCSV()">Importer CSV</button>
       </div>
     </div>
 
@@ -1955,6 +1956,8 @@ async function renderOutreach() {
   await loadLeads();
   renderLeads();
   await loadOutreachKPIs();
+  const importBtn = document.getElementById('btn-import-csv');
+  if (importBtn) importBtn.style.display = currentUser.role === 'admin' ? '' : 'none';
 }
 
 function renderVA() {
@@ -2319,6 +2322,29 @@ function filterLeads(filter, btn) {
   btn.style.background = 'var(--accent)';
   btn.style.color = 'white';
   renderLeads();
+}
+
+async function importCSV() {
+  if (!confirm('Importer tous les leads du fichier CSV (Gaby) ?')) return;
+  const btn = document.getElementById('btn-import-csv');
+  btn.textContent = 'Import en cours...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/admin/import-csv', { method: 'POST', credentials: 'include' });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Import terminé : ${data.imported} nouveaux leads importés sur ${data.total} lignes`);
+      await loadLeads();
+      renderLeads();
+      await loadOutreachKPIs();
+    } else {
+      alert('Erreur : ' + (data.error || 'Erreur inconnue'));
+    }
+  } catch (e) {
+    alert('Erreur réseau');
+  }
+  btn.textContent = 'Importer CSV';
+  btn.disabled = false;
 }
 
 // ========== SETTINGS (Admin Only) ==========
