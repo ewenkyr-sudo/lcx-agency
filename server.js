@@ -443,6 +443,13 @@ app.post('/api/login', async (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: 'Identifiants incorrects' });
   }
+  // Auto-créer l'entrée student si elle manque
+  if (user.role === 'student') {
+    const studentExists = await pool.query('SELECT id FROM students WHERE user_id = $1', [user.id]);
+    if (studentExists.rows.length === 0) {
+      await pool.query('INSERT INTO students (user_id, name, program, start_date, status) VALUES ($1, $2, $3, $4, $5)', [user.id, user.display_name, 'starter', new Date().toISOString().split('T')[0], 'active']);
+    }
+  }
   const token = jwt.sign({ id: user.id, username: user.username, display_name: user.display_name, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
   res.cookie('token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role } });
@@ -470,7 +477,16 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   try {
     const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, hash, display_name, role, password]);
-    res.json({ id: rows[0].id, username, display_name, role });
+    const newId = rows[0].id;
+    // Auto-créer l'entrée student si rôle élève
+    if (role === 'student') {
+      await pool.query('INSERT INTO students (user_id, name, program, start_date, status) VALUES ($1, $2, $3, $4, $5)', [newId, display_name, 'starter', new Date().toISOString().split('T')[0], 'active']);
+    }
+    // Auto-créer l'entrée team_member si rôle team
+    if (['chatter', 'outreach', 'va'].includes(role)) {
+      await pool.query('INSERT INTO team_members (user_id, name, role, status) VALUES ($1, $2, $3, $4)', [newId, display_name, role, 'offline']);
+    }
+    res.json({ id: newId, username, display_name, role });
   } catch (e) {
     res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
   }
