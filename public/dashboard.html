@@ -980,6 +980,34 @@
     </div>
   </div>
 
+  <div id="nav-student" class="nav-section" style="display:none">
+    <div class="nav-label">Mon espace</div>
+    <div class="nav-item" data-section="student-home" onclick="switchSection(event)">
+      <span class="nav-icon">🏠</span> Tableau de bord
+    </div>
+    <div class="nav-item" data-section="student-outreach" onclick="switchSection(event)">
+      <span class="nav-icon">📨</span> Outreach
+    </div>
+    <div class="nav-item" data-section="student-recruits" onclick="switchSection(event)">
+      <span class="nav-icon">🎯</span> Recrutement
+    </div>
+    <div class="nav-item" data-section="student-models" onclick="switchSection(event)">
+      <span class="nav-icon">👤</span> Mes modèles
+    </div>
+    <div class="nav-item" data-section="student-revenue" onclick="switchSection(event)">
+      <span class="nav-icon">💰</span> Revenus
+    </div>
+    <div class="nav-item" data-section="student-messages" onclick="switchSection(event)">
+      <span class="nav-icon">💬</span> Messages <span id="msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
+    </div>
+    <div class="nav-item" data-section="student-resources" onclick="switchSection(event)">
+      <span class="nav-icon">📚</span> Formation
+    </div>
+    <div class="nav-item" data-section="student-objectives" onclick="switchSection(event)">
+      <span class="nav-icon">🎯</span> Objectifs
+    </div>
+  </div>
+
   <div id="nav-admin" class="nav-section" style="display:none">
     <div class="nav-label">Admin</div>
     <div class="nav-item" data-section="settings" onclick="switchSection(event)">
@@ -1269,16 +1297,10 @@
     <div class="page-header">
       <div>
         <div class="page-title">Coaching</div>
-        <div class="page-subtitle">Appels et coaching avec les étudiants</div>
+        <div class="page-subtitle">Suivi complet des élèves</div>
       </div>
-      <div class="header-actions" id="coaching-actions"></div>
     </div>
-    <div class="panel">
-      <table class="table" id="coaching-table">
-        <thead><tr><th>Étudiant</th><th>Type d'appel</th><th>Date/Heure</th><th>Notes</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <div id="coaching-content"></div>
   </div>
 
   <!-- PERFORMANCES SECTION -->
@@ -1316,6 +1338,16 @@
       <div style="position:relative;height:300px"><canvas id="chart-leads"></canvas></div>
     </div>
   </div>
+
+  <!-- STUDENT SECTIONS -->
+  <div class="section" id="section-student-home"></div>
+  <div class="section" id="section-student-outreach"></div>
+  <div class="section" id="section-student-recruits"></div>
+  <div class="section" id="section-student-models"></div>
+  <div class="section" id="section-student-revenue"></div>
+  <div class="section" id="section-student-messages"></div>
+  <div class="section" id="section-student-resources"></div>
+  <div class="section" id="section-student-objectives"></div>
 
   <!-- SETTINGS SECTION (Admin Only) -->
   <div class="section" id="section-settings">
@@ -1600,7 +1632,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Plateformes (séparées par des virgules)</label>
-          <input class="form-input" type="text" name="platforms" placeholder="Ex: onlyfans, fansly">
+          <input class="form-input" type="text" name="platforms" placeholder="Ex: onlyfans, instagram, tiktok">
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
@@ -1636,7 +1668,6 @@
           <label class="form-label">Plateforme</label>
           <select class="form-select" name="platform" required>
             <option value="onlyfans">OnlyFans</option>
-            <option value="fansly">Fansly</option>
             <option value="instagram">Instagram</option>
             <option value="tiktok">TikTok</option>
             <option value="telegram">Telegram</option>
@@ -1680,6 +1711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyRoleBasedAccess();
     renderAllSections();
     renderSettings();
+    await initStudentSections();
   } catch (err) {
     console.error('Init error:', err);
     window.location.href = '/';
@@ -1754,7 +1786,7 @@ function applyRoleBasedAccess() {
     chatter: ['nav-principal', 'nav-teams'],
     outreach: ['nav-principal', 'nav-teams'],
     va: ['nav-principal', 'nav-teams'],
-    student: []
+    student: ['nav-principal', 'nav-student']
   };
 
   const visibleSections = {
@@ -1763,11 +1795,11 @@ function applyRoleBasedAccess() {
     chatter: ['planning', 'tasks', 'chatters'],
     outreach: ['planning', 'tasks', 'outreach'],
     va: ['planning', 'tasks', 'va'],
-    student: ['dashboard']
+    student: ['student-home', 'student-outreach', 'student-recruits', 'student-models', 'student-revenue', 'student-messages', 'student-resources', 'student-objectives']
   };
 
   // Show/hide nav sections
-  ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'].forEach(id => {
+  ['nav-principal', 'nav-teams', 'nav-tools', 'nav-student', 'nav-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
   });
@@ -1806,6 +1838,18 @@ function switchSection(e) {
     document.querySelector('.sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('show');
   }
+  // Charger les sections élève dynamiquement
+  const loaders = {
+    'student-home': renderStudentHome,
+    'student-outreach': renderStudentOutreach,
+    'student-recruits': renderStudentRecruits,
+    'student-models': renderStudentModels,
+    'student-revenue': renderStudentRevenue,
+    'student-messages': renderStudentMessages,
+    'student-resources': renderStudentResources,
+    'student-objectives': renderStudentObjectives
+  };
+  if (loaders[section]) loaders[section]();
 }
 
 function toggleSidebar() {
@@ -2292,8 +2336,8 @@ function renderTeamTable(tableId, members) {
 }
 
 function renderStats() {
-  const platformIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '⭐', telegram: '✈️' };
-  const platformColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#00AFF0', fansly: '#1FA2F1', telegram: '#229ED9' };
+  const platformIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', telegram: '✈️' };
+  const platformColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#00AFF0', telegram: '#229ED9' };
 
   // KPIs globaux
   const totalFollowers = allAccounts.reduce((sum, a) => sum + (a.current_followers || 0), 0);
@@ -2399,24 +2443,219 @@ async function reloadAccounts() {
   } catch (e) {}
 }
 
-function renderCoaching() {
-  const table = document.getElementById('coaching-table');
-  table.classList.add('mobile-cards');
-  const tbody = table.querySelector('tbody');
-  tbody.innerHTML = allCalls.map(c => `
-    <tr>
-      <td data-label="" class="mc-title"><strong>${c.student_name}</strong></td>
-      <td data-label="Type" class="mc-half">${c.type}</td>
-      <td data-label="Date" class="mc-half">${c.scheduled_at}</td>
-      <td data-label="Notes" class="mc-full">${c.notes || 'N/A'}</td>
-      <td data-label="" class="mc-actions">${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">✕</button>` : ''}</td>
-    </tr>
-  `).join('');
+async function renderCoaching() {
+  if (currentUser.role !== 'admin') return;
+  const container = document.getElementById('coaching-content');
+  if (!container) return;
 
-  if (currentUser.role === 'admin') {
-    document.getElementById('coaching-actions').innerHTML =
-      `<button class="btn btn-primary" onclick="openModal('add-call')">+ Programmer un call</button>`;
+  const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
+  const [callRequests, recruits, allStudentModels, allRevenue, objectives] = await Promise.all([
+    f('/api/call-requests'), f('/api/student-recruits'), f('/api/student-models'), f('/api/student-revenue'), f('/api/objectives')
+  ]);
+
+  const students = allStudents.filter(s => s.user_id);
+  const pendingCalls = callRequests.filter(c => c.status === 'pending');
+  const thisWeek = getWeekStart();
+
+  container.innerHTML = `
+    <!-- Élèves + Progression -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Suivi des élèves</h3>
+      <div style="display:grid;gap:12px">
+        ${students.map(s => {
+          const step = s.progression_step || 'onboarding';
+          const stepIdx = STEPS.findIndex(st => st.key === step);
+          const pct = Math.round(((stepIdx + 1) / STEPS.length) * 100);
+          return `<div style="background:var(--bg3);padding:14px;border-radius:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>${s.name}</strong>
+              <select onchange="updateStudentProgression(${s.id},this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer">
+                ${STEPS.map(st => '<option value="' + st.key + '"' + (step===st.key?' selected':'') + '>' + st.icon + ' ' + st.label + '</option>').join('')}
+              </select>
+            </div>
+            <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px"></div></div>
+            <div style="display:flex;gap:4px;margin-top:8px">${STEPS.map((st, i) => '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + (i<=stepIdx?'var(--green-bg)':'var(--bg)') + ';color:' + (i<=stepIdx?'var(--green)':'var(--text3)') + '">' + st.icon + '</span>').join('')}</div>
+          </div>`;
+        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>'}
+      </div>
+    </div>
+
+    <!-- Demandes de call -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Demandes de call ${pendingCalls.length > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px">' + pendingCalls.length + ' en attente</span>' : ''}</h3>
+      <div style="display:grid;gap:10px">
+        ${callRequests.map(c => {
+          const stColor = c.status === 'pending' ? 'var(--yellow)' : c.status === 'accepted' ? 'var(--green)' : 'var(--red)';
+          return `<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:3px solid ${stColor}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+              <strong>${c.student_name}</strong>
+              <div style="display:flex;gap:6px">
+                ${c.status === 'pending' ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="handleCallRequest(' + c.id + ',\'accepted\')">Accepter</button><button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="handleCallRequest(' + c.id + ',\'refused\')">Refuser</button>' : '<span style="font-size:11px;font-weight:600;color:' + stColor + '">' + (c.status === 'accepted' ? 'Accepté' : 'Refusé') + '</span>'}
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text2)">${c.message || '-'}</div>
+            ${c.availabilities ? '<div style="font-size:12px;color:var(--text3);margin-top:4px">Dispo: ' + c.availabilities + '</div>' : ''}
+            ${c.status === 'accepted' && c.scheduled_at ? '<div style="font-size:12px;color:var(--green);margin-top:4px">Programmé: ' + c.scheduled_at + '</div>' : ''}
+          </div>`;
+        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucune demande</div>'}
+      </div>
+    </div>
+
+    <!-- Recrutement modèles -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Recrutement modèles — Tous les élèves</h3>
+      <table class="table mobile-cards"><thead><tr><th>Élève</th><th>Instagram</th><th>Statut</th><th>Notes</th></tr></thead><tbody>
+        ${recruits.map(r => {
+          const st = RECRUIT_STATUSES[r.status] || RECRUIT_STATUSES['interested'];
+          return '<tr><td data-label="Élève" class="mc-half"><strong>' + r.student_name + '</strong></td>'
+            + '<td data-label="" class="mc-title">' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</td>'
+            + '<td data-label="Statut" class="mc-half"><select onchange="adminUpdateRecruit(' + r.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
+            + Object.entries(RECRUIT_STATUSES).map(([k,v]) => '<option value="' + k + '"' + (r.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
+            + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (r.notes||'-') + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Aucune modèle en recrutement</td></tr>'}
+      </tbody></table>
+    </div>
+
+    <!-- Revenus élèves -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Revenus élèves</h3>
+      <table class="table mobile-cards"><thead><tr><th>Élève</th><th>Modèle</th><th>Mois</th><th>Revenue</th><th>Commission</th></tr></thead><tbody>
+        ${allRevenue.map(r => {
+          const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
+          return '<tr><td data-label="Élève" class="mc-half"><strong>' + r.student_name + '</strong></td>'
+            + '<td data-label="Modèle" class="mc-half">' + r.model_name + '</td>'
+            + '<td data-label="Mois" class="mc-half">' + r.month + '</td>'
+            + '<td data-label="Revenue" class="mc-half" style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td>'
+            + '<td data-label="Commission" class="mc-half" style="color:var(--accent)">$' + comm + ' (' + r.commission_rate + '%)</td></tr>';
+        }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Aucun revenu</td></tr>'}
+      </tbody></table>
+    </div>
+
+    <!-- Objectifs -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Objectifs hebdo — ${thisWeek}</h3>
+        <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="showAddObjectiveForm()">+ Ajouter</button>
+      </div>
+      <div id="admin-obj-form-wrap"></div>
+      <div style="display:grid;gap:10px">
+        ${objectives.filter(o => o.week_start === thisWeek).map(o => {
+          const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
+          const done = pct >= 100;
+          return `<div style="background:var(--bg3);padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div><strong>${o.student_name}</strong> — ${o.description || o.obj_type}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${done?'var(--green)':'var(--accent)'};border-radius:3px"></div></div>
+              <span style="font-size:13px;font-weight:700;color:${done?'var(--green)':'var(--text)'}">${o.current}/${o.target}</span>
+              <button class="btn-delete-small" onclick="deleteAdminObjective(${o.id})">✕</button>
+            </div>
+          </div>`;
+        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun objectif cette semaine</div>'}
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="panel" style="padding:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Messagerie</h3>
+      <div style="display:flex;gap:0;height:400px;border-radius:12px;overflow:hidden;border:1px solid var(--border)">
+        <div id="admin-chat-contacts" style="width:220px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0"></div>
+        <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
+          <div id="admin-chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px">Sélectionne un élève</div>
+          <div id="admin-chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px"></div>
+          <div id="admin-chat-input-wrap" style="padding:10px;border-top:1px solid var(--border);display:none">
+            <div style="display:flex;gap:8px"><input type="text" id="admin-chat-input" class="form-input" placeholder="Répondre..." style="flex:1" onkeydown="if(event.key==='Enter')sendAdminMessage()"><button class="btn btn-primary" onclick="sendAdminMessage()" style="padding:8px 14px">Envoyer</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Load admin chat contacts
+  const convos = await f('/api/conversations');
+  const adminContacts = document.getElementById('admin-chat-contacts');
+  adminContacts.innerHTML = convos.map(c => `
+    <div onclick="openAdminChat(${c.id})" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:${currentChatUserId===c.id?'var(--bg3)':'transparent'}">
+      ${avatarHTML(c, 30)}
+      <div style="flex:1;overflow:hidden"><div style="font-size:12px;font-weight:600">${c.display_name}</div></div>
+      ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:9px;padding:1px 5px;border-radius:10px">' + c.unread + '</span>' : ''}
+    </div>
+  `).join('');
+}
+
+async function updateStudentProgression(studentId, step) {
+  await fetch('/api/students/' + studentId + '/progression', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ progression_step: step }) });
+  showToast('Progression mise à jour', 'success');
+}
+
+async function handleCallRequest(id, status) {
+  let scheduled_at = null;
+  if (status === 'accepted') {
+    scheduled_at = prompt('Date et heure du call (ex: 2026-03-28 15:00)');
+    if (!scheduled_at) return;
   }
+  await fetch('/api/call-requests/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status, scheduled_at }) });
+  showToast(status === 'accepted' ? 'Call accepté' : 'Call refusé', status === 'accepted' ? 'success' : 'info');
+  renderCoaching();
+}
+
+async function adminUpdateRecruit(id, status) {
+  await fetch('/api/student-recruits/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) });
+}
+
+function showAddObjectiveForm() {
+  const wrap = document.getElementById('admin-obj-form-wrap');
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  const studentOpts = allStudents.filter(s => s.user_id).map(s => '<option value="' + s.user_id + '">' + s.name + '</option>').join('');
+  wrap.innerHTML = `<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+    <div><label style="font-size:11px;color:var(--text3)">Élève</label><select id="obj-student" class="form-input" style="font-size:12px">${studentOpts}</select></div>
+    <div><label style="font-size:11px;color:var(--text3)">Type</label><select id="obj-type" class="form-input" style="font-size:12px"><option value="leads">Leads</option><option value="dms">DMs</option><option value="calls">Calls modèles</option><option value="custom">Autre</option></select></div>
+    <div><label style="font-size:11px;color:var(--text3)">Description</label><input type="text" id="obj-desc" class="form-input" style="font-size:12px" placeholder="Ex: 100 leads"></div>
+    <div><label style="font-size:11px;color:var(--text3)">Objectif</label><input type="number" id="obj-target" class="form-input" style="font-size:12px;width:80px" placeholder="100"></div>
+    <button class="btn btn-primary" style="font-size:12px;padding:8px 14px" onclick="addAdminObjective()">Ajouter</button>
+  </div>`;
+}
+
+async function addAdminObjective() {
+  const user_id = document.getElementById('obj-student').value;
+  const obj_type = document.getElementById('obj-type').value;
+  const description = document.getElementById('obj-desc').value.trim();
+  const target = parseInt(document.getElementById('obj-target').value) || 0;
+  await fetch('/api/objectives', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ user_id, week_start: getWeekStart(), obj_type, description, target }) });
+  showToast('Objectif ajouté', 'success'); renderCoaching();
+}
+
+async function deleteAdminObjective(id) {
+  await fetch('/api/objectives/' + id, { method: 'DELETE', credentials: 'include' });
+  renderCoaching();
+}
+
+let adminChatUserId = null;
+async function openAdminChat(userId) {
+  adminChatUserId = userId;
+  currentChatUserId = userId;
+  const convos = await fetch('/api/conversations', { credentials: 'include' }).then(r => r.json());
+  const contact = convos.find(c => c.id === userId);
+  document.getElementById('admin-chat-header').textContent = contact?.display_name || 'Chat';
+  document.getElementById('admin-chat-input-wrap').style.display = 'block';
+  const res = await fetch('/api/messages/' + userId, { credentials: 'include' });
+  if (res.ok) {
+    const msgs = await res.json();
+    const container = document.getElementById('admin-chat-messages');
+    container.innerHTML = msgs.map(m => {
+      const isMe = m.from_user_id === currentUser.id;
+      return '<div style="display:flex;justify-content:' + (isMe ? 'flex-end' : 'flex-start') + '"><div style="max-width:70%;padding:8px 12px;border-radius:' + (isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px') + ';background:' + (isMe ? 'var(--accent)' : 'var(--bg3)') + ';color:' + (isMe ? 'white' : 'var(--text)') + ';font-size:13px">' + m.content + '<div style="font-size:10px;margin-top:3px;opacity:0.6">' + new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '</div></div></div>';
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function sendAdminMessage() {
+  const input = document.getElementById('admin-chat-input');
+  const content = input.value.trim();
+  if (!content || !adminChatUserId) return;
+  input.value = '';
+  await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ to_user_id: adminChatUserId, content }) });
+  openAdminChat(adminChatUserId);
 }
 
 let chartFollowers = null;
@@ -2799,6 +3038,21 @@ function connectWebSocket() {
     if (msg.event === 'followers-updated') {
       await reloadAccounts();
       showToast(`Followers mis à jour (${msg.data.updated} comptes)`, 'success');
+    }
+    if (msg.event === 'new-message') {
+      if (msg.data.to_user_id === currentUser.id) {
+        showToast('Nouveau message de ' + (msg.data.from_name || 'quelqu\'un'), 'info');
+        if (currentChatUserId === msg.data.from_user_id) {
+          const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
+          if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }
+        }
+        // Update badge
+        const badge = document.getElementById('msg-badge');
+        if (badge) { badge.style.display = ''; badge.textContent = parseInt(badge.textContent || 0) + 1; }
+      }
+    }
+    if (msg.event === 'call-request-new' || msg.event === 'call-request-updated') {
+      if (currentUser.role === 'student') renderStudentHome();
     }
   });
 
@@ -3272,6 +3526,7 @@ async function deleteUser(userId) {
   }
 }
 </script>
+<script src="/student.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {

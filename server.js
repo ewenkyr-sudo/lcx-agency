@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lcx-agency-secret-change-me-in-production';
 
 // ============ MIDDLEWARE ============
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -95,10 +95,15 @@ async function initDB() {
       models_signed INTEGER DEFAULT 0,
       active_discussions INTEGER DEFAULT 0,
       progression INTEGER DEFAULT 0,
+      progression_step TEXT DEFAULT 'onboarding',
       contact TEXT,
       status TEXT DEFAULT 'active',
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    DO $$ BEGIN
+      ALTER TABLE students ADD COLUMN IF NOT EXISTS progression_step TEXT DEFAULT 'onboarding';
+    EXCEPTION WHEN others THEN NULL;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS tasks (
       id SERIAL PRIMARY KEY,
@@ -162,6 +167,102 @@ async function initDB() {
       shift_notes TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+
+    -- Call requests (élèves demandent un call)
+    CREATE TABLE IF NOT EXISTS call_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT,
+      availabilities TEXT,
+      status TEXT DEFAULT 'pending',
+      scheduled_at TEXT,
+      admin_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Modèles recrutées par les élèves
+    CREATE TABLE IF NOT EXISTS student_recruits (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ig_name TEXT NOT NULL,
+      ig_link TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'interested',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Leads outreach des élèves (isolé par élève)
+    CREATE TABLE IF NOT EXISTS student_leads (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      username TEXT NOT NULL,
+      ig_link TEXT,
+      lead_type TEXT DEFAULT 'model',
+      script_used TEXT,
+      ig_account_used TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'to-send',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Modèles gérées par les élèves (séparé de l'agence)
+    CREATE TABLE IF NOT EXISTS student_models (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      of_handle TEXT,
+      fans_count INTEGER DEFAULT 0,
+      commission_rate NUMERIC(5,2) DEFAULT 0,
+      status TEXT DEFAULT 'onboarding',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Revenus mensuels des élèves par modèle
+    CREATE TABLE IF NOT EXISTS student_revenue (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      student_model_id INTEGER NOT NULL REFERENCES student_models(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      revenue NUMERIC(10,2) DEFAULT 0,
+      UNIQUE(student_model_id, month)
+    );
+
+    -- Messagerie interne
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Ressources / Formation
+    CREATE TABLE IF NOT EXISTS resources (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      res_type TEXT DEFAULT 'link',
+      url TEXT,
+      file_data BYTEA,
+      file_name TEXT,
+      file_mime TEXT,
+      description TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Objectifs hebdomadaires
+    CREATE TABLE IF NOT EXISTS weekly_objectives (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      week_start TEXT NOT NULL,
+      obj_type TEXT NOT NULL,
+      description TEXT,
+      target INTEGER DEFAULT 0,
+      current INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 }
 
@@ -221,10 +322,10 @@ async function seedData() {
 
   // Models
   const modelData = [
-    ['Luna', '["onlyfans","fansly"]', 'active'],
+    ['Luna', '["onlyfans"]', 'active'],
     ['Jade', '["onlyfans"]', 'active'],
-    ['Mia', '["onlyfans","fansly"]', 'active'],
-    ['Emma', '["fansly"]', 'onboarding'],
+    ['Mia', '["onlyfans"]', 'active'],
+    ['Emma', '["onlyfans"]', 'onboarding'],
     ['Clara', '["onlyfans"]', 'active'],
   ];
   for (const m of modelData) {
@@ -999,6 +1100,342 @@ app.get('/api/charts/leads', authMiddleware, async (req, res) => {
     ORDER BY date ASC
   `, [days]);
   res.json(rows);
+});
+
+// ============ STUDENT PROGRESSION ============
+app.put('/api/students/:id/progression', authMiddleware, adminOnly, async (req, res) => {
+  const { progression_step } = req.body;
+  const steps = ['onboarding', 'accounts-setup', 'outreach', 'model-setup', 'traffic'];
+  if (!steps.includes(progression_step)) return res.status(400).json({ error: 'Étape invalide' });
+  const progression = Math.round(((steps.indexOf(progression_step) + 1) / steps.length) * 100);
+  await pool.query('UPDATE students SET progression_step = $1, progression = $2 WHERE id = $3', [progression_step, progression, req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ CALL REQUESTS ============
+app.get('/api/call-requests', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const { rows } = await pool.query('SELECT * FROM call_requests WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query(`SELECT cr.*, u.display_name as student_name FROM call_requests cr JOIN users u ON cr.user_id = u.id ORDER BY CASE cr.status WHEN 'pending' THEN 0 ELSE 1 END, cr.created_at DESC`);
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+app.post('/api/call-requests', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Réservé aux élèves' });
+  const { message, availabilities } = req.body;
+  const { rows } = await pool.query('INSERT INTO call_requests (user_id, message, availabilities) VALUES ($1, $2, $3) RETURNING *', [req.user.id, message, availabilities]);
+  broadcast('call-request-new', rows[0]);
+  res.json(rows[0]);
+});
+
+app.put('/api/call-requests/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { status, scheduled_at, admin_notes } = req.body;
+  await pool.query('UPDATE call_requests SET status = COALESCE($1, status), scheduled_at = COALESCE($2, scheduled_at), admin_notes = COALESCE($3, admin_notes) WHERE id = $4', [status, scheduled_at, admin_notes, req.params.id]);
+  broadcast('call-request-updated', { id: parseInt(req.params.id), status });
+  res.json({ ok: true });
+});
+
+app.delete('/api/call-requests/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM call_requests WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM call_requests WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ STUDENT RECRUITS (modèles recrutées) ============
+app.get('/api/student-recruits', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const { rows } = await pool.query('SELECT * FROM student_recruits WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query('SELECT sr.*, u.display_name as student_name FROM student_recruits sr JOIN users u ON sr.user_id = u.id ORDER BY sr.created_at DESC');
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+app.post('/api/student-recruits', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { ig_name, ig_link, notes } = req.body;
+  if (!ig_name) return res.status(400).json({ error: 'Nom Instagram requis' });
+  const uid = req.body.user_id || req.user.id;
+  const { rows } = await pool.query('INSERT INTO student_recruits (user_id, ig_name, ig_link, notes) VALUES ($1, $2, $3, $4) RETURNING *', [uid, ig_name, ig_link, notes]);
+  res.json(rows[0]);
+});
+
+app.put('/api/student-recruits/:id', authMiddleware, async (req, res) => {
+  const { status, notes } = req.body;
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_recruits WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('UPDATE student_recruits SET status = COALESCE($1, status), notes = COALESCE($2, notes) WHERE id = $3', [status, notes, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/student-recruits/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_recruits WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM student_recruits WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ STUDENT LEADS (outreach élèves) ============
+app.get('/api/student-leads', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const { rows } = await pool.query('SELECT * FROM student_leads WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const userId = req.query.user_id;
+    if (userId) {
+      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [userId]);
+      return res.json(rows);
+    }
+    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id ORDER BY sl.created_at DESC');
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+app.post('/api/student-leads', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { username, ig_link, lead_type, script_used, notes, status } = req.body;
+  if (!username) return res.status(400).json({ error: 'Username requis' });
+  const cleanUsername = username.replace(/^@/, '');
+  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, req.user.id]);
+  if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
+  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [req.user.id, username, ig_link, lead_type || 'model', script_used, notes, status || 'to-send']);
+  res.json(rows[0]);
+});
+
+app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
+  const { status, notes } = req.body;
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('UPDATE student_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3', [status, notes, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/student-leads/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM student_leads WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
+  const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
+  if (!uid) return res.status(400).json({ error: 'user_id requis' });
+  const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
+  const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
+  const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
+  const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].c;
+  const booked = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].c;
+  const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'signed'", [uid])).rows[0].c;
+  const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
+  const rate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
+  res.json({ total: parseInt(total), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
+});
+
+// ============ STUDENT MODELS ============
+app.get('/api/student-models', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const { rows } = await pool.query('SELECT * FROM student_models WHERE user_id = $1 ORDER BY name', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const userId = req.query.user_id;
+    const query = userId
+      ? 'SELECT sm.*, u.display_name as student_name FROM student_models sm JOIN users u ON sm.user_id = u.id WHERE sm.user_id = $1 ORDER BY sm.name'
+      : 'SELECT sm.*, u.display_name as student_name FROM student_models sm JOIN users u ON sm.user_id = u.id ORDER BY u.display_name, sm.name';
+    const { rows } = await pool.query(query, userId ? [userId] : []);
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+app.post('/api/student-models', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { name, of_handle, fans_count, commission_rate, status } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nom requis' });
+  const uid = req.body.user_id || req.user.id;
+  const { rows } = await pool.query('INSERT INTO student_models (user_id, name, of_handle, fans_count, commission_rate, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [uid, name, of_handle, fans_count || 0, commission_rate || 0, status || 'onboarding']);
+  res.json(rows[0]);
+});
+
+app.put('/api/student-models/:id', authMiddleware, async (req, res) => {
+  const { name, of_handle, fans_count, commission_rate, status } = req.body;
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_models WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('UPDATE student_models SET name=COALESCE($1,name), of_handle=COALESCE($2,of_handle), fans_count=COALESCE($3,fans_count), commission_rate=COALESCE($4,commission_rate), status=COALESCE($5,status) WHERE id=$6',
+    [name, of_handle, fans_count, commission_rate, status, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/student-models/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM student_models WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM student_models WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ STUDENT REVENUE ============
+app.get('/api/student-revenue', authMiddleware, async (req, res) => {
+  const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
+  if (!uid && req.user.role === 'admin') {
+    // Admin global: all revenues with student + model names
+    const { rows } = await pool.query(`SELECT sr.*, sm.name as model_name, sm.commission_rate, u.display_name as student_name
+      FROM student_revenue sr JOIN student_models sm ON sr.student_model_id = sm.id JOIN users u ON sr.user_id = u.id ORDER BY sr.month DESC, u.display_name`);
+    return res.json(rows);
+  }
+  if (!uid) return res.status(400).json({ error: 'user_id requis' });
+  const { rows } = await pool.query(`SELECT sr.*, sm.name as model_name, sm.commission_rate
+    FROM student_revenue sr JOIN student_models sm ON sr.student_model_id = sm.id WHERE sr.user_id = $1 ORDER BY sr.month DESC`, [uid]);
+  res.json(rows);
+});
+
+app.post('/api/student-revenue', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { student_model_id, month, revenue } = req.body;
+  if (!student_model_id || !month) return res.status(400).json({ error: 'Modèle et mois requis' });
+  const uid = req.body.user_id || req.user.id;
+  const { rows } = await pool.query(`INSERT INTO student_revenue (user_id, student_model_id, month, revenue) VALUES ($1, $2, $3, $4)
+    ON CONFLICT (student_model_id, month) DO UPDATE SET revenue = EXCLUDED.revenue RETURNING *`, [uid, student_model_id, month, revenue || 0]);
+  res.json(rows[0]);
+});
+
+// ============ MESSAGES (chat temps réel) ============
+app.get('/api/messages/:userId', authMiddleware, async (req, res) => {
+  const otherId = parseInt(req.params.userId);
+  const myId = req.user.id;
+  if (req.user.role !== 'admin' && req.user.role !== 'student') return res.status(403).json({ error: 'Accès refusé' });
+  const { rows } = await pool.query(`SELECT * FROM messages WHERE (from_user_id = $1 AND to_user_id = $2) OR (from_user_id = $2 AND to_user_id = $1) ORDER BY created_at ASC`, [myId, otherId]);
+  // Mark as read
+  await pool.query('UPDATE messages SET read = true WHERE to_user_id = $1 AND from_user_id = $2 AND read = false', [myId, otherId]);
+  res.json(rows);
+});
+
+app.post('/api/messages', authMiddleware, async (req, res) => {
+  const { to_user_id, content } = req.body;
+  if (!content || !to_user_id) return res.status(400).json({ error: 'Destinataire et message requis' });
+  const { rows } = await pool.query('INSERT INTO messages (from_user_id, to_user_id, content) VALUES ($1, $2, $3) RETURNING *', [req.user.id, to_user_id, content]);
+  broadcast('new-message', { ...rows[0], from_name: req.user.display_name });
+  res.json(rows[0]);
+});
+
+app.get('/api/messages-unread', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query(`SELECT from_user_id, COUNT(*) as unread FROM messages WHERE to_user_id = $1 AND read = false GROUP BY from_user_id`, [req.user.id]);
+  res.json(rows);
+});
+
+// Conversations list (admin voit tous les étudiants, étudiant voit juste l'admin)
+app.get('/api/conversations', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query(`SELECT u.id, u.display_name, u.avatar_url, (SELECT COUNT(*) FROM messages WHERE to_user_id = $1 AND from_user_id = u.id AND read = false) as unread,
+      (SELECT content FROM messages WHERE (from_user_id = u.id AND to_user_id = $1) OR (from_user_id = $1 AND to_user_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message
+      FROM users u WHERE u.role = 'student' ORDER BY unread DESC, u.display_name`, [req.user.id]);
+    return res.json(rows);
+  }
+  // Student: find admin
+  const { rows } = await pool.query(`SELECT u.id, u.display_name, u.avatar_url, (SELECT COUNT(*) FROM messages WHERE to_user_id = $1 AND from_user_id = u.id AND read = false) as unread,
+    (SELECT content FROM messages WHERE (from_user_id = u.id AND to_user_id = $1) OR (from_user_id = $1 AND to_user_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message
+    FROM users u WHERE u.role = 'admin' LIMIT 1`, [req.user.id]);
+  res.json(rows);
+});
+
+// ============ RESOURCES ============
+app.get('/api/resources', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'student') return res.status(403).json({ error: 'Accès refusé' });
+  const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources ORDER BY category, created_at DESC');
+  res.json(rows);
+});
+
+app.post('/api/resources', authMiddleware, adminOnly, async (req, res) => {
+  const { title, category, res_type, url, file_data, file_name, file_mime, description } = req.body;
+  if (!title) return res.status(400).json({ error: 'Titre requis' });
+  let fileBuffer = null;
+  if (file_data) fileBuffer = Buffer.from(file_data.split(',')[1] || file_data, 'base64');
+  const { rows } = await pool.query('INSERT INTO resources (title, category, res_type, url, file_data, file_name, file_mime, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, title, category, res_type, url, file_name, description',
+    [title, category || 'general', res_type || 'link', url, fileBuffer, file_name, file_mime, description]);
+  res.json(rows[0]);
+});
+
+app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT file_data, file_name, file_mime FROM resources WHERE id = $1', [req.params.id]);
+  if (!rows[0] || !rows[0].file_data) return res.status(404).json({ error: 'Fichier introuvable' });
+  res.set('Content-Type', rows[0].file_mime || 'application/octet-stream');
+  res.set('Content-Disposition', 'attachment; filename="' + (rows[0].file_name || 'file') + '"');
+  res.send(rows[0].file_data);
+});
+
+app.delete('/api/resources/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM resources WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ WEEKLY OBJECTIVES ============
+app.get('/api/objectives', authMiddleware, async (req, res) => {
+  if (req.user.role === 'student') {
+    const { rows } = await pool.query('SELECT * FROM weekly_objectives WHERE user_id = $1 ORDER BY week_start DESC, obj_type', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'admin') {
+    const userId = req.query.user_id;
+    const query = userId
+      ? 'SELECT wo.*, u.display_name as student_name FROM weekly_objectives wo JOIN users u ON wo.user_id = u.id WHERE wo.user_id = $1 ORDER BY wo.week_start DESC, wo.obj_type'
+      : 'SELECT wo.*, u.display_name as student_name FROM weekly_objectives wo JOIN users u ON wo.user_id = u.id ORDER BY wo.week_start DESC, u.display_name, wo.obj_type';
+    const { rows } = await pool.query(query, userId ? [userId] : []);
+    return res.json(rows);
+  }
+  res.status(403).json({ error: 'Accès refusé' });
+});
+
+app.post('/api/objectives', authMiddleware, adminOnly, async (req, res) => {
+  const { user_id, week_start, obj_type, description, target } = req.body;
+  if (!user_id || !week_start || !obj_type) return res.status(400).json({ error: 'Champs requis manquants' });
+  const { rows } = await pool.query('INSERT INTO weekly_objectives (user_id, week_start, obj_type, description, target) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [user_id, week_start, obj_type, description, target || 0]);
+  res.json(rows[0]);
+});
+
+app.put('/api/objectives/:id', authMiddleware, async (req, res) => {
+  const { current, target, description } = req.body;
+  if (req.user.role === 'student') {
+    const check = await pool.query('SELECT id FROM weekly_objectives WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+    // Élèves ne peuvent que mettre à jour le current
+    await pool.query('UPDATE weekly_objectives SET current = COALESCE($1, current) WHERE id = $2', [current, req.params.id]);
+  } else if (req.user.role === 'admin') {
+    await pool.query('UPDATE weekly_objectives SET current=COALESCE($1,current), target=COALESCE($2,target), description=COALESCE($3,description) WHERE id=$4',
+      [current, target, description, req.params.id]);
+  } else return res.status(403).json({ error: 'Accès refusé' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/objectives/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM weekly_objectives WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
 });
 
 // ============ SERVE FRONTEND ============
