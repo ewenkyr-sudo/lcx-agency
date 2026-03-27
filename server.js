@@ -37,6 +37,7 @@ async function initDB() {
     );
     DO $$ BEGIN
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password TEXT;
     EXCEPTION WHEN others THEN NULL;
     END $$;
 
@@ -274,50 +275,50 @@ async function seedData() {
   console.log('Seeding initial data...');
 
   const adminHash = bcrypt.hashSync('admin123', 10);
-  await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', ['ewen', adminHash, 'Ewen', 'admin']);
+  await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', ['ewen', adminHash, 'Ewen', 'admin', 'admin123']);
 
   const defaultHash = bcrypt.hashSync('team123', 10);
   const studentHash = bcrypt.hashSync('eleve123', 10);
 
   const teamUsers = [
-    ['sarah', defaultHash, 'Sarah', 'chatter'],
-    ['tom', defaultHash, 'Tom', 'chatter'],
-    ['karim', defaultHash, 'Karim', 'chatter'],
-    ['lea', defaultHash, 'Léa', 'chatter'],
-    ['nathan', defaultHash, 'Nathan', 'chatter'],
-    ['maxime', defaultHash, 'Maxime', 'outreach'],
-    ['yasmine', defaultHash, 'Yasmine', 'outreach'],
-    ['dylan', defaultHash, 'Dylan', 'outreach'],
-    ['ines', defaultHash, 'Inès', 'outreach'],
-    ['amine', defaultHash, 'Amine', 'va'],
-    ['rania', defaultHash, 'Rania', 'va'],
-    ['jules', defaultHash, 'Jules', 'va'],
+    ['sarah', defaultHash, 'Sarah', 'chatter', 'team123'],
+    ['tom', defaultHash, 'Tom', 'chatter', 'team123'],
+    ['karim', defaultHash, 'Karim', 'chatter', 'team123'],
+    ['lea', defaultHash, 'Léa', 'chatter', 'team123'],
+    ['nathan', defaultHash, 'Nathan', 'chatter', 'team123'],
+    ['maxime', defaultHash, 'Maxime', 'outreach', 'team123'],
+    ['yasmine', defaultHash, 'Yasmine', 'outreach', 'team123'],
+    ['dylan', defaultHash, 'Dylan', 'outreach', 'team123'],
+    ['ines', defaultHash, 'Inès', 'outreach', 'team123'],
+    ['amine', defaultHash, 'Amine', 'va', 'team123'],
+    ['rania', defaultHash, 'Rania', 'va', 'team123'],
+    ['jules', defaultHash, 'Jules', 'va', 'team123'],
   ];
   for (const u of teamUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
   }
 
   const modelUsers = [
-    ['luna', defaultHash, 'Luna', 'model'],
-    ['jade', defaultHash, 'Jade', 'model'],
-    ['mia', defaultHash, 'Mia', 'model'],
-    ['emma', defaultHash, 'Emma', 'model'],
-    ['clara', defaultHash, 'Clara', 'model'],
+    ['luna', defaultHash, 'Luna', 'model', 'team123'],
+    ['jade', defaultHash, 'Jade', 'model', 'team123'],
+    ['mia', defaultHash, 'Mia', 'model', 'team123'],
+    ['emma', defaultHash, 'Emma', 'model', 'team123'],
+    ['clara', defaultHash, 'Clara', 'model', 'team123'],
   ];
   for (const u of modelUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
   }
 
   const studentUsers = [
-    ['lucas', studentHash, 'Lucas', 'student'],
-    ['theo', studentHash, 'Théo', 'student'],
-    ['yassine', studentHash, 'Yassine', 'student'],
-    ['enzo', studentHash, 'Enzo', 'student'],
-    ['mehdi', studentHash, 'Mehdi', 'student'],
-    ['rayan', studentHash, 'Rayan', 'student'],
+    ['lucas', studentHash, 'Lucas', 'student', 'eleve123'],
+    ['theo', studentHash, 'Théo', 'student', 'eleve123'],
+    ['yassine', studentHash, 'Yassine', 'student', 'eleve123'],
+    ['enzo', studentHash, 'Enzo', 'student', 'eleve123'],
+    ['mehdi', studentHash, 'Mehdi', 'student', 'eleve123'],
+    ['rayan', studentHash, 'Rayan', 'student', 'eleve123'],
   ];
   for (const u of studentUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
   }
 
   // Models
@@ -459,7 +460,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, created_at FROM users ORDER BY role, display_name');
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, plain_password, created_at FROM users ORDER BY role, display_name');
   res.json(rows);
 });
 
@@ -468,7 +469,7 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
   if (!username || !password || !display_name || !role) return res.status(400).json({ error: 'Champs requis manquants' });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4) RETURNING id', [username, hash, display_name, role]);
+    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, hash, display_name, role, password]);
     res.json({ id: rows[0].id, username, display_name, role });
   } catch (e) {
     res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
@@ -478,7 +479,7 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/password', authMiddleware, adminOnly, async (req, res) => {
   const { password } = req.body;
   const hash = bcrypt.hashSync(password, 10);
-  await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, req.params.id]);
+  await pool.query('UPDATE users SET password = $1, plain_password = $2 WHERE id = $3', [hash, password, req.params.id]);
   res.json({ ok: true });
 });
 
@@ -745,7 +746,7 @@ app.post('/api/admin/reset-passwords', authMiddleware, adminOnly, async (req, re
   const { role, new_password } = req.body;
   if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' });
   const hash = bcrypt.hashSync(new_password, 10);
-  const result = await pool.query('UPDATE users SET password = $1 WHERE role = $2 AND id != $3', [hash, role, req.user.id]);
+  const result = await pool.query('UPDATE users SET password = $1, plain_password = $2 WHERE role = $3 AND id != $4', [hash, new_password, role, req.user.id]);
   res.json({ ok: true, updated: result.rowCount });
 });
 
@@ -757,7 +758,7 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     if (!gaby) {
       const hash = bcrypt.hashSync('team123', 10);
       gaby = (await pool.query(
-        "INSERT INTO users (username, password, display_name, role) VALUES ('gaby', $1, 'Gaby', 'outreach') RETURNING id", [hash]
+        "INSERT INTO users (username, password, display_name, role, plain_password) VALUES ('gaby', $1, 'Gaby', 'outreach', 'team123') RETURNING id", [hash]
       )).rows[0];
       // Créer aussi comme team member
       await pool.query(

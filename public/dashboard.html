@@ -1435,7 +1435,7 @@
         <div style="overflow-x:auto">
           <table class="data-table table mobile-cards" id="settings-users-tbl" style="width:100%">
             <thead><tr>
-              <th>Photo</th><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Mot de passe</th><th>Actions</th>
+              <th>Photo</th><th>Nom</th><th>Identifiant</th><th>Mdp actuel</th><th>Rôle</th><th>Nouveau mdp</th><th>Actions</th>
             </tr></thead>
             <tbody id="settings-users-table"></tbody>
           </table>
@@ -3356,14 +3356,17 @@ function renderSettings() {
         </div>
         <strong>${u.display_name}</strong> <span style="color:var(--text3);font-size:12px">@${u.username}</span>
       </td>
+      <td data-label="Mdp actuel" class="mc-half">
+        <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--yellow)">${u.plain_password || '???'}</code>
+      </td>
       <td data-label="Rôle" class="mc-half">
         <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </td>
-      <td data-label="Mot de passe" class="mc-half">
+      <td data-label="Nouveau mdp" class="mc-half">
         <div style="display:flex;gap:6px;align-items:center;width:100%">
-          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;flex:1" placeholder="Nouveau mdp">
+          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;flex:1" placeholder="Changer le mdp">
           <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="changeUserPassword(${u.id})">OK</button>
         </div>
       </td>
