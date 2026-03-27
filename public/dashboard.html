@@ -1181,7 +1181,7 @@
       <div class="panel" style="padding:20px">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par assistante</h3>
         <table class="table mobile-cards" id="outreach-agents-table">
-          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs envoyés</th><th>Talking Cold</th><th>Talking Warm</th><th>Call Booked</th><th>Signés</th><th>Total leads</th></tr></thead>
+          <thead><tr><th>Assistante</th><th>Leads auj.</th><th>DMs auj.</th><th>DMs total</th><th>Cold</th><th>Warm</th><th>Booked</th><th>Signés</th><th>Total</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -3163,7 +3163,8 @@ async function loadOutreachKPIs() {
         tbody.innerHTML = agents.map(a => `<tr>
           <td data-label="" class="mc-title"><strong>${a.agent_name}</strong></td>
           <td data-label="Leads auj." class="mc-half">${a.leads_today}</td>
-          <td data-label="DMs" class="mc-half">${a.dm_sent}</td>
+          <td data-label="DMs auj." class="mc-half" style="color:var(--blue)">${a.dm_sent_today || 0}</td>
+          <td data-label="DMs total" class="mc-half">${a.dm_sent}</td>
           <td data-label="Cold" class="mc-half">${a.talking_cold}</td>
           <td data-label="Warm" class="mc-half" style="color:var(--yellow)">${a.talking_warm}</td>
           <td data-label="Booked" class="mc-half" style="color:var(--green)">${a.call_booked}</td>
