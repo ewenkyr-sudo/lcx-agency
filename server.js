@@ -1247,12 +1247,16 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
 });
 
 app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
-  const { status, notes } = req.body;
+  const { status, notes, lead_type, script_used, ig_account_used } = req.body;
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM student_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
   } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  await pool.query('UPDATE student_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3', [status, notes, req.params.id]);
+  await pool.query(`UPDATE student_leads SET
+    status = COALESCE($1, status), notes = COALESCE($2, notes),
+    lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
+    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW() WHERE id = $6`,
+    [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
   res.json({ ok: true });
 });
 

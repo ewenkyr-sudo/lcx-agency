@@ -169,6 +169,23 @@ async function renderStudentOutreach() {
   renderStudentLeadTable();
 }
 
+function inlineSelect(leadId, field, currentValue, optType) {
+  const opts = userOptions[optType] || [];
+  const selectStyle = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
+  let html = '<select onchange="updateStudentLeadField(' + leadId + ',\'' + field + '\',this.value)" style="' + selectStyle + '">';
+  html += '<option value="">-</option>';
+  // Ajouter la valeur actuelle si elle n'est pas dans les options
+  const hasCurrentInOpts = opts.some(o => o.value === currentValue);
+  if (currentValue && !hasCurrentInOpts) {
+    html += '<option value="' + currentValue + '" selected>' + currentValue + '</option>';
+  }
+  opts.forEach(o => {
+    html += '<option value="' + o.value + '"' + (o.value === currentValue ? ' selected' : '') + '>' + o.value + '</option>';
+  });
+  html += '</select>';
+  return html;
+}
+
 function renderStudentLeadTable() {
   const search = (document.getElementById('student-lead-search')?.value || '').toLowerCase();
   let filtered = studentLeadFilter === 'all' ? studentData.leads : studentData.leads.filter(l => l.status === studentLeadFilter);
@@ -181,9 +198,9 @@ function renderStudentLeadTable() {
     const igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
     return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
-      + '<td data-label="Type" class="mc-half">' + (l.lead_type || '-') + '</td>'
-      + '<td data-label="Script" class="mc-half">' + (l.script_used || '-') + '</td>'
-      + '<td data-label="Compte" class="mc-half">' + (l.ig_account_used || '-') + '</td>'
+      + '<td data-label="Type" class="mc-half">' + inlineSelect(l.id, 'lead_type', l.lead_type, 'type') + '</td>'
+      + '<td data-label="Script" class="mc-half">' + inlineSelect(l.id, 'script_used', l.script_used, 'script') + '</td>'
+      + '<td data-label="Compte" class="mc-half">' + inlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateStudentLead(' + l.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(leadStatusColors).map(([k,v]) => '<option value="' + k + '"' + (l.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
@@ -270,6 +287,15 @@ async function addStudentLead() {
 async function updateStudentLead(id, status) {
   await fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) });
   await loadStudentData(); renderStudentLeadTable();
+}
+
+async function updateStudentLeadField(id, field, value) {
+  const body = {};
+  body[field] = value;
+  await fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+  // Mettre à jour localement sans tout recharger
+  const lead = studentData.leads.find(l => l.id === id);
+  if (lead) lead[field] = value;
 }
 
 async function deleteStudentLead(id) {
