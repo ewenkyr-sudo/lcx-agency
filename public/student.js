@@ -154,7 +154,8 @@ async function renderStudentOutreach() {
     <div class="page-header"><div><div class="page-title">Mon Outreach</div><div class="page-subtitle">Gestion de mes leads</div></div>
       <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs envoyés</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">DMs aujourd'hui</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs total</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">Talking Warm</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--green)">${stats.call_booked || 0}</div><div class="stat-label">Call Booked</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${stats.reply_rate || 0}%</div><div class="stat-label">Taux de réponse</div></div>

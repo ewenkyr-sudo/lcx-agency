@@ -996,14 +996,16 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
 // Update lead status
 app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { status, notes } = req.body;
+  const { status, notes, lead_type, script_used, ig_account_used } = req.body;
   // Outreach ne peut modifier que ses propres leads
   if (req.user.role === 'outreach') {
     const check = await pool.query('SELECT id FROM outreach_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Ce lead ne t\'appartient pas' });
   }
-  await pool.query('UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3',
-    [status, notes, req.params.id]);
+  await pool.query(`UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes),
+    lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
+    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW() WHERE id = $6`,
+    [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
   broadcast('lead-updated', { id: parseInt(req.params.id), status, notes });
   res.json({ ok: true });
 });
@@ -1026,6 +1028,7 @@ app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
   const today = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const dmSentToday = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send' AND updated_at::date = CURRENT_DATE", [uid])).rows[0].count;
   const dmSent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].count;
   const warm = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].count;
   const booked = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].count;
@@ -1035,6 +1038,7 @@ app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
   const replyRate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
   res.json({
     leads_today: parseInt(today),
+    dm_sent_today: parseInt(dmSentToday),
     dm_sent: parseInt(dmSent),
     talking_warm: parseInt(warm),
     call_booked: parseInt(booked),
@@ -1273,6 +1277,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
+  const dmSentToday = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send' AND updated_at::date = CURRENT_DATE", [uid])).rows[0].c;
   const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
   const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
   const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].c;
@@ -1280,7 +1285,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'signed'", [uid])).rows[0].c;
   const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
   const rate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
-  res.json({ total: parseInt(total), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
+  res.json({ total: parseInt(total), dm_sent_today: parseInt(dmSentToday), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
 });
 
 // ============ STUDENT MODELS ============

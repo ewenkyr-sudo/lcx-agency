@@ -1168,6 +1168,7 @@
       </div>
       <div class="header-actions">
         <button class="btn btn-primary" onclick="showAddLeadForm()">+ Nouveau Lead</button>
+        <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOutreachOptionsManager()">Mes options</button>
         <button class="btn" id="btn-import-csv" style="background:var(--bg3);color:var(--text2);display:none" onclick="importCSV()">Importer CSV</button>
       </div>
     </div>
@@ -2300,6 +2301,7 @@ async function renderChatters() {
 }
 
 async function renderOutreach() {
+  await loadOutreachOptions();
   await loadLeads();
   renderLeads();
   await loadOutreachKPIs();
@@ -3066,6 +3068,34 @@ connectWebSocket();
 // ========== OUTREACH LEADS ==========
 let allLeads = [];
 let currentLeadFilter = 'all';
+let outreachOptions = { script: [], account: [], type: [] };
+
+async function loadOutreachOptions() {
+  try {
+    const res = await fetch('/api/user-options', { credentials: 'include' });
+    if (res.ok) outreachOptions = await res.json();
+  } catch(e) {}
+}
+
+function outreachInlineSelect(leadId, field, currentValue, optType) {
+  const opts = outreachOptions[optType] || [];
+  const style = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
+  let html = '<select onchange="updateLeadField(' + leadId + ',\'' + field + '\',this.value)" style="' + style + '">';
+  html += '<option value="">-</option>';
+  const hasVal = opts.some(o => o.value === currentValue);
+  if (currentValue && !hasVal) html += '<option value="' + currentValue + '" selected>' + currentValue + '</option>';
+  opts.forEach(o => { html += '<option value="' + o.value + '"' + (o.value === currentValue ? ' selected' : '') + '>' + o.value + '</option>'; });
+  html += '</select>';
+  return html;
+}
+
+async function updateLeadField(id, field, value) {
+  const body = {};
+  body[field] = value;
+  await fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  const lead = allLeads.find(l => l.id === id);
+  if (lead) lead[field] = value;
+}
 
 async function loadLeads() {
   if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
@@ -3086,7 +3116,8 @@ async function loadOutreachKPIs() {
         const s = await res.json();
         kpisDiv.innerHTML = `
           <div class="stat-card"><div class="stat-value">${s.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">${s.dm_sent}</div><div class="stat-label">DMs envoyés</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${s.dm_sent_today}</div><div class="stat-label">DMs aujourd'hui</div></div>
+          <div class="stat-card"><div class="stat-value">${s.dm_sent}</div><div class="stat-label">DMs total</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${s.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">${s.call_booked}</div><div class="stat-label">Call Booked</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${s.reply_rate}%</div><div class="stat-label">Taux de réponse</div></div>
@@ -3170,9 +3201,9 @@ function renderLeads() {
     return `<tr>
       <td data-label="#" style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
       <td data-label="" class="mc-title"><strong>${igLink}</strong></td>
-      <td data-label="Type" class="mc-half">${l.lead_type || '-'}</td>
-      <td data-label="Script" class="mc-half">${l.script_used || '-'}</td>
-      <td data-label="Compte IG" class="mc-half">${l.ig_account_used || '-'}</td>
+      <td data-label="Type" class="mc-half">${outreachInlineSelect(l.id, 'lead_type', l.lead_type, 'type')}</td>
+      <td data-label="Script" class="mc-half">${outreachInlineSelect(l.id, 'script_used', l.script_used, 'script')}</td>
+      <td data-label="Compte IG" class="mc-half">${outreachInlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account')}</td>
       <td data-label="Statut" class="mc-half">
         <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">
           ${Object.entries(leadStatusColors).map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('')}
@@ -3305,6 +3336,59 @@ async function importCSV() {
   }
   btn.textContent = 'Importer CSV';
   btn.disabled = false;
+}
+
+function showOutreachOptionsManager() {
+  const existing = document.getElementById('outreach-options-mgr');
+  if (existing) { existing.remove(); return; }
+  const labels = { type: 'Types de lead', script: 'Scripts', account: 'Comptes Instagram' };
+  const panel = document.createElement('div');
+  panel.id = 'outreach-options-mgr';
+  panel.className = 'panel';
+  panel.style.cssText = 'padding:20px;margin-bottom:20px';
+  panel.innerHTML = '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Gérer mes options</h3>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">'
+    + Object.entries(labels).map(function([key, label]) {
+      var opts = outreachOptions[key] || [];
+      return '<div style="background:var(--bg3);padding:14px;border-radius:10px">'
+        + '<strong style="font-size:13px;display:block;margin-bottom:10px">' + label + '</strong>'
+        + (opts.length === 0 ? '<div style="color:var(--text3);font-size:12px">Aucune option</div>' : '')
+        + opts.map(function(o) { return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px"><span>' + o.value + '</span><button class="btn-delete-small" onclick="deleteOutreachOption(' + o.id + ')" style="font-size:10px">✕</button></div>'; }).join('')
+        + '<div style="display:flex;gap:6px;margin-top:10px"><input type="text" id="new-oopt-' + key + '" class="form-input" style="font-size:12px;padding:6px 8px;flex:1" placeholder="Ajouter..."><button class="btn btn-primary" style="padding:6px 10px;font-size:11px" onclick="addOutreachOption(\'' + key + '\')">+</button></div>'
+        + '</div>';
+    }).join('')
+    + '</div>'
+    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'outreach-options-mgr\').remove()">Fermer</button></div>';
+  document.getElementById('section-outreach').querySelector('.page-header').after(panel);
+}
+
+async function addOutreachOption(optType) {
+  var input = document.getElementById('new-oopt-' + optType);
+  var value = input.value.trim();
+  if (!value) return;
+  var res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value }) });
+  if (res.ok) {
+    var opt = await res.json();
+    outreachOptions[optType].push(opt);
+    showToast('"' + value + '" ajouté', 'success');
+    document.getElementById('outreach-options-mgr').remove();
+    showOutreachOptionsManager();
+    renderLeads();
+  } else {
+    var e = await res.json();
+    showToast(e.error || 'Erreur', 'error');
+  }
+}
+
+async function deleteOutreachOption(id) {
+  await fetch('/api/user-options/' + id, { method: 'DELETE', credentials: 'include' });
+  ['script', 'account', 'type'].forEach(function(key) {
+    outreachOptions[key] = outreachOptions[key].filter(function(o) { return o.id !== id; });
+  });
+  showToast('Option supprimée', 'success');
+  document.getElementById('outreach-options-mgr').remove();
+  showOutreachOptionsManager();
+  renderLeads();
 }
 
 // ========== SETTINGS (Admin Only) ==========
