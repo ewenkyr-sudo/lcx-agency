@@ -834,15 +834,56 @@
     .page-title { font-size: 18px; }
     .header-actions { width: 100%; }
     .header-actions > div { flex-wrap: wrap; }
-    .panel { padding: 14px; overflow-x: auto; }
-    .table { font-size: 12px; min-width: 500px; }
-    .table th, .table td { padding: 8px 6px; }
-    .form-input { font-size: 14px; }
+    .panel { padding: 10px; overflow-x: visible; }
+    .form-input { font-size: 16px; padding: 12px 14px; }
     #add-lead-form > div:first-of-type,
     #add-shift-form > div:first-of-type { grid-template-columns: 1fr !important; }
     #perf-period-btns { flex-wrap: wrap; }
     #toast-container { left: 10px; right: 10px; }
     #toast-container > div { max-width: 100%; }
+
+    /* Boutons touch-friendly */
+    .btn, .btn-primary, button { min-height: 44px; font-size: 14px; }
+    .lead-filter, .perf-period { min-height: 36px !important; font-size: 13px !important; }
+    select.form-input { min-height: 44px; }
+
+    /* Tableaux -> Cartes */
+    .table.mobile-cards { min-width: 0; }
+    .table.mobile-cards thead { display: none; }
+    .table.mobile-cards tbody { display: flex; flex-direction: column; gap: 12px; }
+    .table.mobile-cards tr {
+      display: flex; flex-wrap: wrap; gap: 6px 12px;
+      background: var(--bg3); border-radius: 10px; padding: 14px;
+      position: relative; border-left: 3px solid var(--accent);
+    }
+    .table.mobile-cards td {
+      display: flex; align-items: center; gap: 6px;
+      padding: 2px 0; border: none; font-size: 13px;
+    }
+    .table.mobile-cards td::before {
+      content: attr(data-label);
+      color: var(--text3); font-size: 11px; font-weight: 600;
+      min-width: 0; white-space: nowrap;
+    }
+    .table.mobile-cards td[data-label=""]::before { display: none; }
+    .table.mobile-cards td.mc-full {
+      width: 100%; flex-basis: 100%;
+    }
+    .table.mobile-cards td.mc-title {
+      width: 100%; flex-basis: 100%; font-size: 15px; font-weight: 700;
+      padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px;
+    }
+    .table.mobile-cards td.mc-actions {
+      position: absolute; top: 10px; right: 10px;
+    }
+    .table.mobile-cards td.mc-actions::before { display: none; }
+    .table.mobile-cards td.mc-half {
+      width: calc(50% - 6px); flex-basis: calc(50% - 6px);
+      flex-direction: column; align-items: flex-start;
+    }
+    .table.mobile-cards td.mc-half::before {
+      font-size: 10px; margin-bottom: 2px;
+    }
   }
 
   @media (max-width: 400px) {
@@ -1020,7 +1061,7 @@
     <div id="chatter-admin-stats" style="margin-bottom:24px;display:none">
       <div class="panel" style="padding:20px">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par chatter</h3>
-        <table class="table" id="chatter-agents-table">
+        <table class="table mobile-cards" id="chatter-agents-table">
           <thead><tr><th>Chatter</th><th>PPV aujourd'hui</th><th>Tips aujourd'hui</th><th>PPV semaine</th><th>Tips semaine</th><th>Revenue totale</th><th>Shifts</th></tr></thead>
           <tbody></tbody>
         </table>
@@ -1099,7 +1140,7 @@
     <div id="outreach-admin-stats" style="margin-bottom:24px;display:none">
       <div class="panel" style="padding:20px">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par assistante</h3>
-        <table class="table" id="outreach-agents-table">
+        <table class="table mobile-cards" id="outreach-agents-table">
           <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs envoyés</th><th>Talking Cold</th><th>Talking Warm</th><th>Call Booked</th><th>Signés</th><th>Total leads</th></tr></thead>
           <tbody></tbody>
         </table>
@@ -1349,7 +1390,7 @@
           <button class="btn btn-primary" onclick="openModal('add-user')">+ Ajouter un utilisateur</button>
         </div>
         <div style="overflow-x:auto">
-          <table class="data-table" style="width:100%">
+          <table class="data-table table mobile-cards" id="settings-users-tbl" style="width:100%">
             <thead><tr>
               <th>Photo</th><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Mot de passe</th><th>Actions</th>
             </tr></thead>
@@ -2220,22 +2261,24 @@ function renderVA() {
 }
 
 function renderTeamTable(tableId, members) {
-  const tbody = document.querySelector(`#${tableId} tbody`);
+  const table = document.getElementById(tableId);
+  table.classList.add('mobile-cards');
+  const tbody = table.querySelector('tbody');
   tbody.innerHTML = members.map(m => {
     const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 32) : avatarHTML({ display_name: m.name }, 32);
     return `
     <tr>
-      <td>
-        <div class="member-info">
+      <td data-label="" class="mc-title">
+        <div class="member-info" style="gap:10px">
           ${av}
           <div><div class="member-name">${m.name}</div></div>
         </div>
       </td>
-      <td>${m.role}</td>
-      <td>${m.shift || 'N/A'}</td>
-      <td>${m.platform || 'N/A'}</td>
-      <td><span class="badge badge-${m.status}">${m.status}</span></td>
-      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
+      <td data-label="Rôle" class="mc-half">${m.role}</td>
+      <td data-label="Shift" class="mc-half">${m.shift || 'N/A'}</td>
+      <td data-label="Plateformes" class="mc-half">${m.platform || 'N/A'}</td>
+      <td data-label="Status" class="mc-half"><span class="badge badge-${m.status}">${m.status}</span></td>
+      <td data-label="" class="mc-actions">${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -2349,14 +2392,16 @@ async function reloadAccounts() {
 }
 
 function renderCoaching() {
-  const tbody = document.querySelector('#coaching-table tbody');
+  const table = document.getElementById('coaching-table');
+  table.classList.add('mobile-cards');
+  const tbody = table.querySelector('tbody');
   tbody.innerHTML = allCalls.map(c => `
     <tr>
-      <td>${c.student_name}</td>
-      <td>${c.type}</td>
-      <td>${c.scheduled_at}</td>
-      <td>${c.notes || 'N/A'}</td>
-      <td>${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">✕</button>` : ''}</td>
+      <td data-label="" class="mc-title"><strong>${c.student_name}</strong></td>
+      <td data-label="Type" class="mc-half">${c.type}</td>
+      <td data-label="Date" class="mc-half">${c.scheduled_at}</td>
+      <td data-label="Notes" class="mc-full">${c.notes || 'N/A'}</td>
+      <td data-label="" class="mc-actions">${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteCall(${c.id})">✕</button>` : ''}</td>
     </tr>
   `).join('');
 
@@ -2639,16 +2684,14 @@ async function loadChatterKPIs() {
         adminDiv.style.display = 'block';
         const tbody = document.querySelector('#chatter-agents-table tbody');
         tbody.innerHTML = chatters.map(c => {
-          const todayTotal = (parseFloat(c.today_ppv) + parseFloat(c.today_tips)).toFixed(2);
-          const weekTotal = (parseFloat(c.week_ppv) + parseFloat(c.week_tips)).toFixed(2);
           return `<tr>
-            <td><strong>${c.chatter_name}</strong></td>
-            <td>$${parseFloat(c.today_ppv).toFixed(2)}</td>
-            <td style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
-            <td>$${parseFloat(c.week_ppv).toFixed(2)}</td>
-            <td style="color:var(--yellow)">$${parseFloat(c.week_tips).toFixed(2)}</td>
-            <td style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
-            <td>${c.total_shifts}</td>
+            <td data-label="" class="mc-title"><strong>${c.chatter_name}</strong></td>
+            <td data-label="PPV auj." class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
+            <td data-label="Tips auj." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+            <td data-label="PPV sem." class="mc-half">$${parseFloat(c.week_ppv).toFixed(2)}</td>
+            <td data-label="Tips sem." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.week_tips).toFixed(2)}</td>
+            <td data-label="Revenue totale" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+            <td data-label="Shifts" class="mc-half">${c.total_shifts}</td>
           </tr>`;
         }).join('');
       }
@@ -2662,19 +2705,20 @@ function renderShifts() {
   const chatterCol = document.getElementById('shift-col-chatter');
   if (chatterCol) chatterCol.style.display = isAdmin ? '' : 'none';
 
-  const tbody = document.querySelector('#shifts-table tbody');
+  const table = document.getElementById('shifts-table');
+  table.classList.add('mobile-cards');
+  const tbody = table.querySelector('tbody');
   tbody.innerHTML = allShifts.map((s, idx) => {
     const revenue = (parseFloat(s.ppv_total) + parseFloat(s.tips_total)).toFixed(2);
     return `<tr>
-      <td style="color:var(--text3);font-size:12px">${allShifts.length - idx}</td>
-      <td>${s.date}</td>
-      <td><strong>${s.model_name}</strong></td>
-      <td>$${parseFloat(s.ppv_total).toFixed(2)}</td>
-      <td style="color:var(--yellow)">$${parseFloat(s.tips_total).toFixed(2)}</td>
-      <td style="color:var(--green)"><strong>$${revenue}</strong></td>
-      <td style="color:var(--text2);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(s.shift_notes || '').replace(/"/g, '&quot;')}">${s.shift_notes || '-'}</td>
-      ${isAdmin ? `<td style="font-size:12px;color:var(--accent2)">${s.chatter_name || '-'}</td>` : ''}
-      <td><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
+      <td data-label="#" style="color:var(--text3);font-size:12px">${allShifts.length - idx}</td>
+      <td data-label="" class="mc-title"><strong>${s.model_name}</strong> — ${s.date}</td>
+      <td data-label="PPV" class="mc-half">$${parseFloat(s.ppv_total).toFixed(2)}</td>
+      <td data-label="Tips" class="mc-half" style="color:var(--yellow)">$${parseFloat(s.tips_total).toFixed(2)}</td>
+      <td data-label="Revenue" class="mc-half" style="color:var(--green)"><strong>$${revenue}</strong></td>
+      ${isAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent2)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
+      <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${s.shift_notes || '-'}</td>
+      <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun rapport de shift</td></tr>';
 }
@@ -2821,14 +2865,14 @@ async function loadOutreachKPIs() {
         adminDiv.style.display = 'block';
         const tbody = document.querySelector('#outreach-agents-table tbody');
         tbody.innerHTML = agents.map(a => `<tr>
-          <td><strong>${a.agent_name}</strong></td>
-          <td>${a.leads_today}</td>
-          <td>${a.dm_sent}</td>
-          <td>${a.talking_cold}</td>
-          <td style="color:var(--yellow)">${a.talking_warm}</td>
-          <td style="color:var(--green)">${a.call_booked}</td>
-          <td style="color:var(--pink)">${a.signed}</td>
-          <td>${a.total_leads}</td>
+          <td data-label="" class="mc-title"><strong>${a.agent_name}</strong></td>
+          <td data-label="Leads auj." class="mc-half">${a.leads_today}</td>
+          <td data-label="DMs" class="mc-half">${a.dm_sent}</td>
+          <td data-label="Cold" class="mc-half">${a.talking_cold}</td>
+          <td data-label="Warm" class="mc-half" style="color:var(--yellow)">${a.talking_warm}</td>
+          <td data-label="Booked" class="mc-half" style="color:var(--green)">${a.call_booked}</td>
+          <td data-label="Signés" class="mc-half" style="color:var(--pink)">${a.signed}</td>
+          <td data-label="Total" class="mc-half">${a.total_leads}</td>
         </tr>`).join('');
       }
     } catch (e) {}
@@ -2854,26 +2898,28 @@ function renderLeads() {
   const search = (document.getElementById('lead-search')?.value || '').toLowerCase().trim();
   let filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
   if (search) filtered = filtered.filter(l => l.username.toLowerCase().includes(search));
-  const tbody = document.querySelector('#leads-table tbody');
+  const table = document.getElementById('leads-table');
+  table.classList.add('mobile-cards');
+  const tbody = table.querySelector('tbody');
   tbody.innerHTML = filtered.map((l, idx) => {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
     return `<tr>
-      <td style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
-      <td><strong>${igLink}</strong></td>
-      <td>${l.lead_type || '-'}</td>
-      <td>${l.script_used || '-'}</td>
-      <td>${l.ig_account_used || '-'}</td>
-      <td>
-        <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+      <td data-label="#" style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
+      <td data-label="" class="mc-title"><strong>${igLink}</strong></td>
+      <td data-label="Type" class="mc-half">${l.lead_type || '-'}</td>
+      <td data-label="Script" class="mc-half">${l.script_used || '-'}</td>
+      <td data-label="Compte IG" class="mc-half">${l.ig_account_used || '-'}</td>
+      <td data-label="Statut" class="mc-half">
+        <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">
           ${Object.entries(leadStatusColors).map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('')}
         </select>
       </td>
-      <td style="color:var(--text2);font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.notes || '').replace(/"/g, '&quot;')}">${l.notes || '-'}</td>
-      ${isAdmin ? `<td style="font-size:12px;color:var(--accent2)">${l.agent_name || '-'}</td>` : ''}
-      <td style="font-size:12px;color:var(--text3)">${date}</td>
-      <td><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
+      <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${l.notes || '-'}</td>
+      ${isAdmin ? `<td data-label="Agent" class="mc-half" style="color:var(--accent2)">${l.agent_name || '-'}</td>` : ''}
+      <td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">${date}</td>
+      <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
@@ -3037,8 +3083,8 @@ function renderSettings() {
 
   tbody.innerHTML = allUsers.map(u => `
     <tr>
-      <td>
-        <div style="position:relative;width:40px;height:40px;cursor:pointer" onclick="document.getElementById('avatar-input-${u.id}').click()">
+      <td data-label="" class="mc-title" style="gap:10px">
+        <div style="position:relative;width:40px;height:40px;cursor:pointer;flex-shrink:0" onclick="document.getElementById('avatar-input-${u.id}').click()">
           ${u.avatar_url
             ? `<img src="${u.avatar_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">`
             : `<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white">${u.display_name.charAt(0)}</div>`
@@ -3046,21 +3092,20 @@ function renderSettings() {
           <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid var(--bg2)">+</div>
           <input type="file" id="avatar-input-${u.id}" accept="image/*" style="display:none" onchange="uploadAvatar(${u.id}, this)">
         </div>
+        <strong>${u.display_name}</strong> <span style="color:var(--text3);font-size:12px">@${u.username}</span>
       </td>
-      <td><strong>${u.display_name}</strong></td>
-      <td style="color:var(--text2)">${u.username}</td>
-      <td>
-        <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:auto;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
+      <td data-label="Rôle" class="mc-half">
+        <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </td>
-      <td>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;width:120px" placeholder="Nouveau mdp">
+      <td data-label="Mot de passe" class="mc-half">
+        <div style="display:flex;gap:6px;align-items:center;width:100%">
+          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;flex:1" placeholder="Nouveau mdp">
           <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="changeUserPassword(${u.id})">OK</button>
         </div>
       </td>
-      <td>
+      <td data-label="" class="mc-actions">
         ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="Supprimer">✕</button>` : '<span style="color:var(--text3);font-size:11px">Toi</span>'}
       </td>
     </tr>
