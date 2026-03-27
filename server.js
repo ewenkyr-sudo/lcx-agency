@@ -264,6 +264,15 @@ async function initDB() {
       current INTEGER DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+
+    -- Options personnalisées par utilisateur (scripts, comptes, types)
+    CREATE TABLE IF NOT EXISTS user_options (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      option_type TEXT NOT NULL,
+      value TEXT NOT NULL,
+      UNIQUE(user_id, option_type, value)
+    );
   `);
 }
 
@@ -1227,13 +1236,13 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
 
 app.post('/api/student-leads', authMiddleware, async (req, res) => {
   if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { username, ig_link, lead_type, script_used, notes, status } = req.body;
+  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
   const cleanUsername = username.replace(/^@/, '');
   const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, req.user.id]);
   if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
-  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [req.user.id, username, ig_link, lead_type || 'model', script_used, notes, status || 'to-send']);
+  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+    [req.user.id, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send']);
   res.json(rows[0]);
 });
 
@@ -1408,6 +1417,32 @@ app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
 
 app.delete('/api/resources/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('DELETE FROM resources WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ USER OPTIONS (scripts, comptes, types) ============
+app.get('/api/user-options', authMiddleware, async (req, res) => {
+  const uid = req.user.role === 'admin' && req.query.user_id ? req.query.user_id : req.user.id;
+  const { rows } = await pool.query('SELECT * FROM user_options WHERE user_id = $1 ORDER BY option_type, value', [uid]);
+  const grouped = { script: [], account: [], type: [] };
+  rows.forEach(r => { if (grouped[r.option_type]) grouped[r.option_type].push(r); });
+  res.json(grouped);
+});
+
+app.post('/api/user-options', authMiddleware, async (req, res) => {
+  const { option_type, value } = req.body;
+  if (!option_type || !value) return res.status(400).json({ error: 'Type et valeur requis' });
+  if (!['script', 'account', 'type'].includes(option_type)) return res.status(400).json({ error: 'Type invalide' });
+  try {
+    const { rows } = await pool.query('INSERT INTO user_options (user_id, option_type, value) VALUES ($1, $2, $3) RETURNING *', [req.user.id, option_type, value.trim()]);
+    res.json(rows[0]);
+  } catch (e) {
+    res.status(409).json({ error: 'Cette option existe déjà' });
+  }
+});
+
+app.delete('/api/user-options/:id', authMiddleware, async (req, res) => {
+  await pool.query('DELETE FROM user_options WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
   res.json({ ok: true });
 });
 

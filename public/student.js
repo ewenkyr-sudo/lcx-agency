@@ -17,16 +17,19 @@ const RECRUIT_STATUSES = {
 };
 
 let studentData = { leads: [], recruits: [], models: [], revenue: [], callRequests: [], objectives: [], conversations: [], messages: [] };
+let userOptions = { script: [], account: [], type: [] };
 let currentChatUserId = null;
 
 // ========== DATA LOADING ==========
 async function loadStudentData() {
   const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
-  const [leads, recruits, models, revenue, callRequests, objectives, conversations] = await Promise.all([
+  const [leads, recruits, models, revenue, callRequests, objectives, conversations, opts] = await Promise.all([
     f('/api/student-leads'), f('/api/student-recruits'), f('/api/student-models'),
-    f('/api/student-revenue'), f('/api/call-requests'), f('/api/objectives'), f('/api/conversations')
+    f('/api/student-revenue'), f('/api/call-requests'), f('/api/objectives'), f('/api/conversations'),
+    f('/api/user-options')
   ]);
   studentData = { leads, recruits, models, revenue, callRequests, objectives, conversations, messages: studentData.messages };
+  if (opts.script) userOptions = opts;
 }
 
 // ========== STUDENT HOME ==========
@@ -149,7 +152,7 @@ async function renderStudentOutreach() {
 
   c.innerHTML = `
     <div class="page-header"><div><div class="page-title">Mon Outreach</div><div class="page-subtitle">Gestion de mes leads</div></div>
-      <div class="header-actions"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button></div></div>
+      <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs envoyés</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">Talking Warm</div></div>
@@ -161,7 +164,7 @@ async function renderStudentOutreach() {
       ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
     <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderStudentLeadTable()" style="max-width:350px"></div>
-    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Statut</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
   renderStudentLeadTable();
 }
@@ -180,12 +183,13 @@ function renderStudentLeadTable() {
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
       + '<td data-label="Type" class="mc-half">' + (l.lead_type || '-') + '</td>'
       + '<td data-label="Script" class="mc-half">' + (l.script_used || '-') + '</td>'
+      + '<td data-label="Compte" class="mc-half">' + (l.ig_account_used || '-') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateStudentLead(' + l.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(leadStatusColors).map(([k,v]) => '<option value="' + k + '"' + (l.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
 
 function filterStudentLeads(f, btn) {
@@ -195,20 +199,54 @@ function filterStudentLeads(f, btn) {
   renderStudentLeadTable();
 }
 
+function optionSelect(id, optType, placeholder) {
+  const opts = userOptions[optType] || [];
+  return '<div style="display:flex;gap:6px;align-items:center">'
+    + '<select id="' + id + '" class="form-input" style="flex:1">'
+    + '<option value="">-- ' + placeholder + ' --</option>'
+    + opts.map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('')
+    + '</select>'
+    + '<button class="btn" style="padding:6px 10px;font-size:14px;background:var(--bg3);color:var(--accent);border:none;cursor:pointer" onclick="addNewOption(\'' + optType + '\',\'' + id + '\')" title="Ajouter">+</button>'
+    + '</div>';
+}
+
 function showStudentLeadForm() {
   const wrap = document.getElementById('student-lead-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Ajouter un lead</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Username *</label><input type="text" id="sl-username" class="form-input" placeholder="@username"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien Instagram</label><input type="text" id="sl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,'sl-username')"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label><select id="sl-type" class="form-input"><option value="model">Model</option><option value="influencer">Influencer</option><option value="creator">Creator</option></select></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Script</label><input type="text" id="sl-script" class="form-input" value="Script 2" readonly style="opacity:0.7"></div>
-      <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="sl-notes" class="form-input" placeholder="Notes..."></div>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('student-lead-form-wrap').innerHTML=''">Annuler</button></div>
-  </div>`;
+  wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Ajouter un lead</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Username *</label><input type="text" id="sl-username" class="form-input" placeholder="@username"></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien Instagram</label><input type="text" id="sl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label>' + optionSelect('sl-type', 'type', 'Type de lead') + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Script</label>' + optionSelect('sl-script', 'script', 'Script utilisé') + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Compte utilisé</label>' + optionSelect('sl-account', 'account', 'Compte Instagram') + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="sl-notes" class="form-input" placeholder="Notes..."></div>'
+    + '</div>'
+    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '</div>';
+}
+
+async function addNewOption(optType, selectId) {
+  const labels = { script: 'script', account: 'compte Instagram', type: 'type de lead' };
+  const value = prompt('Nouveau ' + (labels[optType] || optType) + ' :');
+  if (!value || !value.trim()) return;
+  const res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim() }) });
+  if (res.ok) {
+    const opt = await res.json();
+    userOptions[optType].push(opt);
+    // Ajouter l'option au select et la sélectionner
+    const select = document.getElementById(selectId);
+    const newOpt = document.createElement('option');
+    newOpt.value = opt.value;
+    newOpt.textContent = opt.value;
+    newOpt.selected = true;
+    select.appendChild(newOpt);
+    showToast('"' + opt.value + '" ajouté', 'success');
+  } else {
+    const e = await res.json();
+    showToast(e.error || 'Erreur', 'error');
+  }
 }
 
 function autoFillUsername(url, targetId) {
@@ -223,7 +261,7 @@ async function addStudentLead() {
   if (dup) return showToast('Ce lead existe déjà (' + dup.status + ')', 'error');
   const res = await fetch('/api/student-leads', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({
     username, ig_link: document.getElementById('sl-iglink').value.trim(), lead_type: document.getElementById('sl-type').value,
-    script_used: document.getElementById('sl-script').value, notes: document.getElementById('sl-notes').value.trim()
+    script_used: document.getElementById('sl-script').value, ig_account_used: document.getElementById('sl-account')?.value || '', notes: document.getElementById('sl-notes').value.trim()
   })});
   if (res.ok) { showToast('Lead ajouté !', 'success'); document.getElementById('student-lead-form-wrap').innerHTML = ''; await loadStudentData(); renderStudentLeadTable(); }
   else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
@@ -238,6 +276,53 @@ async function deleteStudentLead(id) {
   if (!confirm('Supprimer ce lead ?')) return;
   await fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' });
   await loadStudentData(); renderStudentLeadTable();
+}
+
+function showOptionsManager() {
+  const wrap = document.getElementById('student-lead-form-wrap');
+  if (wrap.querySelector('#options-manager')) { wrap.innerHTML = ''; return; }
+  const labels = { type: 'Types de lead', script: 'Scripts', account: 'Comptes Instagram' };
+  wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px" id="options-manager">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Gérer mes options</h3>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">'
+    + Object.entries(labels).map(([key, label]) => {
+      const opts = userOptions[key] || [];
+      return '<div style="background:var(--bg3);padding:14px;border-radius:10px">'
+        + '<strong style="font-size:13px;display:block;margin-bottom:10px">' + label + '</strong>'
+        + (opts.length === 0 ? '<div style="color:var(--text3);font-size:12px">Aucune option</div>' : '')
+        + opts.map(o => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px"><span>' + o.value + '</span><button class="btn-delete-small" onclick="deleteOption(' + o.id + ')" style="font-size:10px">✕</button></div>').join('')
+        + '<div style="display:flex;gap:6px;margin-top:10px"><input type="text" id="new-opt-' + key + '" class="form-input" style="font-size:12px;padding:6px 8px;flex:1" placeholder="Ajouter..."><button class="btn btn-primary" style="padding:6px 10px;font-size:11px" onclick="addOptionFromManager(\'' + key + '\')">+</button></div>'
+        + '</div>';
+    }).join('')
+    + '</div>'
+    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">Fermer</button></div>'
+    + '</div>';
+}
+
+async function addOptionFromManager(optType) {
+  const input = document.getElementById('new-opt-' + optType);
+  const value = input.value.trim();
+  if (!value) return;
+  const res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value }) });
+  if (res.ok) {
+    const opt = await res.json();
+    userOptions[optType].push(opt);
+    showToast('"' + value + '" ajouté', 'success');
+    showOptionsManager(); // Re-render
+  } else {
+    const e = await res.json();
+    showToast(e.error || 'Erreur', 'error');
+  }
+}
+
+async function deleteOption(id) {
+  await fetch('/api/user-options/' + id, { method: 'DELETE', credentials: 'include' });
+  // Retirer de userOptions
+  ['script', 'account', 'type'].forEach(key => {
+    userOptions[key] = userOptions[key].filter(o => o.id !== id);
+  });
+  showToast('Option supprimée', 'success');
+  showOptionsManager();
 }
 
 // ========== STUDENT RECRUITS ==========
