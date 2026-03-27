@@ -1193,7 +1193,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px" id="add-lead-fields">
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram *</label>
-          <input type="text" id="lead-ig-link" class="form-input" placeholder="Coller le lien ici..." oninput="autoFillUsername(this.value)" onpaste="setTimeout(()=>autoFillUsername(this.value),50)" onchange="autoFillUsername(this.value)">
+          <input type="text" id="lead-ig-link" class="form-input" placeholder="Coller le lien ici..." oninput="autoFillUsername(this.value)" onpaste="setTimeout(function(){autoFillUsername(document.getElementById('lead-ig-link').value)},100)" onchange="autoFillUsername(this.value)">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username (auto)</label>
@@ -3248,6 +3248,11 @@ function autoFillUsername(url) {
   }
 }
 
+function extractUsernameFromUrl(url) {
+  const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+  return match ? '@' + match[1] : '';
+}
+
 function outreachFormSelect(id, optType, placeholder) {
   var opts = outreachOptions[optType] || [];
   return '<div style="display:flex;gap:6px;align-items:center">'
@@ -3288,8 +3293,11 @@ function showAddLeadForm() {
 }
 
 async function addLead() {
-  const username = document.getElementById('lead-username').value.trim();
-  if (!username) return showToast('Username requis', 'error');
+  const igLink = document.getElementById('lead-ig-link').value.trim();
+  let username = document.getElementById('lead-username').value.trim();
+  // Auto-extraire le username depuis l'URL si le champ est vide
+  if (!username && igLink) username = extractUsernameFromUrl(igLink);
+  if (!username) return showToast('Colle un lien Instagram ou entre un username', 'error');
   const cleanName = username.replace(/^@/, '').toLowerCase();
   const duplicate = allLeads.find(l => l.username.replace(/^@/, '').toLowerCase() === cleanName);
   if (duplicate) return showToast(`Ce lead existe déjà : ${duplicate.username} (statut : ${duplicate.status})`, 'error');
