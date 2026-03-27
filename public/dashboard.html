@@ -1192,12 +1192,12 @@
       <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Ajouter un lead</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px" id="add-lead-fields">
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username *</label>
-          <input type="text" id="lead-username" class="form-input" placeholder="@username">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram *</label>
+          <input type="text" id="lead-ig-link" class="form-input" placeholder="Coller le lien ici..." oninput="autoFillUsername(this.value)" onpaste="setTimeout(()=>autoFillUsername(this.value),50)" onchange="autoFillUsername(this.value)">
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram</label>
-          <input type="text" id="lead-ig-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value)">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username (auto)</label>
+          <input type="text" id="lead-username" class="form-input" placeholder="Se remplit automatiquement" style="opacity:0.7">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Type</label>
