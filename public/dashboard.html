@@ -1190,7 +1190,7 @@
     <!-- Formulaire ajout lead (caché par défaut) -->
     <div id="add-lead-form" class="panel" style="padding:20px;margin-bottom:24px;display:none">
       <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Ajouter un lead</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px" id="add-lead-fields">
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username *</label>
           <input type="text" id="lead-username" class="form-input" placeholder="@username">
@@ -1201,16 +1201,15 @@
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Type</label>
-          <select id="lead-type" class="form-input">
-            <option value="model">Model</option>
-            <option value="influencer">Influencer</option>
-            <option value="creator">Creator</option>
-            <option value="other">Autre</option>
-          </select>
+          <div id="lead-type-wrap"></div>
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Script utilisé</label>
-          <input type="text" id="lead-script" class="form-input" value="Script 2" readonly style="opacity:0.7;cursor:not-allowed">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Script</label>
+          <div id="lead-script-wrap"></div>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Compte IG</label>
+          <div id="lead-account-wrap"></div>
         </div>
         <div>
           <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Notes</label>
@@ -3249,9 +3248,43 @@ function autoFillUsername(url) {
   }
 }
 
+function outreachFormSelect(id, optType, placeholder) {
+  var opts = outreachOptions[optType] || [];
+  return '<div style="display:flex;gap:6px;align-items:center">'
+    + '<select id="' + id + '" class="form-input" style="flex:1">'
+    + '<option value="">-- ' + placeholder + ' --</option>'
+    + opts.map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('')
+    + '</select>'
+    + '<button class="btn" style="padding:6px 10px;font-size:14px;background:var(--bg3);color:var(--accent);border:none;cursor:pointer" onclick="addOutreachFormOption(\'' + optType + '\',\'' + id + '\')" title="Ajouter">+</button>'
+    + '</div>';
+}
+
+async function addOutreachFormOption(optType, selectId) {
+  var labels = { script: 'script', account: 'compte Instagram', type: 'type de lead' };
+  var value = prompt('Nouveau ' + (labels[optType] || optType) + ' :');
+  if (!value || !value.trim()) return;
+  var res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim() }) });
+  if (res.ok) {
+    var opt = await res.json();
+    outreachOptions[optType].push(opt);
+    var select = document.getElementById(selectId);
+    var newOpt = document.createElement('option');
+    newOpt.value = opt.value;
+    newOpt.textContent = opt.value;
+    newOpt.selected = true;
+    select.appendChild(newOpt);
+    showToast('"' + opt.value + '" ajouté', 'success');
+  }
+}
+
 function showAddLeadForm() {
   const form = document.getElementById('add-lead-form');
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    document.getElementById('lead-type-wrap').innerHTML = outreachFormSelect('lead-type', 'type', 'Type de lead');
+    document.getElementById('lead-script-wrap').innerHTML = outreachFormSelect('lead-script', 'script', 'Script utilisé');
+    document.getElementById('lead-account-wrap').innerHTML = outreachFormSelect('lead-ig-account', 'account', 'Compte Instagram');
+  }
 }
 
 async function addLead() {
@@ -3267,8 +3300,9 @@ async function addLead() {
     body: JSON.stringify({
       username,
       ig_link: document.getElementById('lead-ig-link').value.trim(),
-      lead_type: document.getElementById('lead-type').value,
-      script_used: document.getElementById('lead-script').value.trim(),
+      lead_type: document.getElementById('lead-type')?.value || '',
+      script_used: document.getElementById('lead-script')?.value || '',
+      ig_account_used: document.getElementById('lead-ig-account')?.value || '',
       notes: document.getElementById('lead-notes').value.trim(),
       status: 'to-send'
     })
