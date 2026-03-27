@@ -154,9 +154,15 @@ async function initDB() {
       ig_account_used TEXT,
       notes TEXT,
       status TEXT DEFAULT 'sent',
+      sent_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    DO $$ BEGIN
+      ALTER TABLE outreach_leads ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+      ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+    EXCEPTION WHEN others THEN NULL;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS chatter_shifts (
       id SERIAL PRIMARY KEY,
@@ -1004,7 +1010,8 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   }
   await pool.query(`UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
-    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW() WHERE id = $6`,
+    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
+    sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
     [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
   broadcast('lead-updated', { id: parseInt(req.params.id), status, notes });
   res.json({ ok: true });
@@ -1028,7 +1035,7 @@ app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
   const today = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
-  const dmSentToday = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send' AND updated_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const dmSentToday = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND sent_at::date = CURRENT_DATE", [uid])).rows[0].count;
   const dmSent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].count;
   const warm = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].count;
   const booked = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].count;
@@ -1259,7 +1266,8 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
   await pool.query(`UPDATE student_leads SET
     status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
-    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW() WHERE id = $6`,
+    ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
+    sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
     [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
   res.json({ ok: true });
 });
@@ -1277,7 +1285,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
-  const dmSentToday = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send' AND updated_at::date = CURRENT_DATE", [uid])).rows[0].c;
+  const dmSentToday = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at::date = CURRENT_DATE", [uid])).rows[0].c;
   const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
   const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
   const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].c;
