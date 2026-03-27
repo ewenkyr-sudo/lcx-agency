@@ -842,6 +842,17 @@
     #toast-container { left: 10px; right: 10px; }
     #toast-container > div { max-width: 100%; }
 
+    /* Planning: scroll horizontal */
+    .schedule-grid { min-width: 600px; }
+
+    /* Dashboard: task items */
+    .task-item { padding: 12px 14px; gap: 8px; flex-wrap: wrap; }
+    .task-assignee { font-size: 11px; }
+    .task-title { font-size: 13px; }
+
+    /* Deux colonnes */
+    .two-col { gap: 12px; }
+
     /* Boutons touch-friendly */
     .btn, .btn-primary, button { min-height: 44px; font-size: 14px; }
     .lead-filter, .perf-period { min-height: 36px !important; font-size: 13px !important; }
@@ -1993,25 +2004,21 @@ function renderDashboard() {
         <div class="panel-header">
           <div class="panel-title">Équipe en ligne</div>
         </div>
-        <table class="table">
-          <thead><tr><th>Membre</th><th>Rôle</th><th>Status</th></tr></thead>
-          <tbody>
-            ${allTeam.filter(m => m.status === 'online').slice(0, 4).map(m => {
-              const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 32) : avatarHTML({ display_name: m.name }, 32);
+        <div class="dash-team-list">
+          ${allTeam.filter(m => m.status === 'online').slice(0, 6).map(m => {
+              const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 36) : avatarHTML({ display_name: m.name }, 36);
               return `
-              <tr>
-                <td>
-                  <div class="member-info">
-                    ${av}
-                    <div><div class="member-name">${m.name}</div></div>
-                  </div>
-                </td>
-                <td>${m.role}</td>
-                <td><span class="badge badge-online">● En ligne</span></td>
-              </tr>
-            `;}).join('')}
-          </tbody>
-        </table>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                ${av}
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600">${m.name}</div>
+                  <div style="font-size:11px;color:var(--text3)">${m.role}</div>
+                </div>
+                <span class="badge badge-online" style="font-size:11px">● En ligne</span>
+              </div>`;
+          }).join('')}
+          ${allTeam.filter(m => m.status === 'online').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Personne en ligne</div>' : ''}
+        </div>
       </div>
 
       <div class="panel">
@@ -2029,6 +2036,7 @@ function renderDashboard() {
               <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
             </div>
           `).join('')}
+          ${allTasks.filter(t => t.priority === 'high').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Aucune tâche urgente</div>' : ''}
         </div>
       </div>
     </div>
@@ -2077,20 +2085,20 @@ async function loadDashboardOutreachStats() {
           <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRateDash}%</div><div class="stat-label">Taux de réponse</div></div>
         </div>
-        <table class="table">
+        <table class="table mobile-cards">
           <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>Signés</th><th>Taux</th></tr></thead>
           <tbody>
             ${agents.map(a => {
               const aReplies = parseInt(a.talking_cold) + parseInt(a.talking_warm) + parseInt(a.call_booked) + parseInt(a.signed);
               const aRate = parseInt(a.dm_sent) > 0 ? ((aReplies / parseInt(a.dm_sent)) * 100).toFixed(1) : '0';
               return `<tr>
-              <td><strong>${a.agent_name}</strong></td>
-              <td>${a.leads_today}</td>
-              <td>${a.dm_sent}</td>
-              <td style="color:var(--yellow)">${a.talking_warm}</td>
-              <td style="color:var(--green)">${a.call_booked}</td>
-              <td style="color:var(--pink)">${a.signed}</td>
-              <td style="color:var(--accent2)">${aRate}%</td>
+              <td data-label="" class="mc-title"><strong>${a.agent_name}</strong></td>
+              <td data-label="Leads auj." class="mc-half">${a.leads_today}</td>
+              <td data-label="DMs" class="mc-half">${a.dm_sent}</td>
+              <td data-label="Warm" class="mc-half" style="color:var(--yellow)">${a.talking_warm}</td>
+              <td data-label="Booked" class="mc-half" style="color:var(--green)">${a.call_booked}</td>
+              <td data-label="Signés" class="mc-half" style="color:var(--pink)">${a.signed}</td>
+              <td data-label="Taux" class="mc-half" style="color:var(--accent2)">${aRate}%</td>
             </tr>`;
             }).join('')}
           </tbody>
@@ -2123,14 +2131,14 @@ async function loadDashboardChatterStats() {
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
         </div>
-        <table class="table">
+        <table class="table mobile-cards">
           <thead><tr><th>Chatter</th><th>PPV aujourd'hui</th><th>Tips aujourd'hui</th><th>Revenue totale</th></tr></thead>
           <tbody>
             ${chatters.map(c => `<tr>
-              <td><strong>${c.chatter_name}</strong></td>
-              <td>$${parseFloat(c.today_ppv).toFixed(2)}</td>
-              <td style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
-              <td style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+              <td data-label="" class="mc-title"><strong>${c.chatter_name}</strong></td>
+              <td data-label="PPV auj." class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
+              <td data-label="Tips auj." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+              <td data-label="Revenue totale" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
             </tr>`).join('')}
           </tbody>
         </table>
