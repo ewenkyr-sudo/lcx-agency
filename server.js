@@ -1062,6 +1062,7 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
       COALESCE(COUNT(*), 0) as total_leads,
       COALESCE(SUM(CASE WHEN ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as leads_today,
       COALESCE(SUM(CASE WHEN ol.status != 'to-send' THEN 1 ELSE 0 END), 0) as dm_sent,
+      COALESCE(SUM(CASE WHEN ol.sent_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as dm_sent_today,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-cold' THEN 1 ELSE 0 END), 0) as talking_cold,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-warm' THEN 1 ELSE 0 END), 0) as talking_warm,
       COALESCE(SUM(CASE WHEN ol.status = 'call-booked' THEN 1 ELSE 0 END), 0) as call_booked,
