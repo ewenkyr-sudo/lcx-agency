@@ -109,14 +109,23 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS tasks (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
+      description TEXT,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       assigned_to TEXT,
       team TEXT,
-      priority TEXT DEFAULT 'medium',
+      priority TEXT DEFAULT 'normal',
       deadline TEXT,
       status TEXT DEFAULT 'pending',
       notes TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    DO $$ BEGIN
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS calls (
       id SERIAL PRIMARY KEY,
@@ -650,25 +659,57 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ TASKS CRUD ============
 app.get('/api/tasks', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query("SELECT * FROM tasks ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, created_at DESC");
+  let query, params = [];
+  if (req.user.role === 'admin') {
+    query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
+      FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
+      ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+  } else {
+    query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
+      FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
+      WHERE t.assigned_to_id = $1 OR t.created_by = $1
+      ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+    params = [req.user.id];
+  }
+  const { rows } = await pool.query(query, params);
   res.json(rows);
 });
 
 app.post('/api/tasks', authMiddleware, async (req, res) => {
-  const { title, assigned_to, team, priority, deadline, notes } = req.body;
-  const { rows } = await pool.query('INSERT INTO tasks (title, assigned_to, team, priority, deadline, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-    [title, assigned_to, team, priority || 'medium', deadline, notes]);
-  res.json({ id: rows[0].id });
+  const { title, description, assigned_to_id, priority, deadline, notes } = req.body;
+  if (!title) return res.status(400).json({ error: 'Titre requis' });
+  // Non-admin ne peut assigner qu'à soi-même
+  const assignTo = req.user.role === 'admin' ? (assigned_to_id || req.user.id) : req.user.id;
+  const { rows } = await pool.query(
+    'INSERT INTO tasks (title, description, created_by, assigned_to_id, priority, deadline, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [title, description, req.user.id, assignTo, priority || 'normal', deadline, notes]);
+  broadcast('task-new', rows[0]);
+  res.json(rows[0]);
 });
 
 app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
-  const { status } = req.body;
-  await pool.query('UPDATE tasks SET status = $1 WHERE id = $2', [status, req.params.id]);
+  const { status, title, description, priority, deadline, assigned_to_id, notes } = req.body;
+  // Non-admin ne peut modifier que ses propres tâches
+  if (req.user.role !== 'admin') {
+    const check = await pool.query('SELECT id FROM tasks WHERE id = $1 AND (assigned_to_id = $2 OR created_by = $2)', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  }
+  await pool.query(`UPDATE tasks SET status = COALESCE($1, status), title = COALESCE($2, title),
+    description = COALESCE($3, description), priority = COALESCE($4, priority),
+    deadline = COALESCE($5, deadline), assigned_to_id = COALESCE($6, assigned_to_id),
+    notes = COALESCE($7, notes) WHERE id = $8`,
+    [status, title, description, priority, deadline, assigned_to_id, notes, req.params.id]);
+  broadcast('task-updated', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
 
-app.delete('/api/tasks/:id', authMiddleware, adminOnly, async (req, res) => {
+app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    const check = await pool.query('SELECT id FROM tasks WHERE id = $1 AND created_by = $2', [req.params.id, req.user.id]);
+    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  }
   await pool.query('DELETE FROM tasks WHERE id = $1', [req.params.id]);
+  broadcast('task-deleted', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
 
