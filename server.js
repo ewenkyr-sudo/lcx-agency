@@ -288,6 +288,20 @@ async function initDB() {
       value TEXT NOT NULL,
       UNIQUE(user_id, option_type, value)
     );
+
+    -- Assignation assistantes outreach → élèves
+    CREATE TABLE IF NOT EXISTS student_outreach_assignments (
+      id SERIAL PRIMARY KEY,
+      student_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      outreach_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(student_user_id, outreach_user_id)
+    );
+
+    DO $$ BEGIN
+      ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS added_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END $$;
   `);
 }
 
@@ -1269,42 +1283,109 @@ app.delete('/api/student-recruits/:id', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ STUDENT OUTREACH ASSIGNMENTS ============
+app.get('/api/student-outreach-assignments', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin') {
+    const { rows } = await pool.query(`SELECT soa.*, s.display_name as student_name, o.display_name as outreach_name
+      FROM student_outreach_assignments soa
+      JOIN users s ON soa.student_user_id = s.id JOIN users o ON soa.outreach_user_id = o.id
+      ORDER BY s.display_name`);
+    return res.json(rows);
+  }
+  if (req.user.role === 'outreach') {
+    const { rows } = await pool.query(`SELECT soa.*, s.display_name as student_name
+      FROM student_outreach_assignments soa JOIN users s ON soa.student_user_id = s.id
+      WHERE soa.outreach_user_id = $1 ORDER BY s.display_name`, [req.user.id]);
+    return res.json(rows);
+  }
+  res.json([]);
+});
+
+app.post('/api/student-outreach-assignments', authMiddleware, adminOnly, async (req, res) => {
+  const { student_user_id, outreach_user_id } = req.body;
+  if (!student_user_id || !outreach_user_id) return res.status(400).json({ error: 'IDs requis' });
+  try {
+    const { rows } = await pool.query('INSERT INTO student_outreach_assignments (student_user_id, outreach_user_id) VALUES ($1, $2) RETURNING *', [student_user_id, outreach_user_id]);
+    res.json(rows[0]);
+  } catch(e) { res.status(409).json({ error: 'Assignation déjà existante' }); }
+});
+
+app.delete('/api/student-outreach-assignments/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM student_outreach_assignments WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// Helper: check if user can access student outreach
+async function canAccessStudentOutreach(userId, userRole, studentUserId) {
+  if (userRole === 'admin') return true;
+  if (userRole === 'student' && userId === parseInt(studentUserId)) return true;
+  if (userRole === 'outreach') {
+    const check = await pool.query('SELECT id FROM student_outreach_assignments WHERE student_user_id = $1 AND outreach_user_id = $2', [studentUserId, userId]);
+    return check.rows.length > 0;
+  }
+  return false;
+}
+
 // ============ STUDENT LEADS (outreach élèves) ============
+// GET: student voit les siens, outreach voit ceux de l'élève assigné (via ?student_user_id=), admin voit tout
 app.get('/api/student-leads', authMiddleware, async (req, res) => {
+  const studentUserId = req.query.student_user_id;
+
   if (req.user.role === 'student') {
-    const { rows } = await pool.query('SELECT * FROM student_leads WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [req.user.id]);
+    return res.json(rows);
+  }
+  if (req.user.role === 'outreach' && studentUserId) {
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, studentUserId);
+    if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
     return res.json(rows);
   }
   if (req.user.role === 'admin') {
-    const userId = req.query.user_id;
-    if (userId) {
-      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [userId]);
+    if (studentUserId) {
+      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
       return res.json(rows);
     }
-    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id ORDER BY sl.created_at DESC');
+    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id ORDER BY sl.created_at DESC');
     return res.json(rows);
   }
   res.status(403).json({ error: 'Accès refusé' });
 });
 
+// POST: student ajoute pour soi, outreach ajoute pour l'élève assigné (via student_user_id), admin pour tout le monde
 app.post('/api/student-leads', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'student' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
+  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status, student_user_id } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
+
+  // Déterminer le propriétaire du lead
+  let ownerId;
+  if (req.user.role === 'student') {
+    ownerId = req.user.id;
+  } else if (req.user.role === 'outreach' && student_user_id) {
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
+    if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
+    ownerId = student_user_id;
+  } else if (req.user.role === 'admin' && student_user_id) {
+    ownerId = student_user_id;
+  } else {
+    return res.status(400).json({ error: 'student_user_id requis' });
+  }
+
   const cleanUsername = username.replace(/^@/, '');
-  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, req.user.id]);
+  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, ownerId]);
   if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
-  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-    [req.user.id, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send']);
+  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+    [ownerId, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send', req.user.id]);
   res.json(rows[0]);
 });
 
 app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
   const { status, notes, lead_type, script_used, ig_account_used } = req.body;
-  if (req.user.role === 'student') {
-    const check = await pool.query('SELECT id FROM student_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  // Vérifier l'accès
+  const lead = (await pool.query('SELECT user_id FROM student_leads WHERE id = $1', [req.params.id])).rows[0];
+  if (!lead) return res.status(404).json({ error: 'Lead introuvable' });
+  const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, lead.user_id);
+  if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
   await pool.query(`UPDATE student_leads SET
     status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
@@ -1315,16 +1396,21 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/student-leads/:id', authMiddleware, async (req, res) => {
-  if (req.user.role === 'student') {
-    const check = await pool.query('SELECT id FROM student_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-    if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const lead = (await pool.query('SELECT user_id FROM student_leads WHERE id = $1', [req.params.id])).rows[0];
+  if (!lead) return res.status(404).json({ error: 'Lead introuvable' });
+  const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, lead.user_id);
+  if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM student_leads WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
 app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
-  const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
+  let uid = req.query.student_user_id || req.query.user_id;
+  if (req.user.role === 'student') uid = req.user.id;
+  if (uid && req.user.role === 'outreach') {
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, uid);
+    if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
+  }
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
   const dmSentToday = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at::date = CURRENT_DATE", [uid])).rows[0].c;
@@ -1480,8 +1566,16 @@ app.delete('/api/resources/:id', authMiddleware, adminOnly, async (req, res) => 
 });
 
 // ============ USER OPTIONS (scripts, comptes, types) ============
+// student_user_id param: pour outreach qui gère l'outreach d'un élève, utilise les options de l'élève
 app.get('/api/user-options', authMiddleware, async (req, res) => {
-  const uid = req.user.role === 'admin' && req.query.user_id ? req.query.user_id : req.user.id;
+  let uid = req.user.id;
+  if (req.query.student_user_id) {
+    const sid = req.query.student_user_id;
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, sid);
+    if (allowed) uid = sid;
+  } else if (req.query.user_id && req.user.role === 'admin') {
+    uid = req.query.user_id;
+  }
   const { rows } = await pool.query('SELECT * FROM user_options WHERE user_id = $1 ORDER BY option_type, value', [uid]);
   const grouped = { script: [], account: [], type: [] };
   rows.forEach(r => { if (grouped[r.option_type]) grouped[r.option_type].push(r); });
@@ -1489,11 +1583,17 @@ app.get('/api/user-options', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/user-options', authMiddleware, async (req, res) => {
-  const { option_type, value } = req.body;
+  const { option_type, value, student_user_id } = req.body;
   if (!option_type || !value) return res.status(400).json({ error: 'Type et valeur requis' });
   if (!['script', 'account', 'type'].includes(option_type)) return res.status(400).json({ error: 'Type invalide' });
+  // Si outreach travaille pour un élève, les options sont créées sous l'ID de l'élève
+  let uid = req.user.id;
+  if (student_user_id) {
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
+    if (allowed) uid = student_user_id;
+  }
   try {
-    const { rows } = await pool.query('INSERT INTO user_options (user_id, option_type, value) VALUES ($1, $2, $3) RETURNING *', [req.user.id, option_type, value.trim()]);
+    const { rows } = await pool.query('INSERT INTO user_options (user_id, option_type, value) VALUES ($1, $2, $3) RETURNING *', [uid, option_type, value.trim()]);
     res.json(rows[0]);
   } catch (e) {
     res.status(409).json({ error: 'Cette option existe déjà' });
@@ -1501,7 +1601,12 @@ app.post('/api/user-options', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/user-options/:id', authMiddleware, async (req, res) => {
-  await pool.query('DELETE FROM user_options WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  // Vérifier si l'option appartient à l'utilisateur ou à un élève assigné
+  const opt = (await pool.query('SELECT user_id FROM user_options WHERE id = $1', [req.params.id])).rows[0];
+  if (!opt) return res.status(404).json({ error: 'Option introuvable' });
+  const allowed = opt.user_id === req.user.id || req.user.role === 'admin' || await canAccessStudentOutreach(req.user.id, req.user.role, opt.user_id);
+  if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM user_options WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 

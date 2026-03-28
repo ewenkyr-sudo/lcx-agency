@@ -4,6 +4,7 @@ const ASSETS = [
   '/login.html',
   '/dashboard.html',
   '/student.js',
+  '/outreach-student.js',
   '/manifest.json',
   '/icons/icon.svg',
   '/icons/icon-192.png',

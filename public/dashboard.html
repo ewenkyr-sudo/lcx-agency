@@ -1735,6 +1735,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderAllSections();
     renderSettings();
     await initStudentSections();
+    await initOutreachStudentSections();
   } catch (err) {
     console.error('Init error:', err);
     window.location.href = '/';
@@ -1827,9 +1828,10 @@ function applyRoleBasedAccess() {
     if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
   });
 
-  // Hide inappropriate nav items
+  // Hide inappropriate nav items (but keep dynamic student outreach sections)
   document.querySelectorAll('[data-section]').forEach(item => {
     const section = item.getAttribute('data-section');
+    if (section.startsWith('so-')) return; // sections outreach élèves gérées dynamiquement
     item.style.display = visibleSections[role]?.includes(section) ? '' : 'none';
   });
 
@@ -2618,9 +2620,11 @@ async function renderCoaching() {
   const students = allStudents.filter(s => s.user_id);
   const pendingCalls = callRequests.filter(c => c.status === 'pending');
   const thisWeek = getWeekStart();
+  const assignments = await f('/api/student-outreach-assignments');
+  const outreachUsers = allUsers.filter(u => u.role === 'outreach');
 
   container.innerHTML = `
-    <!-- Élèves + Progression -->
+    <!-- Élèves + Progression + Assignation outreach -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
       <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Suivi des élèves</h3>
       <div style="display:grid;gap:12px">
@@ -2637,6 +2641,14 @@ async function renderCoaching() {
             </div>
             <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px"></div></div>
             <div style="display:flex;gap:4px;margin-top:8px">${STEPS.map((st, i) => '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + (i<=stepIdx?'var(--green-bg)':'var(--bg)') + ';color:' + (i<=stepIdx?'var(--green)':'var(--text3)') + '">' + st.icon + '</span>').join('')}</div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text3)">Outreach assigné :</span>
+              ${assignments.filter(a => a.student_user_id === s.user_id).map(a => '<span style="font-size:11px;padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:10px">' + a.outreach_name + ' <button onclick="removeOutreachAssignment(' + a.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 2px">✕</button></span>').join('') || '<span style="font-size:11px;color:var(--text3)">Personne</span>'}
+              <select onchange="assignOutreach(${s.user_id}, this.value); this.value=''" style="font-size:11px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer">
+                <option value="">+ Assigner</option>
+                ${outreachUsers.filter(u => !assignments.some(a => a.student_user_id === s.user_id && a.outreach_user_id === u.id)).map(u => '<option value="' + u.id + '">' + u.display_name + '</option>').join('')}
+              </select>
+            </div>
           </div>`;
         }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>'}
       </div>
@@ -2742,6 +2754,19 @@ async function renderCoaching() {
       ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:9px;padding:1px 5px;border-radius:10px">' + c.unread + '</span>' : ''}
     </div>
   `).join('');
+}
+
+async function assignOutreach(studentUserId, outreachUserId) {
+  if (!outreachUserId) return;
+  const res = await fetch('/api/student-outreach-assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_user_id: studentUserId, outreach_user_id: parseInt(outreachUserId) }) });
+  if (res.ok) { showToast('Assistante assignée', 'success'); renderCoaching(); }
+  else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+async function removeOutreachAssignment(id) {
+  await fetch('/api/student-outreach-assignments/' + id, { method: 'DELETE', credentials: 'include' });
+  showToast('Assignation retirée', 'success');
+  renderCoaching();
 }
 
 async function updateStudentProgression(studentId, step) {
@@ -3824,6 +3849,7 @@ async function deleteUser(userId) {
 }
 </script>
 <script src="/student.js"></script>
+<script src="/outreach-student.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
