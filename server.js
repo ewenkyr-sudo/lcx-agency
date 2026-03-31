@@ -1418,6 +1418,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   }
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
+  const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND created_at >= ${SQL_TODAY_START}`, [uid])).rows[0].c;
   const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at >= ${SQL_TODAY_START}`, [uid])).rows[0].c;
   const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
   const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
@@ -1426,7 +1427,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'signed'", [uid])).rows[0].c;
   const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
   const rate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
-  res.json({ total: parseInt(total), dm_sent_today: parseInt(dmSentToday), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
+  res.json({ total: parseInt(total), leads_today: parseInt(leadsToday), dm_sent_today: parseInt(dmSentToday), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
 });
 
 // ============ STUDENT MODELS ============

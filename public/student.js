@@ -154,6 +154,7 @@ async function renderStudentOutreach() {
     <div class="page-header"><div><div class="page-title">Mon Outreach</div><div class="page-subtitle">Gestion de mes leads</div></div>
       <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">Leads aujourd'hui</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">DMs aujourd'hui</div></div>
       <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs total</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">Talking Warm</div></div>
