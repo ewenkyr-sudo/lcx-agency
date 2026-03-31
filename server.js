@@ -1331,6 +1331,91 @@ async function canAccessStudentOutreach(userId, userRole, studentUserId) {
   return false;
 }
 
+// ============ STUDENT LEADS BULK IMPORT ============
+app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
+  const { csv_content, student_user_id } = req.body;
+  if (!csv_content) return res.status(400).json({ error: 'Contenu CSV requis' });
+
+  // Déterminer le propriétaire
+  let ownerId;
+  if (req.user.role === 'student') {
+    ownerId = req.user.id;
+  } else if (req.user.role === 'outreach' && student_user_id) {
+    const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
+    if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
+    ownerId = student_user_id;
+  } else if (req.user.role === 'admin' && student_user_id) {
+    ownerId = student_user_id;
+  } else {
+    ownerId = req.user.id;
+  }
+
+  const statusMap = {
+    'sent': 'sent', 'to send': 'to-send', 'to-send': 'to-send',
+    'talking - cold': 'talking-cold', 'talking-cold': 'talking-cold', 'talking cold': 'talking-cold',
+    'talking - warm': 'talking-warm', 'talking-warm': 'talking-warm', 'talking warm': 'talking-warm',
+    'call booked': 'call-booked', 'call-booked': 'call-booked',
+    'signed': 'signed'
+  };
+
+  // Parser CSV avec gestion des guillemets
+  function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue; }
+      current += ch;
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const lines = csv_content.split('\n').filter(l => l.trim());
+  let imported = 0, updated = 0, skipped = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    let username = (cols[0] || '').trim();
+    if (!username) continue;
+
+    let igLink = (cols[1] || '').trim();
+    const leadType = (cols[2] || '').trim().toLowerCase() || '';
+    const rawStatus = (cols[3] || '').trim().toLowerCase();
+    const script = (cols[4] || '').trim();
+    const account = (cols[5] || '').trim();
+    const notes = (cols[6] || '').trim();
+    const status = statusMap[rawStatus] || 'sent';
+
+    // Si le username est un lien Instagram, extraire le vrai username
+    if (username.includes('instagram.com')) {
+      const match = username.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+      if (match) { if (!igLink) igLink = username; username = match[1]; }
+    }
+
+    // Vérifier doublon
+    const cleanUsername = username.replace(/^@/, '');
+    const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, ownerId]);
+
+    if (exists.rows.length > 0) {
+      // Mettre à jour le lead existant
+      await pool.query(`UPDATE student_leads SET ig_link = COALESCE(NULLIF($1,''), ig_link), lead_type = COALESCE(NULLIF($2,''), lead_type),
+        status = COALESCE(NULLIF($3,''), status), script_used = COALESCE(NULLIF($4,''), script_used),
+        ig_account_used = COALESCE(NULLIF($5,''), ig_account_used), notes = COALESCE(NULLIF($6,''), notes), updated_at = NOW() WHERE id = $7`,
+        [igLink, leadType, status, script, account, notes, exists.rows[0].id]);
+      updated++;
+    } else {
+      await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        [ownerId, username, igLink, leadType, script, account, notes, status, req.user.id]);
+      imported++;
+    }
+  }
+
+  res.json({ ok: true, imported, updated, skipped: lines.length - 1 - imported - updated, total: lines.length - 1 });
+});
+
 // ============ STUDENT LEADS (outreach élèves) ============
 // GET: student voit les siens, outreach voit ceux de l'élève assigné (via ?student_user_id=), admin voit tout
 app.get('/api/student-leads', authMiddleware, async (req, res) => {
