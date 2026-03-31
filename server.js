@@ -1332,9 +1332,16 @@ app.delete('/api/student-outreach-assignments/:id', authMiddleware, adminOnly, a
 // Helper: check if user can access student outreach
 async function canAccessStudentOutreach(userId, userRole, studentUserId) {
   if (userRole === 'admin') return true;
-  if (userRole === 'student' && userId === parseInt(studentUserId)) return true;
+  if (userRole === 'student') {
+    if (userId === parseInt(studentUserId)) return true;
+    // Vérifier si pairés
+    const sharedIds = await getSharedOutreachIds(userId);
+    if (sharedIds.includes(parseInt(studentUserId))) return true;
+  }
   if (userRole === 'outreach') {
-    const check = await pool.query('SELECT id FROM student_outreach_assignments WHERE student_user_id = $1 AND outreach_user_id = $2', [studentUserId, userId]);
+    // Vérifier assignation directe ou via un partenaire
+    const sharedIds = await getSharedOutreachIds(studentUserId);
+    const check = await pool.query('SELECT id FROM student_outreach_assignments WHERE student_user_id = ANY($1) AND outreach_user_id = $2', [sharedIds, userId]);
     return check.rows.length > 0;
   }
   return false;
