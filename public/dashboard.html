@@ -3434,8 +3434,9 @@ function renderLeads() {
   if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
 
   const isAdmin = currentUser.role === 'admin';
+  const showAgent = isAdmin || currentUser.role === 'outreach';
   const agentCol = document.getElementById('lead-col-agent');
-  if (agentCol) agentCol.style.display = isAdmin ? '' : 'none';
+  if (agentCol) agentCol.style.display = showAgent ? '' : 'none';
 
   const search = (document.getElementById('lead-search')?.value || '').toLowerCase().trim();
   let filtered = currentLeadFilter === 'all' ? allLeads : allLeads.filter(l => l.status === currentLeadFilter);
@@ -3459,7 +3460,7 @@ function renderLeads() {
         </select>
       </td>
       <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${l.notes || '-'}</td>
-      ${isAdmin ? `<td data-label="Agent" class="mc-half" style="color:var(--accent2)">${l.agent_name || '-'}</td>` : ''}
+      ${showAgent ? `<td data-label="Agent" class="mc-half" style="color:var(--accent2)">${l.agent_name || '-'}</td>` : ''}
       <td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">${date}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
