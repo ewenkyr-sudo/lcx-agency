@@ -152,7 +152,7 @@ async function renderStudentOutreach() {
 
   c.innerHTML = `
     <div class="page-header"><div><div class="page-title">Mon Outreach</div><div class="page-subtitle">Gestion de mes leads</div></div>
-      <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button></div></div>
+      <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">DMs aujourd'hui</div></div>
       <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs total</div></div>
@@ -350,6 +350,65 @@ async function deleteOption(id) {
   });
   showToast('Option supprimée', 'success');
   showOptionsManager();
+}
+
+// ========== CSV IMPORT ==========
+async function importStudentCSV(input) {
+  var file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  var reader = new FileReader();
+  reader.onload = async function() {
+    var content = reader.result;
+    var lines = content.split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length < 2) return showToast('Fichier vide', 'error');
+
+    // Mapping statuts CSV → app
+    var statusMap = {
+      'sent': 'sent', 'to send': 'to-send',
+      'talking - cold': 'talking-cold', 'talking-cold': 'talking-cold',
+      'talking - warm': 'talking-warm', 'talking-warm': 'talking-warm',
+      'call booked': 'call-booked', 'call-booked': 'call-booked',
+      'signed': 'signed'
+    };
+
+    var imported = 0, skipped = 0, errors = 0;
+    showToast('Import en cours...', 'info');
+
+    for (var i = 1; i < lines.length; i++) {
+      var line = lines[i];
+      // Parser : Username, link, Type, Status, Script, Account, Notes
+      var cols = line.split(',');
+      var username = (cols[0] || '').replace(/"/g, '').trim();
+      if (!username) continue;
+
+      // Extraire le lien (peut contenir ==)
+      var igLink = (cols[1] || '').replace(/"/g, '').trim();
+      var leadType = (cols[2] || '').replace(/"/g, '').trim().toLowerCase() || '';
+      var rawStatus = (cols[3] || '').replace(/"/g, '').trim().toLowerCase();
+      var script = (cols[4] || '').replace(/"/g, '').trim();
+      var account = (cols[5] || '').replace(/"/g, '').trim();
+      var notes = (cols[6] || '').replace(/"/g, '').trim();
+      var status = statusMap[rawStatus] || 'sent';
+
+      var res = await fetch('/api/student-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: username, ig_link: igLink, lead_type: leadType, script_used: script, ig_account_used: account, notes: notes, status: status })
+      });
+
+      if (res.ok) imported++;
+      else if (res.status === 409) skipped++;
+      else errors++;
+    }
+
+    showToast(imported + ' importés, ' + skipped + ' doublons ignorés' + (errors > 0 ? ', ' + errors + ' erreurs' : ''), imported > 0 ? 'success' : 'info');
+    await loadStudentData();
+    renderStudentLeadTable();
+  };
+  reader.readAsText(file);
 }
 
 // ========== STUDENT RECRUITS ==========
