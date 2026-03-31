@@ -303,6 +303,15 @@ async function initDB() {
       UNIQUE(student_user_id, outreach_user_id)
     );
 
+    -- Paires d'élèves partageant le même outreach
+    CREATE TABLE IF NOT EXISTS student_outreach_pairs (
+      id SERIAL PRIMARY KEY,
+      student_a_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      student_b_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(student_a_id, student_b_id)
+    );
+
     DO $$ BEGIN
       ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS added_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
     EXCEPTION WHEN others THEN NULL;
@@ -1331,6 +1340,42 @@ async function canAccessStudentOutreach(userId, userRole, studentUserId) {
   return false;
 }
 
+// ============ STUDENT OUTREACH PAIRS ============
+// Helper: get all user IDs sharing outreach with this student
+async function getSharedOutreachIds(studentUserId) {
+  const { rows } = await pool.query(
+    `SELECT student_b_id as partner_id FROM student_outreach_pairs WHERE student_a_id = $1
+     UNION SELECT student_a_id as partner_id FROM student_outreach_pairs WHERE student_b_id = $1`, [studentUserId]);
+  const ids = [parseInt(studentUserId)];
+  rows.forEach(r => ids.push(r.partner_id));
+  return ids;
+}
+
+app.get('/api/student-outreach-pairs', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { rows } = await pool.query(`SELECT sop.*, a.display_name as student_a_name, b.display_name as student_b_name
+    FROM student_outreach_pairs sop JOIN users a ON sop.student_a_id = a.id JOIN users b ON sop.student_b_id = b.id ORDER BY a.display_name`);
+  res.json(rows);
+});
+
+app.post('/api/student-outreach-pairs', authMiddleware, adminOnly, async (req, res) => {
+  const { student_a_id, student_b_id } = req.body;
+  if (!student_a_id || !student_b_id) return res.status(400).json({ error: 'Deux élèves requis' });
+  if (student_a_id === student_b_id) return res.status(400).json({ error: 'Impossible de pairer un élève avec lui-même' });
+  // Toujours stocker le plus petit ID en A pour éviter les doublons inversés
+  const a = Math.min(student_a_id, student_b_id);
+  const b = Math.max(student_a_id, student_b_id);
+  try {
+    const { rows } = await pool.query('INSERT INTO student_outreach_pairs (student_a_id, student_b_id) VALUES ($1, $2) RETURNING *', [a, b]);
+    res.json(rows[0]);
+  } catch(e) { res.status(409).json({ error: 'Cette paire existe déjà' }); }
+});
+
+app.delete('/api/student-outreach-pairs/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM student_outreach_pairs WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
 // ============ STUDENT LEADS BULK IMPORT ============
 app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
   const { csv_content, student_user_id } = req.body;
@@ -1395,9 +1440,10 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
       if (match) { if (!igLink) igLink = username; username = match[1]; }
     }
 
-    // Vérifier doublon
+    // Vérifier doublon dans le pool partagé
     const cleanUsername = username.replace(/^@/, '');
-    const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, ownerId]);
+    const sharedIds = await getSharedOutreachIds(ownerId);
+    const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2)", [cleanUsername, sharedIds]);
 
     if (exists.rows.length > 0) {
       // Mettre à jour le lead existant
@@ -1422,13 +1468,15 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
   const studentUserId = req.query.student_user_id;
 
   if (req.user.role === 'student') {
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [req.user.id]);
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'outreach' && studentUserId) {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, studentUserId);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
+    const sharedIds = await getSharedOutreachIds(studentUserId);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'admin') {
@@ -1462,7 +1510,8 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
   }
 
   const cleanUsername = username.replace(/^@/, '');
-  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = $2", [cleanUsername, ownerId]);
+  const sharedIds = await getSharedOutreachIds(ownerId);
+  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2)", [cleanUsername, sharedIds]);
   if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
   const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
     [ownerId, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send', req.user.id]);
@@ -1502,17 +1551,31 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
     if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
   }
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
-  const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
-  const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND created_at >= ${SQL_TODAY_START}`, [uid])).rows[0].c;
-  const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at >= ${SQL_TODAY_START}`, [uid])).rows[0].c;
-  const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
-  const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
-  const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].c;
-  const booked = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].c;
-  const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'signed'", [uid])).rows[0].c;
+  const sharedIds = await getSharedOutreachIds(uid);
+
+  // Stats globales du pool partagé
+  const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)', [sharedIds])).rows[0].c;
+  const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND created_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+  const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND sent_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+  const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status != 'to-send'", [sharedIds])).rows[0].c;
+  const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'talking-cold'", [sharedIds])).rows[0].c;
+  const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'talking-warm'", [sharedIds])).rows[0].c;
+  const booked = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'call-booked'", [sharedIds])).rows[0].c;
+  const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'signed'", [sharedIds])).rows[0].c;
   const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
   const rate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
-  res.json({ total: parseInt(total), leads_today: parseInt(leadsToday), dm_sent_today: parseInt(dmSentToday), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate });
+
+  // Stats individuelles par membre du pool
+  const contributions = [];
+  for (const memberId of sharedIds) {
+    const memberName = (await pool.query('SELECT display_name FROM users WHERE id = $1', [memberId])).rows[0]?.display_name || '?';
+    const mLeads = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2)', [memberId, sharedIds])).rows[0].c;
+    const mDms = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2) AND sent_at >= ${SQL_TODAY_START}`, [memberId, sharedIds])).rows[0].c;
+    const mTotal = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2) AND status != 'to-send'", [memberId, sharedIds])).rows[0].c;
+    contributions.push({ user_id: memberId, name: memberName, leads_added: parseInt(mLeads), dms_today: parseInt(mDms), dms_total: parseInt(mTotal) });
+  }
+
+  res.json({ total: parseInt(total), leads_today: parseInt(leadsToday), dm_sent_today: parseInt(dmSentToday), dm_sent: parseInt(dmSent), talking_cold: parseInt(cold), talking_warm: parseInt(warm), call_booked: parseInt(booked), signed: parseInt(signed), reply_rate: rate, contributions, shared: sharedIds.length > 1 });
 });
 
 // ============ STUDENT MODELS ============

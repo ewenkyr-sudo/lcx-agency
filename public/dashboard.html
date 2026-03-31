@@ -2626,6 +2626,7 @@ async function renderCoaching() {
   const pendingCalls = callRequests.filter(c => c.status === 'pending');
   const thisWeek = getWeekStart();
   const assignments = await f('/api/student-outreach-assignments');
+  const pairs = await f('/api/student-outreach-pairs');
   const outreachUsers = allUsers.filter(u => u.role === 'outreach');
 
   container.innerHTML = `
@@ -2652,6 +2653,14 @@ async function renderCoaching() {
               <select onchange="assignOutreach(${s.user_id}, this.value); this.value=''" style="font-size:11px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer">
                 <option value="">+ Assigner</option>
                 ${outreachUsers.filter(u => !assignments.some(a => a.student_user_id === s.user_id && a.outreach_user_id === u.id)).map(u => '<option value="' + u.id + '">' + u.display_name + '</option>').join('')}
+              </select>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text3)">Outreach partagé avec :</span>
+              ${pairs.filter(p => p.student_a_id === s.user_id || p.student_b_id === s.user_id).map(p => { const partnerName = p.student_a_id === s.user_id ? p.student_b_name : p.student_a_name; return '<span style="font-size:11px;padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px">' + partnerName + ' <button onclick="removeOutreachPair(' + p.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 2px">✕</button></span>'; }).join('') || '<span style="font-size:11px;color:var(--text3)">Personne</span>'}
+              <select onchange="addOutreachPair(${s.user_id}, this.value); this.value=''" style="font-size:11px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer">
+                <option value="">+ Pairer</option>
+                ${students.filter(st => st.user_id !== s.user_id && !pairs.some(p => (p.student_a_id === s.user_id && p.student_b_id === st.user_id) || (p.student_b_id === s.user_id && p.student_a_id === st.user_id))).map(st => '<option value="' + st.user_id + '">' + st.name + '</option>').join('')}
               </select>
             </div>
           </div>`;
@@ -2759,6 +2768,19 @@ async function renderCoaching() {
       ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:9px;padding:1px 5px;border-radius:10px">' + c.unread + '</span>' : ''}
     </div>
   `).join('');
+}
+
+async function addOutreachPair(studentAId, studentBId) {
+  if (!studentBId) return;
+  const res = await fetch('/api/student-outreach-pairs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_a_id: parseInt(studentAId), student_b_id: parseInt(studentBId) }) });
+  if (res.ok) { showToast('Élèves pairés', 'success'); renderCoaching(); }
+  else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+async function removeOutreachPair(id) {
+  await fetch('/api/student-outreach-pairs/' + id, { method: 'DELETE', credentials: 'include' });
+  showToast('Paire retirée', 'success');
+  renderCoaching();
 }
 
 async function assignOutreach(studentUserId, outreachUserId) {
