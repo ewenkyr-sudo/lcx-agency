@@ -374,24 +374,42 @@ async function importStudentCSV(input) {
       'signed': 'signed'
     };
 
+    // Parser CSV qui gère les guillemets
+    function parseCSVLine(line) {
+      var result = [];
+      var current = '';
+      var inQuotes = false;
+      for (var j = 0; j < line.length; j++) {
+        var ch = line[j];
+        if (ch === '"') { inQuotes = !inQuotes; continue; }
+        if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue; }
+        current += ch;
+      }
+      result.push(current.trim());
+      return result;
+    }
+
     var imported = 0, skipped = 0, errors = 0;
-    showToast('Import en cours...', 'info');
+    showToast('Import en cours... (' + (lines.length - 1) + ' lignes)', 'info');
 
     for (var i = 1; i < lines.length; i++) {
-      var line = lines[i];
-      // Parser : Username, link, Type, Status, Script, Account, Notes
-      var cols = line.split(',');
-      var username = (cols[0] || '').replace(/"/g, '').trim();
+      var cols = parseCSVLine(lines[i]);
+      var username = (cols[0] || '').trim();
       if (!username) continue;
 
-      // Extraire le lien (peut contenir ==)
-      var igLink = (cols[1] || '').replace(/"/g, '').trim();
-      var leadType = (cols[2] || '').replace(/"/g, '').trim().toLowerCase() || '';
-      var rawStatus = (cols[3] || '').replace(/"/g, '').trim().toLowerCase();
-      var script = (cols[4] || '').replace(/"/g, '').trim();
-      var account = (cols[5] || '').replace(/"/g, '').trim();
-      var notes = (cols[6] || '').replace(/"/g, '').trim();
+      var igLink = (cols[1] || '').trim();
+      var leadType = (cols[2] || '').trim().toLowerCase() || '';
+      var rawStatus = (cols[3] || '').trim().toLowerCase();
+      var script = (cols[4] || '').trim();
+      var account = (cols[5] || '').trim();
+      var notes = (cols[6] || '').trim();
       var status = statusMap[rawStatus] || 'sent';
+
+      // Auto-extraire username depuis le lien si le username ressemble à un lien
+      if (username.includes('instagram.com')) {
+        var match = username.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+        if (match) { igLink = username; username = match[1]; }
+      }
 
       var res = await fetch('/api/student-leads', {
         method: 'POST',
