@@ -12,6 +12,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lcx-agency-secret-change-me-in-production';
 
+// Journée de travail commence à 9h (pour les stats "aujourd'hui")
+const DAY_START_HOUR = 9;
+// Expression SQL pour le début de la journée de travail courante
+const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAMP::date - INTERVAL '1 day' ELSE CURRENT_TIMESTAMP::date END + INTERVAL '${DAY_START_HOUR} hours')`;
+
 // ============ MIDDLEWARE ============
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
@@ -1089,8 +1094,8 @@ app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
 app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
-  const today = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at::date = CURRENT_DATE", [uid])).rows[0].count;
-  const dmSentToday = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND sent_at::date = CURRENT_DATE", [uid])).rows[0].count;
+  const today = (await pool.query(`SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at >= ${SQL_TODAY_START}`, [uid])).rows[0].count;
+  const dmSentToday = (await pool.query(`SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND sent_at >= ${SQL_TODAY_START}`, [uid])).rows[0].count;
   const dmSent = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].count;
   const warm = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].count;
   const booked = (await pool.query("SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND status = 'call-booked'", [uid])).rows[0].count;
@@ -1115,9 +1120,9 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
       u.id as user_id,
       u.display_name as agent_name,
       COALESCE(COUNT(*), 0) as total_leads,
-      COALESCE(SUM(CASE WHEN ol.created_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as leads_today,
+      COALESCE(SUM(CASE WHEN ol.created_at >= ${SQL_TODAY_START} THEN 1 ELSE 0 END), 0) as leads_today,
       COALESCE(SUM(CASE WHEN ol.status != 'to-send' THEN 1 ELSE 0 END), 0) as dm_sent,
-      COALESCE(SUM(CASE WHEN ol.sent_at::date = CURRENT_DATE THEN 1 ELSE 0 END), 0) as dm_sent_today,
+      COALESCE(SUM(CASE WHEN ol.sent_at >= ${SQL_TODAY_START} THEN 1 ELSE 0 END), 0) as dm_sent_today,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-cold' THEN 1 ELSE 0 END), 0) as talking_cold,
       COALESCE(SUM(CASE WHEN ol.status = 'talking-warm' THEN 1 ELSE 0 END), 0) as talking_warm,
       COALESCE(SUM(CASE WHEN ol.status = 'call-booked' THEN 1 ELSE 0 END), 0) as call_booked,
@@ -1413,7 +1418,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   }
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1', [uid])).rows[0].c;
-  const dmSentToday = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at::date = CURRENT_DATE", [uid])).rows[0].c;
+  const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND sent_at >= ${SQL_TODAY_START}`, [uid])).rows[0].c;
   const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status != 'to-send'", [uid])).rows[0].c;
   const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-cold'", [uid])).rows[0].c;
   const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = $1 AND status = 'talking-warm'", [uid])).rows[0].c;
