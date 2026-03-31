@@ -314,6 +314,7 @@ async function initDB() {
 
     DO $$ BEGIN
       ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS added_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS last_modified_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
     EXCEPTION WHEN others THEN NULL;
     END $$;
   `);
@@ -1461,22 +1462,22 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
 
   if (req.user.role === 'student') {
     const sharedIds = await getSharedOutreachIds(req.user.id);
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'outreach' && studentUserId) {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, studentUserId);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     const sharedIds = await getSharedOutreachIds(studentUserId);
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'admin') {
     if (studentUserId) {
-      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
+      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
       return res.json(rows);
     }
-    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id ORDER BY sl.created_at DESC');
+    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id ORDER BY sl.created_at DESC');
     return res.json(rows);
   }
   res.status(403).json({ error: 'Accès refusé' });
@@ -1521,8 +1522,9 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
     status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
     ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
+    last_modified_by = $7,
     sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
-    [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
+    [status, notes, lead_type, script_used, ig_account_used, req.params.id, req.user.id]);
   res.json({ ok: true });
 });
 

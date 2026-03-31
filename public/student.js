@@ -167,7 +167,7 @@ async function renderStudentOutreach() {
       ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
     <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderStudentLeadTable()" style="max-width:350px"></div>
-    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
   renderStudentLeadTable();
 }
@@ -206,10 +206,11 @@ function renderStudentLeadTable() {
       + '<td data-label="Compte" class="mc-half">' + inlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateStudentLead(' + l.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(leadStatusColors).map(([k,v]) => '<option value="' + k + '"' + (l.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
+      + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
 
 function filterStudentLeads(f, btn) {
