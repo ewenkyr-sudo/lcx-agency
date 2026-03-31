@@ -1333,6 +1333,60 @@ async function canAccessStudentOutreach(userId, userRole, studentUserId) {
   return false;
 }
 
+// ============ STUDENT OUTREACH ADMIN STATS ============
+app.get('/api/student-outreach-admin-stats', authMiddleware, adminOnly, async (req, res) => {
+  // Pour chaque élève qui a des assignations outreach, retourner les stats par assistante
+  const { rows: allAssignments } = await pool.query(`
+    SELECT soa.student_user_id, s.display_name as student_name, soa.outreach_user_id, o.display_name as outreach_name
+    FROM student_outreach_assignments soa
+    JOIN users s ON soa.student_user_id = s.id
+    JOIN users o ON soa.outreach_user_id = o.id
+    ORDER BY s.display_name, o.display_name
+  `);
+
+  const results = [];
+  const studentIds = [...new Set(allAssignments.map(a => a.student_user_id))];
+
+  for (const studentId of studentIds) {
+    const studentName = allAssignments.find(a => a.student_user_id === studentId).student_name;
+    const sharedIds = await getSharedOutreachIds(studentId);
+    const assistants = allAssignments.filter(a => a.student_user_id === studentId);
+
+    // Stats globales du pool de cet élève
+    const totalLeads = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)', [sharedIds])).rows[0].c;
+    const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status != 'to-send'", [sharedIds])).rows[0].c;
+    const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND sent_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+    const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND created_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+
+    // Stats par assistante
+    const assistantStats = [];
+    for (const a of assistants) {
+      const aLeadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2) AND created_at >= ${SQL_TODAY_START}`, [a.outreach_user_id, sharedIds])).rows[0].c;
+      const aDmsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE last_modified_by = $1 AND user_id = ANY($2) AND sent_at >= ${SQL_TODAY_START}`, [a.outreach_user_id, sharedIds])).rows[0].c;
+      const aDmsTotal = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE last_modified_by = $1 AND user_id = ANY($2) AND status != 'to-send'", [a.outreach_user_id, sharedIds])).rows[0].c;
+      assistantStats.push({
+        name: a.outreach_name,
+        user_id: a.outreach_user_id,
+        leads_today: parseInt(aLeadsToday),
+        dms_today: parseInt(aDmsToday),
+        dms_total: parseInt(aDmsTotal)
+      });
+    }
+
+    results.push({
+      student_user_id: studentId,
+      student_name: studentName,
+      total_leads: parseInt(totalLeads),
+      dm_sent: parseInt(dmSent),
+      dm_sent_today: parseInt(dmSentToday),
+      leads_today: parseInt(leadsToday),
+      assistants: assistantStats
+    });
+  }
+
+  res.json(results);
+});
+
 // ============ STUDENT OUTREACH PAIRS ============
 // Helper: get all user IDs sharing outreach with this student
 async function getSharedOutreachIds(studentUserId) {

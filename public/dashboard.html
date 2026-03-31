@@ -2689,6 +2689,9 @@ async function renderCoaching() {
       </div>
     </div>
 
+    <!-- Stats Outreach Élèves -->
+    <div id="coaching-outreach-stats"></div>
+
     <!-- Recrutement modèles -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
       <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Recrutement modèles — Tous les élèves</h3>
@@ -2768,6 +2771,42 @@ async function renderCoaching() {
       ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:9px;padding:1px 5px;border-radius:10px">' + c.unread + '</span>' : ''}
     </div>
   `).join('');
+
+  // Stats outreach élèves
+  loadCoachingOutreachStats();
+}
+
+async function loadCoachingOutreachStats() {
+  try {
+    const res = await fetch('/api/student-outreach-admin-stats', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const container = document.getElementById('coaching-outreach-stats');
+    if (!container || data.length === 0) return;
+
+    container.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
+      + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Outreach Élèves — Stats du jour</h3>'
+      + data.map(function(s) {
+        return '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:12px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
+          + '<strong style="font-size:14px">' + s.student_name + '</strong>'
+          + '<div style="display:flex;gap:12px;font-size:12px">'
+          + '<span>Leads auj. <strong style="color:var(--text)">' + s.leads_today + '</strong></span>'
+          + '<span>DMs auj. <strong style="color:var(--blue)">' + s.dm_sent_today + '</strong></span>'
+          + '<span>DMs total <strong>' + s.dm_sent + '</strong></span>'
+          + '<span>Total leads <strong>' + s.total_leads + '</strong></span>'
+          + '</div></div>'
+          + (s.assistants.length > 0 ? '<table class="table mobile-cards" style="margin:0"><thead><tr><th>Assistante</th><th>Leads auj.</th><th>DMs auj.</th><th>DMs total</th></tr></thead><tbody>'
+            + s.assistants.map(function(a) {
+              return '<tr><td data-label="" class="mc-title"><strong>' + a.name + '</strong></td>'
+                + '<td data-label="Leads auj." class="mc-half">' + a.leads_today + '</td>'
+                + '<td data-label="DMs auj." class="mc-half" style="color:var(--blue)">' + a.dms_today + '</td>'
+                + '<td data-label="DMs total" class="mc-half">' + a.dms_total + '</td></tr>';
+            }).join('') + '</tbody></table>' : '<div style="font-size:12px;color:var(--text3)">Aucune assistante assignée</div>')
+          + '</div>';
+      }).join('')
+      + '</div>';
+  } catch(e) {}
 }
 
 async function addOutreachPair(studentAId, studentBId) {
