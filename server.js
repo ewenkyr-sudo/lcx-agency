@@ -1036,20 +1036,15 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
 
 // Get leads — outreach voit ses propres leads, admin voit tout
 app.get('/api/leads', authMiddleware, async (req, res) => {
-  if (req.user.role === 'outreach') {
-    const { rows } = await pool.query('SELECT * FROM outreach_leads WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
-    return res.json(rows);
-  }
-  if (req.user.role === 'admin') {
-    const { rows } = await pool.query(`
-      SELECT ol.*, u.display_name as agent_name
-      FROM outreach_leads ol
-      JOIN users u ON ol.user_id = u.id
-      ORDER BY ol.created_at DESC
-    `);
-    return res.json(rows);
-  }
-  res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  // Tout le monde voit tous les leads agence
+  const { rows } = await pool.query(`
+    SELECT ol.*, u.display_name as agent_name
+    FROM outreach_leads ol
+    JOIN users u ON ol.user_id = u.id
+    ORDER BY ol.created_at DESC
+  `);
+  res.json(rows);
 });
 
 // Add lead
@@ -1068,15 +1063,10 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
   res.json(rows[0]);
 });
 
-// Update lead status
+// Update lead
 app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const { status, notes, lead_type, script_used, ig_account_used } = req.body;
-  // Outreach ne peut modifier que ses propres leads
-  if (req.user.role === 'outreach') {
-    const check = await pool.query('SELECT id FROM outreach_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-    if (check.rows.length === 0) return res.status(403).json({ error: 'Ce lead ne t\'appartient pas' });
-  }
   await pool.query(`UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
     ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
@@ -1088,12 +1078,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
 
 // Delete lead
 app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
-  if (req.user.role === 'outreach') {
-    const check = await pool.query('SELECT id FROM outreach_leads WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
-    if (check.rows.length === 0) return res.status(403).json({ error: 'Ce lead ne t\'appartient pas' });
-  } else if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Accès refusé' });
-  }
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
   broadcast('lead-deleted', { id: parseInt(req.params.id) });
   res.json({ ok: true });
