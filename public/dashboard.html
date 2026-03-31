@@ -976,7 +976,7 @@
       <span class="nav-icon">📊</span> Stats & Subs
     </div>
     <div class="nav-item" data-section="coaching" onclick="switchSection(event)">
-      <span class="nav-icon">🎓</span> Coaching
+      <span class="nav-icon">🎓</span> Coaching <span id="admin-msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
     </div>
     <div class="nav-item" data-section="performances" onclick="switchSection(event)">
       <span class="nav-icon">📈</span> Performances
@@ -1736,6 +1736,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSettings();
     await initStudentSections();
     await initOutreachStudentSections();
+    // Badges messages + permission notifications
+    updateUnreadBadges();
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   } catch (err) {
     console.error('Init error:', err);
     window.location.href = '/';
@@ -3203,6 +3208,30 @@ async function deleteShift(id) {
   await loadChatterKPIs();
 }
 
+// ========== MESSAGE BADGES ==========
+async function updateUnreadBadges() {
+  try {
+    const res = await fetch('/api/messages-unread', { credentials: 'include' });
+    if (!res.ok) return;
+    const unread = await res.json();
+    const total = unread.reduce(function(s, u) { return s + parseInt(u.unread); }, 0);
+
+    // Badge élève
+    const studentBadge = document.getElementById('msg-badge');
+    if (studentBadge) {
+      if (total > 0) { studentBadge.style.display = ''; studentBadge.textContent = total; }
+      else { studentBadge.style.display = 'none'; }
+    }
+
+    // Badge admin (coaching)
+    const adminBadge = document.getElementById('admin-msg-badge');
+    if (adminBadge) {
+      if (total > 0) { adminBadge.style.display = ''; adminBadge.textContent = total; }
+      else { adminBadge.style.display = 'none'; }
+    }
+  } catch(e) {}
+}
+
 // ========== WEBSOCKET TEMPS RÉEL ==========
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -3237,9 +3266,15 @@ function connectWebSocket() {
           const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
           if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }
         }
-        // Update badge
-        const badge = document.getElementById('msg-badge');
-        if (badge) { badge.style.display = ''; badge.textContent = parseInt(badge.textContent || 0) + 1; }
+        // Aussi rafraîchir le chat admin si ouvert
+        if (adminChatUserId === msg.data.from_user_id && currentUser.role === 'admin') {
+          openAdminChat(adminChatUserId);
+        }
+        updateUnreadBadges();
+        // Notification push
+        if (Notification.permission === 'granted') {
+          new Notification('LCX Agency', { body: (msg.data.from_name || 'Quelqu\'un') + ' : ' + (msg.data.content || '').substring(0, 50), icon: '/icons/icon-192.png' });
+        }
       }
     }
     if (msg.event === 'call-request-new' || msg.event === 'call-request-updated') {
