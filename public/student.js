@@ -161,7 +161,7 @@ async function renderStudentOutreach() {
   c.innerHTML = `
     ${usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="switchStudentMarket(\'fr\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='fr'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='fr'?'white':'var(--text2)') + '">Outreach FR</button><button onclick="switchStudentMarket(\'us\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='us'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='us'?'white':'var(--text2)') + '">Outreach US</button></div>' : ''}
     <div class="page-header"><div><div class="page-title">Mon Outreach ${marketLabel}</div><div class="page-subtitle">Gestion de mes leads ${marketLabel}</div></div>
-      <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
+      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"><button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteAllStudentLeads()">Tout supprimer</button></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">Leads aujourd'hui</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">DMs aujourd'hui</div></div>
@@ -282,6 +282,19 @@ async function addNewOption(optType, selectId) {
 function autoFillUsername(url, targetId) {
   const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
   if (match) document.getElementById(targetId).value = '@' + match[1];
+}
+
+async function deleteAllStudentLeads() {
+  var label = currentStudentMarket === 'us' ? 'US' : 'FR';
+  if (!confirm('Supprimer TOUS les leads ' + label + ' ? Cette action est irréversible.')) return;
+  if (!confirm('Tu es sûr ? Tous les leads ' + label + ' seront supprimés définitivement.')) return;
+  var res = await fetch('/api/student-leads/all?market=' + currentStudentMarket, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    var data = await res.json();
+    showToast(data.deleted + ' leads supprimés', 'success');
+    await loadStudentData();
+    renderStudentOutreach();
+  }
 }
 
 function switchStudentMarket(m) {

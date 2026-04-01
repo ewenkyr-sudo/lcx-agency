@@ -1594,6 +1594,18 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/student-leads/all', authMiddleware, async (req, res) => {
+  const market = req.query.market || 'fr';
+  const mf = market === 'us' ? 'us' : 'fr';
+  let uid;
+  if (req.user.role === 'student') uid = req.user.id;
+  else if (req.user.role === 'admin' && req.query.student_user_id) uid = req.query.student_user_id;
+  else return res.status(400).json({ error: 'Accès refusé' });
+  const sharedIds = await getSharedOutreachIds(uid);
+  const result = await pool.query("DELETE FROM student_leads WHERE user_id = ANY($1) AND COALESCE(market, 'fr') = $2", [sharedIds, mf]);
+  res.json({ ok: true, deleted: result.rowCount });
+});
+
 app.delete('/api/student-leads/:id', authMiddleware, async (req, res) => {
   const lead = (await pool.query('SELECT user_id FROM student_leads WHERE id = $1', [req.params.id])).rows[0];
   if (!lead) return res.status(404).json({ error: 'Lead introuvable' });
