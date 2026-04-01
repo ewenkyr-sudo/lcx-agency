@@ -209,7 +209,7 @@ function renderStudentLeadTable() {
       + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
-      + '<td data-label="" class="mc-full" style="text-align:right;padding-top:8px"><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')" style="background:var(--red-bg);color:var(--red);border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">Supprimer</button></td></tr>';
+      + '<td data-label=""><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
   }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
 }
 
