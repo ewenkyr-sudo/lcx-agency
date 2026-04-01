@@ -1531,6 +1531,7 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
     return res.json(rows);
   }
   if (req.user.role === 'outreach' && studentUserId) {
+    if (market === 'us') return res.status(403).json({ error: 'Outreach US réservé aux élèves' });
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, studentUserId);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     const sharedIds = await getSharedOutreachIds(studentUserId);
@@ -1559,6 +1560,7 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     ownerId = req.user.id;
   } else if (req.user.role === 'outreach' && student_user_id) {
+    if (leadMarket === 'us') return res.status(403).json({ error: 'Outreach US réservé aux élèves' });
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     ownerId = student_user_id;

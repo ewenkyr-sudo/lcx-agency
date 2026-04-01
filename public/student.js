@@ -24,7 +24,7 @@ let currentChatUserId = null;
 async function loadStudentData() {
   const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
   const [leads, recruits, models, revenue, callRequests, objectives, conversations, opts] = await Promise.all([
-    f('/api/student-leads'), f('/api/student-recruits'), f('/api/student-models'),
+    f('/api/student-leads?market=' + currentStudentMarket), f('/api/student-recruits'), f('/api/student-models'),
     f('/api/student-revenue'), f('/api/call-requests'), f('/api/objectives'), f('/api/conversations'),
     f('/api/user-options')
   ]);
@@ -319,7 +319,10 @@ async function addStudentLead() {
 
 async function updateStudentLead(id, status) {
   await fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) });
-  await loadStudentData(); renderStudentLeadTable();
+  // Recharger les leads du market actuel uniquement
+  var leadsRes = await fetch('/api/student-leads?market=' + currentStudentMarket, { credentials: 'include' });
+  if (leadsRes.ok) studentData.leads = await leadsRes.json();
+  renderStudentLeadTable();
 }
 
 async function updateStudentLeadField(id, field, value) {
