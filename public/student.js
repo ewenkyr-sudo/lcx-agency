@@ -201,7 +201,7 @@ function renderStudentLeadTable() {
     const igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
     return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
-      + '<td data-label="Type" class="mc-half">' + inlineSelect(l.id, 'lead_type', l.lead_type, 'type') + '</td>'
+      + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateStudentLeadField(' + l.id + ',\'lead_type\',this.value)') + '</td>'
       + '<td data-label="Script" class="mc-half">' + inlineSelect(l.id, 'script_used', l.script_used, 'script') + '</td>'
       + '<td data-label="Compte" class="mc-half">' + inlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateStudentLead(' + l.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
@@ -239,7 +239,7 @@ function showStudentLeadForm() {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Username *</label><input type="text" id="sl-username" class="form-input" placeholder="@username"></div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien Instagram</label><input type="text" id="sl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label>' + optionSelect('sl-type', 'type', 'Type de lead') + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label><select id="sl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Script</label>' + optionSelect('sl-script', 'script', 'Script utilisé') + '</div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Compte utilisé</label>' + optionSelect('sl-account', 'account', 'Compte Instagram') + '</div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="sl-notes" class="form-input" placeholder="Notes..."></div>'

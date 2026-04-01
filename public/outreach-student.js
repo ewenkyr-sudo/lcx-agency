@@ -100,7 +100,7 @@ function renderSOLeadTable(studentUserId) {
     var igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
     return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
-      + '<td data-label="Type" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'lead_type', l.lead_type, 'type') + '</td>'
+      + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateSOLead(' + l.id + ',{lead_type:this.value})') + '</td>'
       + '<td data-label="Script" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'script_used', l.script_used, 'script') + '</td>'
       + '<td data-label="Compte" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateSOLead(' + l.id + ',{status:this.value})" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
@@ -145,7 +145,7 @@ function showSOLeadForm(studentUserId) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien Instagram *</label><input type="text" id="so-iglink-' + studentUserId + '" class="form-input" placeholder="Coller le lien..." oninput="autoFillUsername(this.value)" onpaste="var s=' + studentUserId + ';setTimeout(function(){autoFillUsername(document.getElementById(\'so-iglink-\'+s).value)},100)"></div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Username (auto)</label><input type="text" id="lead-username" class="form-input" placeholder="Se remplit auto" style="opacity:0.7"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label>' + sel('so-type-' + studentUserId, 'type', 'Type') + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label><select id="so-type-' + studentUserId + '" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Script</label>' + sel('so-script-' + studentUserId, 'script', 'Script') + '</div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Compte</label>' + sel('so-account-' + studentUserId, 'account', 'Compte IG') + '</div>'
     + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="so-notes-' + studentUserId + '" class="form-input" placeholder="Notes..."></div>'
