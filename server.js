@@ -1498,7 +1498,7 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
 
     // Vérifier doublon dans le pool
     const cleanUsername = username.replace(/^@/, '');
-    const sharedIds = importMarket === 'us' ? [ownerId] : await getSharedOutreachIds(ownerId);
+    const sharedIds = await getSharedOutreachIds(ownerId);
     const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2) AND COALESCE(market,'fr') = $3", [cleanUsername, sharedIds, importMarket]);
 
     if (exists.rows.length > 0) {
@@ -1526,7 +1526,7 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
   const marketFilter = " AND COALESCE(sl.market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "'";
 
   if (req.user.role === 'student') {
-    const sharedIds = market === 'us' ? [req.user.id] : await getSharedOutreachIds(req.user.id);
+    const sharedIds = await getSharedOutreachIds(req.user.id);
     const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1)' + marketFilter + ' ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
@@ -1569,7 +1569,7 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
   }
 
   const cleanUsername = username.replace(/^@/, '');
-  const checkIds = leadMarket === 'us' ? [ownerId] : await getSharedOutreachIds(ownerId);
+  const checkIds = await getSharedOutreachIds(ownerId);
   const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2) AND COALESCE(market,'fr') = $3", [cleanUsername, checkIds, leadMarket]);
   if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
   const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by, market) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
@@ -1613,7 +1613,7 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
   const market = req.query.market || 'fr';
   const mf = " AND COALESCE(market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "'";
-  const sharedIds = market === 'us' ? [parseInt(uid)] : await getSharedOutreachIds(uid);
+  const sharedIds = await getSharedOutreachIds(uid);
 
   // Stats globales du pool
   const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)' + mf, [sharedIds])).rows[0].c;
