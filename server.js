@@ -108,6 +108,8 @@ async function initDB() {
     );
     DO $$ BEGIN
       ALTER TABLE students ADD COLUMN IF NOT EXISTS progression_step TEXT DEFAULT 'onboarding';
+      ALTER TABLE students ADD COLUMN IF NOT EXISTS outreach_us_enabled BOOLEAN DEFAULT false;
+      ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS market TEXT DEFAULT 'fr';
     EXCEPTION WHEN others THEN NULL;
     END $$;
 
@@ -1205,6 +1207,12 @@ app.put('/api/students/:id/progression', authMiddleware, adminOnly, async (req, 
   res.json({ ok: true });
 });
 
+app.put('/api/students/:id/outreach-us', authMiddleware, adminOnly, async (req, res) => {
+  const { enabled } = req.body;
+  await pool.query('UPDATE students SET outreach_us_enabled = $1 WHERE id = $2', [!!enabled, req.params.id]);
+  res.json({ ok: true });
+});
+
 // ============ CALL REQUESTS ============
 app.get('/api/call-requests', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
@@ -1425,7 +1433,8 @@ app.delete('/api/student-outreach-pairs/:id', authMiddleware, adminOnly, async (
 
 // ============ STUDENT LEADS BULK IMPORT ============
 app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
-  const { csv_content, student_user_id } = req.body;
+  const { csv_content, student_user_id, market } = req.body;
+  const importMarket = market === 'us' ? 'us' : 'fr';
   if (!csv_content) return res.status(400).json({ error: 'Contenu CSV requis' });
 
   // Déterminer le propriétaire
@@ -1487,10 +1496,10 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
       if (match) { if (!igLink) igLink = username; username = match[1]; }
     }
 
-    // Vérifier doublon dans le pool partagé
+    // Vérifier doublon dans le pool
     const cleanUsername = username.replace(/^@/, '');
-    const sharedIds = await getSharedOutreachIds(ownerId);
-    const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2)", [cleanUsername, sharedIds]);
+    const sharedIds = importMarket === 'us' ? [ownerId] : await getSharedOutreachIds(ownerId);
+    const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2) AND COALESCE(market,'fr') = $3", [cleanUsername, sharedIds, importMarket]);
 
     if (exists.rows.length > 0) {
       // Mettre à jour le lead existant
@@ -1500,8 +1509,8 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
         [igLink, leadType, status, script, account, notes, exists.rows[0].id]);
       updated++;
     } else {
-      await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-        [ownerId, username, igLink, leadType, script, account, notes, status, req.user.id]);
+      await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by, market) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        [ownerId, username, igLink, leadType, script, account, notes, status, req.user.id, importMarket]);
       imported++;
     }
   }
@@ -1513,25 +1522,27 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
 // GET: student voit les siens, outreach voit ceux de l'élève assigné (via ?student_user_id=), admin voit tout
 app.get('/api/student-leads', authMiddleware, async (req, res) => {
   const studentUserId = req.query.student_user_id;
+  const market = req.query.market || 'fr';
+  const marketFilter = " AND COALESCE(sl.market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "'";
 
   if (req.user.role === 'student') {
-    const sharedIds = await getSharedOutreachIds(req.user.id);
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
+    const sharedIds = market === 'us' ? [req.user.id] : await getSharedOutreachIds(req.user.id);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1)' + marketFilter + ' ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'outreach' && studentUserId) {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, studentUserId);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     const sharedIds = await getSharedOutreachIds(studentUserId);
-    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1) ORDER BY sl.created_at DESC', [sharedIds]);
+    const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1)' + marketFilter + ' ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'admin') {
     if (studentUserId) {
-      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = $1 ORDER BY sl.created_at DESC', [studentUserId]);
+      const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = $1' + marketFilter + ' ORDER BY sl.created_at DESC', [studentUserId]);
       return res.json(rows);
     }
-    const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id ORDER BY sl.created_at DESC');
+    const { rows } = await pool.query("SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE COALESCE(sl.market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "' ORDER BY sl.created_at DESC");
     return res.json(rows);
   }
   res.status(403).json({ error: 'Accès refusé' });
@@ -1539,7 +1550,8 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
 
 // POST: student ajoute pour soi, outreach ajoute pour l'élève assigné (via student_user_id), admin pour tout le monde
 app.post('/api/student-leads', authMiddleware, async (req, res) => {
-  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status, student_user_id } = req.body;
+  const { username, ig_link, lead_type, script_used, ig_account_used, notes, status, student_user_id, market } = req.body;
+  const leadMarket = market === 'us' ? 'us' : 'fr';
   if (!username) return res.status(400).json({ error: 'Username requis' });
 
   // Déterminer le propriétaire du lead
@@ -1557,11 +1569,11 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
   }
 
   const cleanUsername = username.replace(/^@/, '');
-  const sharedIds = await getSharedOutreachIds(ownerId);
-  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2)", [cleanUsername, sharedIds]);
+  const checkIds = leadMarket === 'us' ? [ownerId] : await getSharedOutreachIds(ownerId);
+  const exists = await pool.query("SELECT id FROM student_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND user_id = ANY($2) AND COALESCE(market,'fr') = $3", [cleanUsername, checkIds, leadMarket]);
   if (exists.rows.length > 0) return res.status(409).json({ error: 'Ce lead existe déjà' });
-  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-    [ownerId, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send', req.user.id]);
+  const { rows } = await pool.query('INSERT INTO student_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, added_by, market) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+    [ownerId, username, ig_link, lead_type || '', script_used, ig_account_used, notes, status || 'to-send', req.user.id, leadMarket]);
   res.json(rows[0]);
 });
 
@@ -1599,17 +1611,19 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
     if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
   }
   if (!uid) return res.status(400).json({ error: 'user_id requis' });
-  const sharedIds = await getSharedOutreachIds(uid);
+  const market = req.query.market || 'fr';
+  const mf = " AND COALESCE(market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "'";
+  const sharedIds = market === 'us' ? [parseInt(uid)] : await getSharedOutreachIds(uid);
 
-  // Stats globales du pool partagé
-  const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)', [sharedIds])).rows[0].c;
-  const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND created_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
-  const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND sent_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
-  const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status != 'to-send'", [sharedIds])).rows[0].c;
-  const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'talking-cold'", [sharedIds])).rows[0].c;
-  const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'talking-warm'", [sharedIds])).rows[0].c;
-  const booked = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'call-booked'", [sharedIds])).rows[0].c;
-  const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND status = 'signed'", [sharedIds])).rows[0].c;
+  // Stats globales du pool
+  const total = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)' + mf, [sharedIds])).rows[0].c;
+  const leadsToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)${mf} AND created_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+  const dmSentToday = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)${mf} AND sent_at >= ${SQL_TODAY_START}`, [sharedIds])).rows[0].c;
+  const dmSent = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)" + mf + " AND status != 'to-send'", [sharedIds])).rows[0].c;
+  const cold = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)" + mf + " AND status = 'talking-cold'", [sharedIds])).rows[0].c;
+  const warm = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)" + mf + " AND status = 'talking-warm'", [sharedIds])).rows[0].c;
+  const booked = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)" + mf + " AND status = 'call-booked'", [sharedIds])).rows[0].c;
+  const signed = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1)" + mf + " AND status = 'signed'", [sharedIds])).rows[0].c;
   const replies = parseInt(cold) + parseInt(warm) + parseInt(booked) + parseInt(signed);
   const rate = parseInt(dmSent) > 0 ? ((replies / parseInt(dmSent)) * 100).toFixed(1) : '0';
 
@@ -1617,9 +1631,9 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   const contributions = [];
   for (const memberId of sharedIds) {
     const memberName = (await pool.query('SELECT display_name FROM users WHERE id = $1', [memberId])).rows[0]?.display_name || '?';
-    const mLeads = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2)', [memberId, sharedIds])).rows[0].c;
-    const mDms = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2) AND sent_at >= ${SQL_TODAY_START}`, [memberId, sharedIds])).rows[0].c;
-    const mTotal = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2) AND status != 'to-send'", [memberId, sharedIds])).rows[0].c;
+    const mLeads = (await pool.query('SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2)' + mf, [memberId, sharedIds])).rows[0].c;
+    const mDms = (await pool.query(`SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2)${mf} AND sent_at >= ${SQL_TODAY_START}`, [memberId, sharedIds])).rows[0].c;
+    const mTotal = (await pool.query("SELECT COUNT(*) as c FROM student_leads WHERE added_by = $1 AND user_id = ANY($2)" + mf + " AND status != 'to-send'", [memberId, sharedIds])).rows[0].c;
     contributions.push({ user_id: memberId, name: memberName, leads_added: parseInt(mLeads), dms_today: parseInt(mDms), dms_total: parseInt(mTotal) });
   }
 

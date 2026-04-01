@@ -2662,6 +2662,12 @@ async function renderCoaching() {
                 <option value="">+ Pairer</option>
                 ${students.filter(st => st.user_id !== s.user_id && !pairs.some(p => (p.student_a_id === s.user_id && p.student_b_id === st.user_id) || (p.student_b_id === s.user_id && p.student_a_id === st.user_id))).map(st => '<option value="' + st.user_id + '">' + st.name + '</option>').join('')}
               </select>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text3)">Outreach US :</span>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" ${s.outreach_us_enabled ? 'checked' : ''} onchange="toggleOutreachUS(${s.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
+                <span style="font-size:11px;color:${s.outreach_us_enabled ? 'var(--green)' : 'var(--text3)'}">${s.outreach_us_enabled ? 'Activé' : 'Désactivé'}</span>
+              </label>
             </div>
           </div>`;
         }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>'}
@@ -2807,6 +2813,13 @@ async function loadCoachingOutreachStats() {
       }).join('')
       + '</div>';
   } catch(e) {}
+}
+
+async function toggleOutreachUS(studentId, enabled) {
+  await fetch('/api/students/' + studentId + '/outreach-us', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ enabled }) });
+  showToast(enabled ? 'Outreach US activé' : 'Outreach US désactivé', 'success');
+  // Recharger les données students
+  allStudents = await fetch('/api/students', { credentials: 'include' }).then(r => r.json());
 }
 
 async function addOutreachPair(studentAId, studentBId) {

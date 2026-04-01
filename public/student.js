@@ -144,14 +144,23 @@ async function submitCallRequest() {
 // ========== STUDENT OUTREACH ==========
 let studentLeadFilter = 'all';
 
+let currentStudentMarket = 'fr';
+
 async function renderStudentOutreach() {
   await loadStudentData();
-  const stats = await fetch('/api/student-leads/stats', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+  const student = allStudents[0];
+  const usEnabled = student?.outreach_us_enabled;
+  const stats = await fetch('/api/student-leads/stats?market=' + currentStudentMarket, { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+  // Reload leads filtered by market
+  const leadsRes = await fetch('/api/student-leads?market=' + currentStudentMarket, { credentials: 'include' });
+  if (leadsRes.ok) studentData.leads = await leadsRes.json();
   const c = document.getElementById('section-student-outreach');
   if (!c) return;
 
+  var marketLabel = currentStudentMarket === 'us' ? 'US' : 'FR';
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mon Outreach</div><div class="page-subtitle">Gestion de mes leads</div></div>
+    ${usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="switchStudentMarket(\'fr\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='fr'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='fr'?'white':'var(--text2)') + '">Outreach FR</button><button onclick="switchStudentMarket(\'us\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='us'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='us'?'white':'var(--text2)') + '">Outreach US</button></div>' : ''}
+    <div class="page-header"><div><div class="page-title">Mon Outreach ${marketLabel}</div><div class="page-subtitle">Gestion de mes leads ${marketLabel}</div></div>
       <div class="header-actions" style="display:flex;gap:8px"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">Leads aujourd'hui</div></div>
@@ -275,6 +284,12 @@ function autoFillUsername(url, targetId) {
   if (match) document.getElementById(targetId).value = '@' + match[1];
 }
 
+function switchStudentMarket(m) {
+  currentStudentMarket = m;
+  studentLeadFilter = 'all';
+  renderStudentOutreach();
+}
+
 async function addStudentLead() {
   const username = document.getElementById('sl-username').value.trim();
   if (!username) return showToast('Username requis', 'error');
@@ -282,7 +297,8 @@ async function addStudentLead() {
   if (dup) return showToast('Ce lead existe déjà (' + dup.status + ')', 'error');
   const res = await fetch('/api/student-leads', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({
     username, ig_link: document.getElementById('sl-iglink').value.trim(), lead_type: document.getElementById('sl-type').value,
-    script_used: document.getElementById('sl-script').value, ig_account_used: document.getElementById('sl-account')?.value || '', notes: document.getElementById('sl-notes').value.trim()
+    script_used: document.getElementById('sl-script').value, ig_account_used: document.getElementById('sl-account')?.value || '', notes: document.getElementById('sl-notes').value.trim(),
+    market: currentStudentMarket
   })});
   if (res.ok) { showToast('Lead ajouté !', 'success'); document.getElementById('student-lead-form-wrap').innerHTML = ''; await loadStudentData(); renderStudentLeadTable(); }
   else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
@@ -373,7 +389,7 @@ async function importStudentCSV(input) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ csv_content: content })
+      body: JSON.stringify({ csv_content: content, market: currentStudentMarket })
     });
 
     if (res.ok) {
