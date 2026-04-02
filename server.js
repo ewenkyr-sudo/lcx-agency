@@ -113,6 +113,9 @@ async function initDB() {
       ALTER TABLE students ADD COLUMN IF NOT EXISTS drive_folder TEXT;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS drive_folder TEXT;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS drive_contract TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS lifecycle_status TEXT DEFAULT 'active';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS read_only BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
     EXCEPTION WHEN others THEN NULL;
     END $$;
 
@@ -121,6 +124,48 @@ async function initDB() {
       model_id INTEGER NOT NULL REFERENCES models(id) ON DELETE CASCADE,
       label TEXT NOT NULL,
       drive_link TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Activity log
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name TEXT,
+      action TEXT NOT NULL,
+      target_type TEXT,
+      target_id INTEGER,
+      details TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Shift clock (pointage)
+    CREATE TABLE IF NOT EXISTS shift_clocks (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      clock_in TIMESTAMPTZ NOT NULL,
+      clock_out TIMESTAMPTZ,
+      duration_minutes INTEGER
+    );
+
+    -- Model revenue objectives
+    CREATE TABLE IF NOT EXISTS model_revenue_objectives (
+      id SERIAL PRIMARY KEY,
+      model_id INTEGER NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      target NUMERIC(10,2) DEFAULT 0,
+      current NUMERIC(10,2) DEFAULT 0,
+      UNIQUE(model_id, month)
+    );
+
+    -- Payments tracking
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      model_id INTEGER NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      amount NUMERIC(10,2) DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      notes TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
@@ -490,7 +535,18 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
-    next();
+    // Check account expiry
+    pool.query('SELECT read_only, expires_at FROM users WHERE id = $1', [decoded.id]).then(result => {
+      const user = result.rows[0];
+      if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
+      if (user.expires_at && new Date(user.expires_at) < new Date()) {
+        return res.status(401).json({ error: 'Compte expiré' });
+      }
+      if (user.read_only && req.method !== 'GET' && decoded.role !== 'admin') {
+        return res.status(403).json({ error: 'Compte en lecture seule' });
+      }
+      next();
+    }).catch(() => next());
   } catch {
     return res.status(401).json({ error: 'Token invalide' });
   }
@@ -499,6 +555,30 @@ function authMiddleware(req, res, next) {
 function adminOnly(req, res, next) {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   next();
+}
+
+// ============ WHATSAPP NOTIFICATIONS ============
+async function sendWhatsApp(message) {
+  try {
+    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key IN ('whatsapp_number', 'whatsapp_api_key', 'whatsapp_provider') ORDER BY key");
+    const settings = {};
+    rows.forEach(r => settings[r.key] = r.value);
+    if (!settings.whatsapp_number || !settings.whatsapp_api_key) return;
+
+    const number = settings.whatsapp_number.replace(/[^0-9]/g, '');
+    const provider = settings.whatsapp_provider || 'callmebot';
+
+    if (provider === 'callmebot') {
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${number}&text=${encodeURIComponent(message)}&apikey=${settings.whatsapp_api_key}`;
+      httpGet(url).catch(e => console.log('WhatsApp error:', e.message));
+    } else if (provider === 'twilio') {
+      // Twilio integration placeholder - needs account SID and auth token
+      const twilioSid = settings.whatsapp_api_key.split(':')[0];
+      const twilioAuth = settings.whatsapp_api_key.split(':')[1];
+      const twilioFrom = settings.whatsapp_from || '';
+      // Would need actual Twilio SDK here
+    }
+  } catch(e) { console.log('WhatsApp send error:', e.message); }
 }
 
 // ============ AUTH ROUTES ============
@@ -533,7 +613,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, plain_password, created_at FROM users ORDER BY role, display_name');
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, plain_password, read_only, expires_at, created_at FROM users ORDER BY role, display_name');
   res.json(rows);
 });
 
@@ -836,11 +916,12 @@ app.delete('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) 
 });
 
 app.put('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, platforms, status, drive_folder, drive_contract } = req.body;
+  const { name, platforms, status, drive_folder, drive_contract, lifecycle_status } = req.body;
   await pool.query(`UPDATE models SET
     name = COALESCE($1, name), platforms = COALESCE($2, platforms), status = COALESCE($3, status),
-    drive_folder = COALESCE($4, drive_folder), drive_contract = COALESCE($5, drive_contract) WHERE id = $6`,
-    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id]);
+    drive_folder = COALESCE($4, drive_folder), drive_contract = COALESCE($5, drive_contract),
+    lifecycle_status = COALESCE($7, lifecycle_status) WHERE id = $6`,
+    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id, lifecycle_status]);
   res.json({ ok: true });
 });
 
@@ -1261,6 +1342,8 @@ app.post('/api/call-requests', authMiddleware, async (req, res) => {
   const { message, availabilities } = req.body;
   const { rows } = await pool.query('INSERT INTO call_requests (user_id, message, availabilities) VALUES ($1, $2, $3) RETURNING *', [req.user.id, message, availabilities]);
   broadcast('call-request-new', rows[0]);
+  await logActivity(req.user.id, req.user.display_name, 'call-request', 'call', rows[0].id, null);
+  sendWhatsApp('📞 Demande de call de ' + req.user.display_name);
   res.json(rows[0]);
 });
 
@@ -1497,6 +1580,13 @@ async function getSharedOutreachIds(studentUserId) {
   return ids;
 }
 
+async function logActivity(userId, userName, action, targetType, targetId, details) {
+  try {
+    await pool.query('INSERT INTO activity_log (user_id, user_name, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5,$6)',
+      [userId, userName, action, targetType, targetId, details]);
+  } catch(e) {}
+}
+
 app.get('/api/student-outreach-pairs', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
   const { rows } = await pool.query(`SELECT sop.*, a.display_name as student_a_name, b.display_name as student_b_name
@@ -1684,6 +1774,18 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
     last_modified_by = $7,
     sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
     [status, notes, lead_type, script_used, ig_account_used, req.params.id, req.user.id]);
+  // Activity log + WhatsApp for important status changes
+  if (status === 'talking-warm' || status === 'call-booked' || status === 'signed') {
+    const leadInfo = (await pool.query('SELECT sl.username, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id WHERE sl.id = $1', [req.params.id])).rows[0];
+    const labels = {'talking-warm': 'Discussion chaude', 'call-booked': 'Call prévu', 'signed': 'Signé'};
+    await logActivity(req.user.id, req.user.display_name, 'lead-' + status, 'lead', parseInt(req.params.id), leadInfo?.username + ' (' + leadInfo?.student_name + ')');
+    if (status === 'talking-warm' || status === 'call-booked') {
+      sendWhatsApp('🔥 ' + (leadInfo?.username || '?') + ' est passé en ' + labels[status] + ' (élève: ' + (leadInfo?.student_name || '?') + ')');
+    }
+    if (status === 'signed') {
+      sendWhatsApp('🎉 ' + (leadInfo?.username || '?') + ' a été signé ! (élève: ' + (leadInfo?.student_name || '?') + ')');
+    }
+  }
   res.json({ ok: true });
 });
 
@@ -1990,6 +2092,231 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// ============ ACTIVITY LOG ============
+app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const { rows } = await pool.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1', [limit]);
+  res.json(rows);
+});
+
+// Test WhatsApp
+app.post('/api/admin/test-whatsapp', authMiddleware, adminOnly, async (req, res) => {
+  await sendWhatsApp('Test notification LCX Agency - tout fonctionne !');
+  res.json({ ok: true });
+});
+
+// ============ SHIFT CLOCK (POINTAGE) ============
+app.get('/api/shift-clock', authMiddleware, async (req, res) => {
+  const userId = req.query.user_id || req.user.id;
+  if (req.user.role !== 'admin' && parseInt(userId) !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+  const { rows } = await pool.query('SELECT * FROM shift_clocks WHERE user_id = $1 ORDER BY clock_in DESC LIMIT 50', [userId]);
+  res.json(rows);
+});
+
+app.get('/api/shift-clock/all', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT sc.*, u.display_name as user_name FROM shift_clocks sc
+    JOIN users u ON sc.user_id = u.id ORDER BY sc.clock_in DESC LIMIT 200
+  `);
+  res.json(rows);
+});
+
+app.post('/api/shift-clock/in', authMiddleware, async (req, res) => {
+  // Check if already clocked in
+  const { rows: open } = await pool.query('SELECT id FROM shift_clocks WHERE user_id = $1 AND clock_out IS NULL', [req.user.id]);
+  if (open.length > 0) return res.status(400).json({ error: 'Déjà pointé' });
+  const { rows } = await pool.query('INSERT INTO shift_clocks (user_id, clock_in) VALUES ($1, NOW()) RETURNING *', [req.user.id]);
+  await logActivity(req.user.id, req.user.display_name, 'clock-in', 'shift', rows[0].id, null);
+  res.json(rows[0]);
+});
+
+app.post('/api/shift-clock/out', authMiddleware, async (req, res) => {
+  const { rows: open } = await pool.query('SELECT id, clock_in FROM shift_clocks WHERE user_id = $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1', [req.user.id]);
+  if (open.length === 0) return res.status(400).json({ error: 'Pas de pointage en cours' });
+  const duration = Math.round((Date.now() - new Date(open[0].clock_in).getTime()) / 60000);
+  await pool.query('UPDATE shift_clocks SET clock_out = NOW(), duration_minutes = $1 WHERE id = $2', [duration, open[0].id]);
+  await logActivity(req.user.id, req.user.display_name, 'clock-out', 'shift', open[0].id, duration + ' min');
+  res.json({ ok: true, duration });
+});
+
+app.get('/api/shift-clock/status', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, clock_in FROM shift_clocks WHERE user_id = $1 AND clock_out IS NULL LIMIT 1', [req.user.id]);
+  res.json({ clocked_in: rows.length > 0, since: rows[0]?.clock_in || null });
+});
+
+// ============ MODEL REVENUE OBJECTIVES ============
+app.get('/api/model-revenue-objectives', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id ORDER BY mro.month DESC, m.name');
+  res.json(rows);
+});
+
+app.post('/api/model-revenue-objectives', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, month, target } = req.body;
+  const { rows } = await pool.query('INSERT INTO model_revenue_objectives (model_id, month, target) VALUES ($1,$2,$3) ON CONFLICT (model_id, month) DO UPDATE SET target = EXCLUDED.target RETURNING *', [model_id, month, target || 0]);
+  res.json(rows[0]);
+});
+
+app.put('/api/model-revenue-objectives/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { current, target } = req.body;
+  await pool.query('UPDATE model_revenue_objectives SET current = COALESCE($1, current), target = COALESCE($2, target) WHERE id = $3', [current, target, req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ PAYMENTS ============
+app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id ORDER BY p.month DESC, m.name');
+  res.json(rows);
+});
+
+app.post('/api/payments', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, month, amount, status, notes } = req.body;
+  const { rows } = await pool.query('INSERT INTO payments (model_id, month, amount, status, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *', [model_id, month, amount || 0, status || 'pending', notes]);
+  res.json(rows[0]);
+});
+
+app.put('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { amount, status, notes } = req.body;
+  await pool.query('UPDATE payments SET amount = COALESCE($1, amount), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4', [amount, status, notes, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM payments WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ ANALYTICS ============
+app.get('/api/analytics/reply-rate-weekly', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT date_trunc('week', created_at)::date as week,
+      COUNT(*) FILTER (WHERE status != 'to-send') as dm_sent,
+      COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies
+    FROM student_leads WHERE created_at > NOW() - INTERVAL '12 weeks'
+    GROUP BY week ORDER BY week
+  `);
+  res.json(rows);
+});
+
+app.get('/api/analytics/assistant-ranking', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT u.display_name as name, u.id,
+      COUNT(*) as total_leads,
+      COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms_sent,
+      COUNT(*) FILTER (WHERE sl.status IN ('talking-cold','talking-warm','call-booked','signed')) as replies,
+      COUNT(*) FILTER (WHERE sl.status = 'signed') as signed
+    FROM student_leads sl JOIN users u ON sl.added_by = u.id
+    WHERE u.role = 'outreach'
+    GROUP BY u.id, u.display_name ORDER BY signed DESC, replies DESC
+  `);
+  res.json(rows);
+});
+
+app.get('/api/analytics/hourly', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT EXTRACT(HOUR FROM sent_at) as hour, COUNT(*) as count
+    FROM student_leads WHERE sent_at IS NOT NULL AND sent_at > NOW() - INTERVAL '30 days'
+    GROUP BY hour ORDER BY hour
+  `);
+  res.json(rows);
+});
+
+app.get('/api/analytics/fr-vs-us', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT COALESCE(market, 'fr') as market,
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE status != 'to-send') as dm_sent,
+      COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies,
+      COUNT(*) FILTER (WHERE status = 'signed') as signed
+    FROM student_leads GROUP BY market
+  `);
+  res.json(rows);
+});
+
+// ============ EXPORT CSV ============
+app.get('/api/export/leads', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT sl.username, sl.ig_link, sl.lead_type, sl.status, sl.script_used, sl.ig_account_used,
+      sl.notes, sl.market, sl.created_at, sl.sent_at, u.display_name as student_name,
+      ab.display_name as added_by_name
+    FROM student_leads sl JOIN users u ON sl.user_id = u.id
+    LEFT JOIN users ab ON sl.added_by = ab.id ORDER BY sl.created_at DESC
+  `);
+  let csv = 'Username,Lien IG,Type,Statut,Script,Compte,Notes,Marché,Date,Envoyé,Élève,Ajouté par\n';
+  rows.forEach(r => {
+    csv += [r.username, r.ig_link||'', r.lead_type||'', r.status, r.script_used||'', r.ig_account_used||'',
+      (r.notes||'').replace(/,/g,';'), r.market||'fr', r.created_at, r.sent_at||'', r.student_name, r.added_by_name||''].map(v => '"'+v+'"').join(',') + '\n';
+  });
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="leads_export.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/export/team', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query('SELECT display_name, username, role FROM users ORDER BY role, display_name');
+  let csv = 'Nom,Identifiant,Rôle\n';
+  rows.forEach(r => { csv += '"' + r.display_name + '","' + r.username + '","' + r.role + '"\n'; });
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="equipe_export.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/export/students', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query('SELECT s.name, s.program, s.progression_step, s.models_signed, s.start_date, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.name');
+  let csv = 'Nom,Programme,Étape,Modèles signés,Date début,Identifiant\n';
+  rows.forEach(r => { csv += '"' + r.name + '","' + r.program + '","' + (r.progression_step||'') + '",' + (r.models_signed||0) + ',"' + (r.start_date||'') + '","' + (r.username||'') + '"\n'; });
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="eleves_export.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/export/revenue', authMiddleware, adminOnly, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT p.month, m.name as model_name, p.amount, p.status, p.notes
+    FROM payments p JOIN models m ON p.model_id = m.id ORDER BY p.month DESC, m.name
+  `);
+  let csv = 'Mois,Modèle,Montant,Statut,Notes\n';
+  rows.forEach(r => { csv += '"' + r.month + '","' + r.model_name + '",' + r.amount + ',"' + r.status + '","' + (r.notes||'') + '"\n'; });
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="revenus_export.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+// ============ DB STORAGE INFO ============
+app.get('/api/admin/db-size', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT pg_database_size(current_database()) as size");
+    const { rows: tables } = await pool.query(`
+      SELECT relname as table_name, n_live_tup as row_count
+      FROM pg_stat_user_tables ORDER BY n_live_tup DESC
+    `);
+    res.json({ total_bytes: parseInt(rows[0].size), tables });
+  } catch(e) { res.json({ total_bytes: 0, tables: [] }); }
+});
+
+// ============ USER ACCESS MANAGEMENT ============
+app.put('/api/users/:id/access', authMiddleware, adminOnly, async (req, res) => {
+  const { read_only, expires_at } = req.body;
+  await pool.query('UPDATE users SET read_only = COALESCE($1, read_only), expires_at = $2 WHERE id = $3',
+    [read_only, expires_at || null, req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ DUPLICATE CHECK ============
+app.post('/api/student-leads/check-duplicates', authMiddleware, async (req, res) => {
+  const { usernames, student_user_id, market } = req.body;
+  if (!usernames || !Array.isArray(usernames)) return res.status(400).json({ error: 'Liste de usernames requise' });
+  const uid = student_user_id || req.user.id;
+  const sharedIds = await getSharedOutreachIds(uid);
+  const mkt = market === 'us' ? 'us' : 'fr';
+  const { rows } = await pool.query(
+    "SELECT LOWER(REPLACE(username, '@', '')) as clean FROM student_leads WHERE user_id = ANY($1) AND COALESCE(market,'fr') = $2",
+    [sharedIds, mkt]
+  );
+  const existing = new Set(rows.map(r => r.clean.toLowerCase()));
+  const duplicates = usernames.filter(u => existing.has(u.replace(/^@/, '').toLowerCase()));
+  res.json({ duplicates, total: usernames.length, duplicate_count: duplicates.length });
+});
+
 // ============ WEBSOCKET ============
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -2108,10 +2435,53 @@ app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, 
   res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
 });
 
+// ============ DAILY WHATSAPP SUMMARY ============
+function scheduleDailySummary() {
+  const now = new Date();
+  let target = new Date();
+  target.setHours(21, 0, 0, 0);
+  if (now >= target) target.setDate(target.getDate() + 1);
+  const delay = target.getTime() - now.getTime();
+
+  setTimeout(async () => {
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(9, 0, 0, 0);
+
+      const { rows: stats } = await pool.query(`
+        SELECT
+          COUNT(*) as total_leads,
+          COUNT(*) FILTER (WHERE created_at >= $1) as leads_today,
+          COUNT(*) FILTER (WHERE sent_at >= $1) as dms_today,
+          COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies_total,
+          COUNT(*) FILTER (WHERE status = 'call-booked') as calls_booked,
+          COUNT(*) FILTER (WHERE status = 'signed') as signed
+        FROM student_leads
+      `, [todayStart.toISOString()]);
+
+      const s = stats[0];
+      const msg = `📊 Résumé du jour - LCX Agency\n\n`
+        + `📩 Leads ajoutés: ${s.leads_today}\n`
+        + `💬 DMs envoyés: ${s.dms_today}\n`
+        + `📞 Calls bookés: ${s.calls_booked}\n`
+        + `✅ Signés: ${s.signed}\n`
+        + `📈 Total leads: ${s.total_leads}`;
+
+      await sendWhatsApp(msg);
+    } catch(e) { console.log('Daily summary error:', e.message); }
+
+    // Reschedule for next day
+    scheduleDailySummary();
+  }, delay);
+}
+
 // ============ START ============
 async function start() {
   await initDB();
   await seedData();
+
+  // Schedule daily WhatsApp summary at 21:00
+  scheduleDailySummary();
 
   // Lancer le premier scrape après 10 secondes
   setTimeout(() => updateAllFollowers(), 10000);

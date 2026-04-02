@@ -981,6 +981,15 @@
     <div class="nav-item" data-section="performances" onclick="switchSection(event)">
       <span class="nav-icon">📈</span> Performances
     </div>
+    <div class="nav-item" data-section="analytics" onclick="switchSection(event)">
+      <span class="nav-icon">📉</span> Analytics
+    </div>
+    <div class="nav-item" data-section="finance" onclick="switchSection(event)">
+      <span class="nav-icon">💰</span> Finances
+    </div>
+    <div class="nav-item" data-section="activity-log" onclick="switchSection(event)">
+      <span class="nav-icon">📋</span> Journal
+    </div>
   </div>
 
   <div id="nav-student" class="nav-section" style="display:none">
@@ -1031,6 +1040,9 @@
 
 <!-- MAIN CONTENT -->
 <div class="main">
+
+  <!-- Shift Clock Banner -->
+  <div id="shift-clock-btn" style="display:none;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);text-align:center"></div>
 
   <!-- DASHBOARD SECTION -->
   <div class="section active" id="section-dashboard">
@@ -1372,6 +1384,24 @@
   <div class="section" id="section-student-resources"></div>
   <div class="section" id="section-student-objectives"></div>
 
+  <!-- ANALYTICS SECTION -->
+  <div class="section" id="section-analytics">
+    <div class="page-header"><div><div class="page-title">Analytics avancés</div><div class="page-subtitle">Analyse détaillée des performances</div></div></div>
+    <div id="analytics-content"></div>
+  </div>
+
+  <!-- FINANCE SECTION -->
+  <div class="section" id="section-finance">
+    <div class="page-header"><div><div class="page-title">Gestion financière</div><div class="page-subtitle">Revenus, paiements et commissions</div></div></div>
+    <div id="finance-content"></div>
+  </div>
+
+  <!-- ACTIVITY LOG SECTION -->
+  <div class="section" id="section-activity-log">
+    <div class="page-header"><div><div class="page-title">Journal d'activité</div><div class="page-subtitle">Historique de toutes les actions</div></div></div>
+    <div id="activity-log-content"></div>
+  </div>
+
   <!-- SETTINGS SECTION (Admin Only) -->
   <div class="section" id="section-settings">
     <div class="page-header">
@@ -1472,6 +1502,50 @@
           <button class="btn btn-primary" onclick="openModal('add-model')">+ Ajouter un modèle</button>
         </div>
         <div id="settings-models-content"></div>
+      </div>
+
+      <!-- WhatsApp Notifications -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">📱 Notifications WhatsApp</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Reçois des notifications automatiques sur WhatsApp (résumé quotidien, alertes leads, calls)</p>
+        <div style="display:grid;gap:12px;max-width:500px">
+          <div>
+            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Fournisseur</label>
+            <select id="setting-wa-provider" class="form-input"><option value="callmebot">CallMeBot (gratuit)</option><option value="twilio">Twilio</option></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Numéro WhatsApp (avec indicatif, ex: +33612345678)</label>
+            <input type="text" id="setting-wa-number" class="form-input" placeholder="+33612345678">
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Clé API (CallMeBot: apikey / Twilio: SID:AuthToken)</label>
+            <input type="text" id="setting-wa-apikey" class="form-input" placeholder="Clé API">
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="saveWhatsAppSettings()">Sauvegarder</button>
+            <button class="btn" style="background:var(--green-bg);color:var(--green);border:none;cursor:pointer" onclick="testWhatsApp()">Tester</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exports -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">📦 Exports & Sauvegarde</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+          <a href="/api/export/leads" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Leads (CSV)</a>
+          <a href="/api/export/team" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Équipe (CSV)</a>
+          <a href="/api/export/students" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Élèves (CSV)</a>
+          <a href="/api/export/revenue" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Revenus (CSV)</a>
+        </div>
+        <div id="db-size-info" style="font-size:13px;color:var(--text3)"></div>
+        <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer;margin-top:10px;font-size:12px" onclick="loadDbSize()">Voir l'espace utilisé</button>
+      </div>
+
+      <!-- Sécurité -->
+      <div class="panel" style="padding:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🔒 Sécurité & Contrôle</h3>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Gère les accès de chaque utilisateur (lecture seule, expiration) depuis le tableau des utilisateurs ci-dessus</p>
+        <div id="access-control-content"></div>
       </div>
 
     </div>
@@ -1736,6 +1810,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSettings();
     await initStudentSections();
     await initOutreachStudentSections();
+    // Shift clock pour équipe
+    if (['outreach', 'chatter', 'va'].includes(currentUser.role)) {
+      document.getElementById('shift-clock-btn').style.display = 'block';
+      renderShiftClock();
+    }
     // Badges messages + permission notifications
     updateUnreadBadges();
     if ('Notification' in window && Notification.permission === 'default') {
@@ -1819,7 +1898,7 @@ function applyRoleBasedAccess() {
   };
 
   const visibleSections = {
-    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'settings'],
+    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'settings'],
     model: ['planning', 'tasks'],
     chatter: ['planning', 'tasks', 'chatters'],
     outreach: ['planning', 'tasks', 'outreach'],
@@ -1877,7 +1956,11 @@ function switchSection(e) {
     'student-revenue': renderStudentRevenue,
     'student-messages': renderStudentMessages,
     'student-resources': renderStudentResources,
-    'student-objectives': renderStudentObjectives
+    'student-objectives': renderStudentObjectives,
+    'analytics': renderAnalytics,
+    'finance': renderFinance,
+    'activity-log': renderActivityLog,
+    'settings': function() { renderSettings(); loadWhatsAppSettings(); renderAccessControl(); }
   };
   if (loaders[section]) loaders[section]();
 }
@@ -2441,7 +2524,12 @@ function renderModels() {
                 <div class="model-name">${m.name}</div>
                 <div class="model-platform">${(m.platforms || []).join(' + ')}</div>
               </div>
-              <span class="badge badge-online" style="margin-left:auto">${m.status}</span>
+              <select onchange="updateModelDrive(${m.id},'lifecycle_status',this.value);this.style.background=this.options[this.selectedIndex].getAttribute('data-bg')" style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:8px;border:none;font-weight:600;cursor:pointer;font-family:inherit;background:${m.lifecycle_status==='recruited'?'var(--blue-bg)':m.lifecycle_status==='onboarding'?'var(--yellow-bg)':m.lifecycle_status==='revenue'?'var(--green-bg)':'var(--green-bg)'};color:${m.lifecycle_status==='recruited'?'var(--blue)':m.lifecycle_status==='onboarding'?'var(--yellow)':m.lifecycle_status==='revenue'?'var(--accent)':'var(--green)'}">
+                <option value="recruited" ${m.lifecycle_status==='recruited'?'selected':''} data-bg="var(--blue-bg)">Recrutée</option>
+                <option value="onboarding" ${m.lifecycle_status==='onboarding'?'selected':''} data-bg="var(--yellow-bg)">Onboarding</option>
+                <option value="active" ${(m.lifecycle_status==='active'||!m.lifecycle_status)?'selected':''} data-bg="var(--green-bg)">Active</option>
+                <option value="revenue" ${m.lifecycle_status==='revenue'?'selected':''} data-bg="var(--green-bg)">Revenus</option>
+              </select>
             </div>
             <div class="model-stats">
               <div class="model-stat">
@@ -4212,6 +4300,370 @@ async function deleteUser(userId) {
     renderSettings();
   }
 }
+
+// ============ WHATSAPP SETTINGS ============
+async function saveWhatsAppSettings() {
+  await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({
+      whatsapp_provider: document.getElementById('setting-wa-provider').value,
+      whatsapp_number: document.getElementById('setting-wa-number').value.trim(),
+      whatsapp_api_key: document.getElementById('setting-wa-apikey').value.trim()
+    })
+  });
+  showToast('Paramètres WhatsApp sauvegardés', 'success');
+}
+
+async function testWhatsApp() {
+  showToast('Envoi du test...', 'info');
+  await fetch('/api/admin/test-whatsapp', { method: 'POST', credentials: 'include' });
+  showToast('Message test envoyé !', 'success');
+}
+
+function loadWhatsAppSettings() {
+  if (agencySettings.whatsapp_provider) document.getElementById('setting-wa-provider').value = agencySettings.whatsapp_provider;
+  if (agencySettings.whatsapp_number) document.getElementById('setting-wa-number').value = agencySettings.whatsapp_number;
+  if (agencySettings.whatsapp_api_key) document.getElementById('setting-wa-apikey').value = agencySettings.whatsapp_api_key;
+}
+
+async function loadDbSize() {
+  var res = await fetch('/api/admin/db-size', { credentials: 'include' });
+  if (!res.ok) return;
+  var data = await res.json();
+  var sizeMB = (data.total_bytes / 1024 / 1024).toFixed(2);
+  var html = '<strong>Espace total : ' + sizeMB + ' Mo</strong><br>';
+  html += '<div style="margin-top:8px;display:grid;gap:4px">';
+  (data.tables || []).forEach(function(t) {
+    html += '<div style="font-size:12px"><span style="color:var(--text)">' + t.table_name + '</span> — <span style="color:var(--accent)">' + t.row_count + ' lignes</span></div>';
+  });
+  html += '</div>';
+  document.getElementById('db-size-info').innerHTML = html;
+}
+
+// ============ ANALYTICS SECTION ============
+let analyticsCharts = {};
+
+async function renderAnalytics() {
+  if (currentUser.role !== 'admin') return;
+  var container = document.getElementById('analytics-content');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }); };
+  var [replyRate, ranking, hourly, frVsUs] = await Promise.all([
+    f('/api/analytics/reply-rate-weekly'), f('/api/analytics/assistant-ranking'),
+    f('/api/analytics/hourly'), f('/api/analytics/fr-vs-us')
+  ]);
+
+  container.innerHTML = ''
+    // FR vs US
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Comparaison FR vs US</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">'
+    + frVsUs.map(function(m) {
+      var rate = parseInt(m.dm_sent) > 0 ? ((parseInt(m.replies) / parseInt(m.dm_sent)) * 100).toFixed(1) : '0';
+      return '<div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">'
+        + '<div style="font-size:20px;font-weight:800;color:var(--accent)">' + m.market.toUpperCase() + '</div>'
+        + '<div class="stats-grid" style="margin-top:12px">'
+        + '<div class="stat-card"><div class="stat-value">' + m.total + '</div><div class="stat-label">Leads</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + m.dm_sent + '</div><div class="stat-label">DMs</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">' + m.replies + '</div><div class="stat-label">Réponses</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">' + m.signed + '</div><div class="stat-label">Signés</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + rate + '%</div><div class="stat-label">Taux réponse</div></div>'
+        + '</div></div>';
+    }).join('')
+    + '</div></div>'
+
+    // Classement assistantes
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Classement Assistantes</h3>'
+    + '<table class="table mobile-cards"><thead><tr><th>#</th><th>Nom</th><th>Leads</th><th>DMs</th><th>Réponses</th><th>Signés</th><th>ROI</th></tr></thead><tbody>'
+    + ranking.map(function(a, i) {
+      var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
+      var roi = parseInt(a.total_leads) > 0 ? ((parseInt(a.signed) / parseInt(a.total_leads)) * 100).toFixed(1) : '0';
+      return '<tr><td data-label="#" class="mc-half" style="font-size:18px">' + medal + '</td>'
+        + '<td data-label="" class="mc-title"><strong>' + a.name + '</strong></td>'
+        + '<td data-label="Leads" class="mc-half">' + a.total_leads + '</td>'
+        + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + a.dms_sent + '</td>'
+        + '<td data-label="Réponses" class="mc-half" style="color:var(--yellow)">' + a.replies + '</td>'
+        + '<td data-label="Signés" class="mc-half" style="color:var(--green)">' + a.signed + '</td>'
+        + '<td data-label="ROI" class="mc-half" style="color:var(--accent)">' + roi + '%</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Aucune donnée</td></tr>'
+    + '</tbody></table></div>'
+
+    // Taux de réponse hebdo
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Taux de réponse par semaine</h3>'
+    + '<div style="position:relative;height:300px"><canvas id="chart-reply-rate"></canvas></div>'
+    + '</div>'
+
+    // Meilleurs créneaux
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Meilleurs créneaux horaires pour DMs</h3>'
+    + '<div style="position:relative;height:300px"><canvas id="chart-hourly"></canvas></div>'
+    + '</div>';
+
+  // Charts
+  setTimeout(function() {
+    // Reply rate chart
+    if (analyticsCharts.replyRate) analyticsCharts.replyRate.destroy();
+    var rrCtx = document.getElementById('chart-reply-rate');
+    if (rrCtx && replyRate.length > 0) {
+      analyticsCharts.replyRate = new Chart(rrCtx, {
+        type: 'line',
+        data: {
+          labels: replyRate.map(function(r) { return r.week; }),
+          datasets: [{
+            label: 'Taux de réponse (%)',
+            data: replyRate.map(function(r) { return parseInt(r.dm_sent) > 0 ? ((parseInt(r.replies) / parseInt(r.dm_sent)) * 100).toFixed(1) : 0; }),
+            borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.3
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9898ab' } }, x: { ticks: { color: '#9898ab' } } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
+      });
+    }
+    // Hourly chart
+    if (analyticsCharts.hourly) analyticsCharts.hourly.destroy();
+    var hCtx = document.getElementById('chart-hourly');
+    if (hCtx && hourly.length > 0) {
+      var hours = Array.from({length: 24}, function(_, i) { return i; });
+      var hourData = hours.map(function(h) { var found = hourly.find(function(x) { return parseInt(x.hour) === h; }); return found ? parseInt(found.count) : 0; });
+      analyticsCharts.hourly = new Chart(hCtx, {
+        type: 'bar',
+        data: {
+          labels: hours.map(function(h) { return h + 'h'; }),
+          datasets: [{ label: 'DMs envoyés', data: hourData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9898ab' } }, x: { ticks: { color: '#9898ab' } } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
+      });
+    }
+  }, 100);
+}
+
+// ============ FINANCE SECTION ============
+async function renderFinance() {
+  if (currentUser.role !== 'admin') return;
+  var container = document.getElementById('finance-content');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }); };
+  var [payments, objectives, studentRevenue] = await Promise.all([
+    f('/api/payments'), f('/api/model-revenue-objectives'), f('/api/student-revenue')
+  ]);
+
+  // Calculs
+  var totalRevenue = payments.reduce(function(s, p) { return s + parseFloat(p.amount || 0); }, 0);
+  var totalPaid = payments.filter(function(p) { return p.status === 'paid'; }).reduce(function(s, p) { return s + parseFloat(p.amount || 0); }, 0);
+  var totalPending = payments.filter(function(p) { return p.status === 'pending'; }).reduce(function(s, p) { return s + parseFloat(p.amount || 0); }, 0);
+
+  var currentMonth = new Date().toISOString().slice(0, 7);
+
+  container.innerHTML = ''
+    // KPIs
+    + '<div class="stats-grid" style="margin-bottom:20px">'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">$' + totalRevenue.toFixed(0) + '</div><div class="stat-label">Revenus total</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">$' + totalPaid.toFixed(0) + '</div><div class="stat-label">Payé</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$' + totalPending.toFixed(0) + '</div><div class="stat-label">En attente</div></div>'
+    + '</div>'
+
+    // Ajouter paiement
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Paiements</h3>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="showPaymentForm()">+ Ajouter</button>'
+    + '</div>'
+    + '<div id="payment-form-wrap"></div>'
+    + '<table class="table mobile-cards"><thead><tr><th>Modèle</th><th>Mois</th><th>Montant</th><th>Statut</th><th>Notes</th><th></th></tr></thead><tbody>'
+    + payments.map(function(p) {
+      var stColor = p.status === 'paid' ? 'var(--green)' : p.status === 'pending' ? 'var(--yellow)' : 'var(--red)';
+      var stBg = p.status === 'paid' ? 'var(--green-bg)' : p.status === 'pending' ? 'var(--yellow-bg)' : 'var(--red-bg)';
+      return '<tr><td data-label="" class="mc-title"><strong>' + p.model_name + '</strong></td>'
+        + '<td data-label="Mois" class="mc-half">' + p.month + '</td>'
+        + '<td data-label="Montant" class="mc-half" style="color:var(--green);font-weight:700">$' + parseFloat(p.amount).toFixed(2) + '</td>'
+        + '<td data-label="Statut" class="mc-half"><select onchange="updatePayment(' + p.id + ',{status:this.value})" style="background:' + stBg + ';color:' + stColor + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><option value="pending"' + (p.status==='pending'?' selected':'') + '>En attente</option><option value="paid"' + (p.status==='paid'?' selected':'') + '>Payé</option><option value="cancelled"' + (p.status==='cancelled'?' selected':'') + '>Annulé</option></select></td>'
+        + '<td data-label="Notes" class="mc-full" style="font-size:12px;color:var(--text2)">' + (p.notes||'-') + '</td>'
+        + '<td data-label=""><button class="btn-delete-small" onclick="deletePayment(' + p.id + ')">✕</button></td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Aucun paiement</td></tr>'
+    + '</tbody></table></div>'
+
+    // Objectifs revenus modèles
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Objectifs revenus modèles — ' + currentMonth + '</h3>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="showRevenueObjForm()">+ Ajouter</button>'
+    + '</div>'
+    + '<div id="revenue-obj-form-wrap"></div>'
+    + '<div style="display:grid;gap:10px">'
+    + objectives.filter(function(o) { return o.month === currentMonth; }).map(function(o) {
+      var pct = parseFloat(o.target) > 0 ? Math.min(100, Math.round((parseFloat(o.current) / parseFloat(o.target)) * 100)) : 0;
+      var done = pct >= 100;
+      return '<div style="background:var(--bg3);padding:12px;border-radius:8px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        + '<strong>' + o.model_name + '</strong>'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<input type="number" value="' + o.current + '" onchange="updateRevenueObj(' + o.id + ',{current:this.value})" style="width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;font-family:inherit;text-align:right">'
+        + '<span style="font-size:13px;color:var(--text3)">/ $' + parseFloat(o.target).toFixed(0) + '</span>'
+        + '</div></div>'
+        + '<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + (done?'var(--green)':'var(--accent)') + ';border-radius:3px"></div></div>'
+        + '</div>';
+    }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun objectif ce mois</div>'
+    + '</div></div>'
+
+    // Revenus élèves
+    + '<div class="panel" style="padding:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Revenus élèves — Commissions</h3>'
+    + '<table class="table mobile-cards"><thead><tr><th>Élève</th><th>Modèle</th><th>Mois</th><th>Revenue</th><th>Commission élève</th><th>Ma commission</th></tr></thead><tbody>'
+    + studentRevenue.map(function(r) {
+      var rev = parseFloat(r.revenue);
+      var commRate = parseFloat(r.commission_rate);
+      var studentComm = (rev * commRate / 100).toFixed(2);
+      var myComm = (rev - parseFloat(studentComm)).toFixed(2);
+      return '<tr><td data-label="Élève" class="mc-half"><strong>' + r.student_name + '</strong></td>'
+        + '<td data-label="Modèle" class="mc-half">' + r.model_name + '</td>'
+        + '<td data-label="Mois" class="mc-half">' + r.month + '</td>'
+        + '<td data-label="Revenue" class="mc-half" style="color:var(--green)">$' + rev.toFixed(2) + '</td>'
+        + '<td data-label="Comm. élève" class="mc-half" style="color:var(--yellow)">$' + studentComm + ' (' + commRate + '%)</td>'
+        + '<td data-label="Ma comm." class="mc-half" style="color:var(--accent)">$' + myComm + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Aucun revenu</td></tr>'
+    + '</tbody></table></div>';
+}
+
+function showPaymentForm() {
+  var wrap = document.getElementById('payment-form-wrap');
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  var modelOpts = allModels.map(function(m) { return '<option value="' + m.id + '">' + m.name + '</option>'; }).join('');
+  wrap.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:end;background:var(--bg3);padding:14px;border-radius:10px">'
+    + '<div><label style="font-size:11px;color:var(--text3)">Modèle</label><select id="pay-model" class="form-input" style="font-size:12px">' + modelOpts + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Mois</label><input type="month" id="pay-month" class="form-input" style="font-size:12px" value="' + new Date().toISOString().slice(0,7) + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Montant ($)</label><input type="number" id="pay-amount" class="form-input" style="font-size:12px;width:100px" placeholder="0"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Notes</label><input type="text" id="pay-notes" class="form-input" style="font-size:12px" placeholder="Notes..."></div>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="addPayment()">Ajouter</button>'
+    + '</div>';
+}
+
+async function addPayment() {
+  var res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ model_id: document.getElementById('pay-model').value, month: document.getElementById('pay-month').value, amount: document.getElementById('pay-amount').value, notes: document.getElementById('pay-notes').value.trim() })
+  });
+  if (res.ok) { showToast('Paiement ajouté', 'success'); renderFinance(); }
+}
+
+async function updatePayment(id, data) {
+  await fetch('/api/payments/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+}
+
+async function deletePayment(id) {
+  if (!confirm('Supprimer ce paiement ?')) return;
+  await fetch('/api/payments/' + id, { method: 'DELETE', credentials: 'include' });
+  renderFinance();
+}
+
+function showRevenueObjForm() {
+  var wrap = document.getElementById('revenue-obj-form-wrap');
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  var modelOpts = allModels.map(function(m) { return '<option value="' + m.id + '">' + m.name + '</option>'; }).join('');
+  wrap.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:end;background:var(--bg3);padding:14px;border-radius:10px">'
+    + '<div><label style="font-size:11px;color:var(--text3)">Modèle</label><select id="robj-model" class="form-input" style="font-size:12px">' + modelOpts + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Mois</label><input type="month" id="robj-month" class="form-input" style="font-size:12px" value="' + new Date().toISOString().slice(0,7) + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Objectif ($)</label><input type="number" id="robj-target" class="form-input" style="font-size:12px;width:100px" placeholder="0"></div>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="addRevenueObj()">Ajouter</button>'
+    + '</div>';
+}
+
+async function addRevenueObj() {
+  var res = await fetch('/api/model-revenue-objectives', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ model_id: document.getElementById('robj-model').value, month: document.getElementById('robj-month').value, target: document.getElementById('robj-target').value })
+  });
+  if (res.ok) { showToast('Objectif ajouté', 'success'); renderFinance(); }
+}
+
+async function updateRevenueObj(id, data) {
+  await fetch('/api/model-revenue-objectives/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+}
+
+// ============ ACTIVITY LOG SECTION ============
+async function renderActivityLog() {
+  if (currentUser.role !== 'admin') return;
+  var container = document.getElementById('activity-log-content');
+  if (!container) return;
+
+  var res = await fetch('/api/activity-log?limit=200', { credentials: 'include' });
+  var logs = res.ok ? await res.json() : [];
+
+  var actionLabels = {
+    'lead-talking-warm': { label: 'Lead discussion chaude', color: 'var(--yellow)', icon: '🔥' },
+    'lead-call-booked': { label: 'Lead call prévu', color: 'var(--accent)', icon: '📞' },
+    'lead-signed': { label: 'Lead signé', color: 'var(--green)', icon: '✅' },
+    'call-request': { label: 'Demande de call', color: 'var(--blue)', icon: '📞' },
+    'clock-in': { label: 'Pointage entrée', color: 'var(--green)', icon: '🟢' },
+    'clock-out': { label: 'Pointage sortie', color: 'var(--red)', icon: '🔴' }
+  };
+
+  container.innerHTML = '<div class="panel" style="padding:20px">'
+    + '<div style="display:grid;gap:6px;max-height:600px;overflow-y:auto">'
+    + logs.map(function(l) {
+      var info = actionLabels[l.action] || { label: l.action, color: 'var(--text2)', icon: '📝' };
+      var date = new Date(l.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:13px">'
+        + '<span style="font-size:16px">' + info.icon + '</span>'
+        + '<span style="color:var(--text3);font-size:11px;min-width:80px">' + date + '</span>'
+        + '<strong style="color:' + info.color + '">' + info.label + '</strong>'
+        + '<span style="color:var(--text2)">' + (l.user_name || '?') + '</span>'
+        + (l.details ? '<span style="color:var(--text3);font-size:12px">' + l.details + '</span>' : '')
+        + '</div>';
+    }).join('') || '<div style="text-align:center;color:var(--text3);padding:20px">Aucune activité</div>'
+    + '</div></div>';
+}
+
+// ============ SHIFT CLOCK (pour outreach/chatters) ============
+async function renderShiftClock() {
+  var statusRes = await fetch('/api/shift-clock/status', { credentials: 'include' });
+  var status = statusRes.ok ? await statusRes.json() : { clocked_in: false };
+  var clockBtn = document.getElementById('shift-clock-btn');
+  if (!clockBtn) return;
+  if (status.clocked_in) {
+    var since = new Date(status.since).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    clockBtn.innerHTML = '<span style="color:var(--green);font-weight:700">En shift depuis ' + since + '</span> <button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer;font-size:11px;padding:4px 12px" onclick="clockOut()">Fin du shift</button>';
+  } else {
+    clockBtn.innerHTML = '<button class="btn btn-primary" style="font-size:12px;padding:6px 16px" onclick="clockIn()">Commencer mon shift</button>';
+  }
+}
+
+async function clockIn() {
+  var res = await fetch('/api/shift-clock/in', { method: 'POST', credentials: 'include' });
+  if (res.ok) { showToast('Shift commencé !', 'success'); renderShiftClock(); }
+  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+async function clockOut() {
+  var res = await fetch('/api/shift-clock/out', { method: 'POST', credentials: 'include' });
+  if (res.ok) { var data = await res.json(); showToast('Shift terminé (' + data.duration + ' min)', 'success'); renderShiftClock(); }
+  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+// ============ ACCESS CONTROL ============
+async function renderAccessControl() {
+  var container = document.getElementById('access-control-content');
+  if (!container) return;
+  container.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Rôle</th><th>Lecture seule</th><th>Expire le</th><th></th></tr></thead><tbody>'
+    + allUsers.filter(function(u) { return u.role !== 'admin'; }).map(function(u) {
+      return '<tr><td data-label="" class="mc-title"><strong>' + u.display_name + '</strong></td>'
+        + '<td data-label="Rôle" class="mc-half">' + u.role + '</td>'
+        + '<td data-label="Lecture seule" class="mc-half"><input type="checkbox" ' + (u.read_only ? 'checked' : '') + ' onchange="updateUserAccess(' + u.id + ',{read_only:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>'
+        + '<td data-label="Expire le" class="mc-half"><input type="date" value="' + (u.expires_at ? u.expires_at.slice(0,10) : '') + '" onchange="updateUserAccess(' + u.id + ',{expires_at:this.value||null})" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;font-family:inherit"></td>'
+        + '<td data-label=""></td></tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+async function updateUserAccess(userId, data) {
+  await fetch('/api/users/' + userId + '/access', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+  showToast('Accès mis à jour', 'success');
+  await loadSettings();
+}
+
+// ============ SECTION SWITCHING ============
+var origSwitchSection = typeof switchSection === 'function' ? switchSection : null;
 </script>
 <script src="/student.js"></script>
 <script src="/outreach-student.js"></script>
