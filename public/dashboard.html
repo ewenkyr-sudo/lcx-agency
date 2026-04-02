@@ -2695,8 +2695,14 @@ async function renderCoaching() {
       </div>
     </div>
 
-    <!-- Stats Outreach Élèves -->
-    <div id="coaching-outreach-stats"></div>
+    <!-- Outreach Élèves — Interface complète -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Outreach Élèves</h3>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        ${students.map(s => '<button class="btn coaching-student-btn" data-uid="' + s.user_id + '" onclick="loadCoachingStudentOutreach(' + s.user_id + ',this)" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;background:var(--bg3);color:var(--text2)">' + s.name + '</button>').join('')}
+      </div>
+      <div id="coaching-outreach-content" style="color:var(--text3);text-align:center;padding:16px">Sélectionne un élève pour voir son outreach</div>
+    </div>
 
     <!-- Recrutement modèles -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
@@ -2782,77 +2788,176 @@ async function renderCoaching() {
   loadCoachingOutreachStats();
 }
 
-async function loadCoachingOutreachStats() {
-  try {
-    const res = await fetch('/api/student-leads/coaching-overview', { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    const container = document.getElementById('coaching-outreach-stats');
-    if (!container) return;
+let coachingOutreachStudentId = null;
+let coachingOutreachMarket = 'fr';
+let coachingOutreachFilter = 'all';
+let coachingOutreachLeads = [];
+let coachingOutreachOptions = { script: [], account: [], type: [] };
 
-    const pipelineKeys = ['to-send', 'sent', 'talking-cold', 'talking-warm', 'call-booked', 'signed'];
-    const pipelineLabels = { 'to-send': 'To Send', 'sent': 'Sent', 'talking-cold': 'Talking Cold', 'talking-warm': 'Talking Warm', 'call-booked': 'Call Booked', 'signed': 'Signé' };
-    const pipelineColors = { 'to-send': '#e74c3c', 'sent': '#27ae60', 'talking-cold': '#e8956d', 'talking-warm': '#f4c842', 'call-booked': '#8b5cf6', 'signed': '#3498db' };
-    const pipelineBg = { 'to-send': 'rgba(231,76,60,0.15)', 'sent': 'rgba(39,174,96,0.15)', 'talking-cold': 'rgba(232,149,109,0.15)', 'talking-warm': 'rgba(244,200,66,0.15)', 'call-booked': 'rgba(139,92,246,0.15)', 'signed': 'rgba(52,152,219,0.15)' };
+async function loadCoachingStudentOutreach(studentUserId, btn) {
+  coachingOutreachStudentId = studentUserId;
+  coachingOutreachFilter = 'all';
+  coachingOutreachMarket = 'fr';
+  // Highlight selected button
+  document.querySelectorAll('.coaching-student-btn').forEach(b => { b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; });
+  if (btn) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; }
+  await renderCoachingOutreach();
+}
 
-    container.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-      + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Outreach Élèves — Suivi complet</h3>'
-      + (data.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>' : data.map(function(s) {
-        const total = s.total_leads || 1;
-        // Barre de pipeline
-        const pipelineBar = pipelineKeys.map(function(k) {
-          const count = s.pipeline[k] || 0;
-          if (count === 0) return '';
-          const pct = Math.max(2, (count / total) * 100);
-          return '<div title="' + pipelineLabels[k] + ': ' + count + '" style="width:' + pct + '%;height:100%;background:' + pipelineColors[k] + ';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;min-width:20px">' + count + '</div>';
-        }).join('');
+async function renderCoachingOutreach() {
+  const container = document.getElementById('coaching-outreach-content');
+  if (!container || !coachingOutreachStudentId) return;
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
 
-        // Leads actifs (talking + call-booked + signed)
-        const activeLeads = s.leads.filter(function(l) { return l.status === 'talking-cold' || l.status === 'talking-warm' || l.status === 'call-booked' || l.status === 'signed'; });
+  const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
+  const [leads, stats, opts] = await Promise.all([
+    f('/api/student-leads?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket),
+    f('/api/student-leads/stats?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket),
+    f('/api/user-options?user_id=' + coachingOutreachStudentId)
+  ]);
+  coachingOutreachLeads = leads;
+  coachingOutreachOptions = opts.script ? opts : { script: [], account: [], type: [] };
 
-        return '<div style="background:var(--bg3);padding:16px;border-radius:10px;margin-bottom:14px">'
-          // Header avec nom + stats rapides
-          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
-          + '<strong style="font-size:15px">' + s.student_name + '</strong>'
-          + '<div style="display:flex;gap:10px;font-size:12px;flex-wrap:wrap">'
-          + '<span style="padding:3px 10px;border-radius:12px;background:var(--bg);font-weight:600">' + s.total_leads + ' leads</span>'
-          + '<span style="padding:3px 10px;border-radius:12px;background:var(--blue-bg);color:var(--blue);font-weight:600">' + s.dm_sent + ' DMs</span>'
-          + '<span style="padding:3px 10px;border-radius:12px;background:var(--green-bg);color:var(--green);font-weight:600">+' + s.leads_today + ' auj.</span>'
-          + '</div></div>'
+  // Vérifier si US activé
+  const student = allStudents.find(s => s.user_id === coachingOutreachStudentId);
+  const usEnabled = student?.outreach_us_enabled;
 
-          // Pipeline visuelle
-          + '<div style="display:flex;height:22px;border-radius:6px;overflow:hidden;margin-bottom:10px;background:var(--bg)">' + pipelineBar + '</div>'
+  container.innerHTML = ''
+    // Market toggle
+    + (usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px">'
+      + '<button onclick="coachingOutreachMarket=\'fr\';renderCoachingOutreach()" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (coachingOutreachMarket==='fr'?'var(--accent)':'var(--bg3)') + ';color:' + (coachingOutreachMarket==='fr'?'white':'var(--text2)') + '">FR</button>'
+      + '<button onclick="coachingOutreachMarket=\'us\';renderCoachingOutreach()" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (coachingOutreachMarket==='us'?'var(--accent)':'var(--bg3)') + ';color:' + (coachingOutreachMarket==='us'?'white':'var(--text2)') + '">US</button>'
+      + '</div>' : '')
+    // Stats
+    + '<div class="stats-grid" style="margin-bottom:16px">'
+    + '<div class="stat-card"><div class="stat-value">' + (stats.leads_today || 0) + '</div><div class="stat-label">Leads auj.</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + (stats.dm_sent_today || 0) + '</div><div class="stat-label">DMs auj.</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + (stats.dm_sent || 0) + '</div><div class="stat-label">DMs total</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">' + (stats.talking_warm || 0) + '</div><div class="stat-label">Talking Warm</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">' + (stats.call_booked || 0) + '</div><div class="stat-label">Call Booked</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + (stats.reply_rate || 0) + '%</div><div class="stat-label">Taux réponse</div></div>'
+    + '</div>'
+    // Actions
+    + '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<button class="btn btn-primary" onclick="showCoachingLeadForm()" style="font-size:12px">+ Nouveau Lead</button>'
+    + '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer;font-size:12px" onclick="deleteAllCoachingLeads()">Tout supprimer</button>'
+    + '</div>'
+    + '<div id="coaching-lead-form-wrap"></div>'
+    // Filtres
+    + '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+    + ['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(function(fi) {
+      return '<button class="btn coaching-lead-filter" onclick="coachingOutreachFilter=\'' + fi + '\';renderCoachingLeadTable();document.querySelectorAll(\'.coaching-lead-filter\').forEach(b=>{b.style.background=\'var(--bg3)\';b.style.color=\'var(--text2)\'});this.style.background=\'var(--accent)\';this.style.color=\'white\'" style="font-size:12px;padding:6px 14px;border-radius:20px;background:' + (coachingOutreachFilter===fi?'var(--accent)':'var(--bg3)') + ';color:' + (coachingOutreachFilter===fi?'white':'var(--text2)') + ';border:none;cursor:pointer">' + (fi==='all'?'Tous':(leadStatusColors[fi]?.label||fi)) + '</button>';
+    }).join('')
+    + '</div>'
+    // Recherche
+    + '<div style="margin-bottom:12px"><input type="text" id="coaching-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderCoachingLeadTable()" style="max-width:350px"></div>'
+    // Tableau
+    + '<div style="overflow-x:auto"><table class="table mobile-cards" id="coaching-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>';
 
-          // Légende pipeline
-          + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
-          + pipelineKeys.map(function(k) {
-            var count = s.pipeline[k] || 0;
-            return '<span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:' + pipelineColors[k] + '"></span>' + pipelineLabels[k] + ' <strong>' + count + '</strong></span>';
-          }).join('')
-          + '</div>'
+  renderCoachingLeadTable();
+}
 
-          // Leads actifs (conversations en cours)
-          + (activeLeads.length > 0
-            ? '<div style="border-top:1px solid var(--border);padding-top:10px">'
-              + '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Conversations actives (' + activeLeads.length + ')</div>'
-              + '<div style="display:grid;gap:6px;max-height:200px;overflow-y:auto">'
-              + activeLeads.map(function(l) {
-                var stColor = pipelineColors[l.status] || 'var(--text3)';
-                var stBg = pipelineBg[l.status] || 'var(--bg)';
-                var stLabel = pipelineLabels[l.status] || l.status;
-                return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px">'
-                  + (l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent);font-weight:600;text-decoration:none">@' + l.username + '</a>' : '<span style="font-weight:600">@' + l.username + '</span>')
-                  + (l.market === 'us' ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--blue-bg);color:var(--blue)">US</span>' : '')
-                  + '<span style="padding:2px 8px;border-radius:10px;background:' + stBg + ';color:' + stColor + ';font-size:10px;font-weight:600">' + stLabel + '</span>'
-                  + (l.notes ? '<span style="color:var(--text3);font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + l.notes.replace(/"/g, '&quot;') + '">' + l.notes + '</span>' : '')
-                  + '</div>';
-              }).join('')
-              + '</div></div>'
-            : '<div style="border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--text3)">Aucune conversation active</div>')
-          + '</div>';
-      }).join(''))
-      + '</div>';
-  } catch(e) { console.error('coaching outreach stats error', e); }
+function coachingInlineSelect(leadId, field, currentValue, optType) {
+  var opts = coachingOutreachOptions[optType] || [];
+  var style = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
+  var html = '<select onchange="updateCoachingLead(' + leadId + ',{' + field + ':this.value})" style="' + style + '"><option value="">-</option>';
+  var hasVal = opts.some(function(o) { return o.value === currentValue; });
+  if (currentValue && !hasVal) html += '<option value="' + currentValue + '" selected>' + currentValue + '</option>';
+  opts.forEach(function(o) { html += '<option value="' + o.value + '"' + (o.value === currentValue ? ' selected' : '') + '>' + o.value + '</option>'; });
+  return html + '</select>';
+}
+
+function renderCoachingLeadTable() {
+  var search = (document.getElementById('coaching-lead-search')?.value || '').toLowerCase();
+  var filtered = coachingOutreachFilter === 'all' ? coachingOutreachLeads : coachingOutreachLeads.filter(function(l) { return l.status === coachingOutreachFilter; });
+  if (search) filtered = filtered.filter(function(l) { return l.username.toLowerCase().includes(search); });
+  var tbody = document.querySelector('#coaching-leads-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = filtered.map(function(l, idx) {
+    var st = leadStatusColors[l.status] || leadStatusColors['sent'];
+    var date = new Date(l.created_at).toLocaleDateString('fr-FR');
+    var igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
+    return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
+      + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
+      + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateCoachingLead(' + l.id + ',{lead_type:this.value})') + '</td>'
+      + '<td data-label="Script" class="mc-half">' + coachingInlineSelect(l.id, 'script_used', l.script_used, 'script') + '</td>'
+      + '<td data-label="Compte" class="mc-half">' + coachingInlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
+      + '<td data-label="Statut" class="mc-half"><select onchange="updateCoachingLead(' + l.id + ',{status:this.value})" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
+      + Object.entries(leadStatusColors).map(function(e) { return '<option value="' + e[0] + '"' + (l.status===e[0]?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + e[1].label + '</option>'; }).join('') + '</select></td>'
+      + '<td data-label="Ajouté par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
+      + '<td data-label="Notes" class="mc-full"><input type="text" value="' + (l.notes||'').replace(/"/g,'&quot;') + '" onchange="updateCoachingLead(' + l.id + ',{notes:this.value})" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;font-size:12px;width:100%;font-family:inherit"></td>'
+      + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
+      + '<td data-label=""><button class="btn-delete-small" onclick="deleteCoachingLead(' + l.id + ')">✕</button></td></tr>';
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+}
+
+async function updateCoachingLead(id, data) {
+  await fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+  // Refresh
+  var leads = await fetch('/api/student-leads?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket, { credentials: 'include' }).then(function(r) { return r.json(); });
+  coachingOutreachLeads = leads;
+  renderCoachingLeadTable();
+}
+
+async function deleteCoachingLead(id) {
+  if (!confirm('Supprimer ce lead ?')) return;
+  await fetch('/api/student-leads/' + id, { method: 'DELETE', credentials: 'include' });
+  coachingOutreachLeads = coachingOutreachLeads.filter(function(l) { return l.id !== id; });
+  renderCoachingLeadTable();
+}
+
+async function deleteAllCoachingLeads() {
+  var label = coachingOutreachMarket === 'us' ? 'US' : 'FR';
+  if (!confirm('Supprimer TOUS les leads ' + label + ' de cet élève ?')) return;
+  if (!confirm('Tu es sûr ? Tous les leads seront supprimés définitivement.')) return;
+  var res = await fetch('/api/student-leads/all?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) { showToast('Leads supprimés', 'success'); renderCoachingOutreach(); }
+}
+
+function showCoachingLeadForm() {
+  var wrap = document.getElementById('coaching-lead-form-wrap');
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  var opts = coachingOutreachOptions;
+  var scriptOpts = (opts.script||[]).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
+  var accountOpts = (opts.account||[]).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
+  wrap.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:16px;background:var(--bg3);border-radius:10px">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:700px">'
+    + '<div><label style="font-size:11px;color:var(--text3)">Username *</label><input type="text" id="cl-username" class="form-input" placeholder="@username"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Lien Instagram</label><input type="text" id="cl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="var m=this.value.match(/instagram\\.com\\/([a-zA-Z0-9_.]+)/);if(m)document.getElementById(\'cl-username\').value=\'@\'+m[1]"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Type</label><select id="cl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Script</label><select id="cl-script" class="form-input"><option value="">-- Script --</option>' + scriptOpts + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Compte</label><select id="cl-account" class="form-input"><option value="">-- Compte --</option>' + accountOpts + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3)">Notes</label><input type="text" id="cl-notes" class="form-input" placeholder="Notes..."></div>'
+    + '</div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addCoachingLead()">Ajouter</button><button class="btn" style="font-size:12px;background:var(--bg);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'coaching-lead-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '</div>';
+}
+
+async function addCoachingLead() {
+  var username = document.getElementById('cl-username').value.trim();
+  if (!username) return showToast('Username requis', 'error');
+  var res = await fetch('/api/student-leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({
+    username: username,
+    ig_link: document.getElementById('cl-iglink').value.trim(),
+    lead_type: document.getElementById('cl-type').value,
+    script_used: document.getElementById('cl-script').value,
+    ig_account_used: document.getElementById('cl-account').value,
+    notes: document.getElementById('cl-notes').value.trim(),
+    student_user_id: coachingOutreachStudentId,
+    market: coachingOutreachMarket
+  })});
+  if (res.ok) {
+    showToast('Lead ajouté', 'success');
+    document.getElementById('coaching-lead-form-wrap').innerHTML = '';
+    renderCoachingOutreach();
+  } else {
+    var e = await res.json();
+    showToast(e.error || 'Erreur', 'error');
+  }
+}
+
+function loadCoachingOutreachStats() {
+  // plus nécessaire, l'outreach complet est chargé via loadCoachingStudentOutreach
 }
 
 async function toggleOutreachUS(studentId, enabled) {
