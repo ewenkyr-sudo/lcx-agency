@@ -2445,20 +2445,46 @@ function renderModels() {
             </div>
             <div class="model-stats">
               <div class="model-stat">
-                <div class="model-stat-label">Accounts</div>
+                <div class="model-stat-label">Comptes</div>
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).length}</div>
               </div>
               <div class="model-stat">
-                <div class="model-stat-label">Total followers</div>
+                <div class="model-stat-label">Followers total</div>
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).reduce((s, a) => s + a.current_followers, 0)}</div>
               </div>
             </div>
-            ${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">✕ Supprimer</button>` : ''}
+            ${currentUser.role === 'admin' ? `
+            <!-- Drive & Contrat -->
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;gap:8px">
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" placeholder="Lien dossier Drive..." value="${m.drive_folder||''}" onchange="updateModelDrive(${m.id},'drive_folder',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
+                ${m.drive_folder ? '<a href="' + m.drive_folder + '" target="_blank" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Dossier Drive</a>' : ''}
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" placeholder="Lien contrat Drive..." value="${m.drive_contract||''}" onchange="updateModelDrive(${m.id},'drive_contract',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
+                ${m.drive_contract ? '<a href="' + m.drive_contract + '" target="_blank" style="padding:6px 10px;background:var(--accent-glow);color:var(--accent);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Voir contrat</a>' : ''}
+              </div>
+            </div>
+            <!-- Planning contenu -->
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:600;color:var(--text2)">Planning contenu</span>
+                <button onclick="showPlanningForm(${m.id})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">+ Ajouter</button>
+              </div>
+              <div id="planning-form-${m.id}"></div>
+              <div id="planning-list-${m.id}" style="display:grid;gap:4px"></div>
+            </div>
+            <button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">Supprimer</button>
+            ` : ''}
           </div>
         `).join('')}
       </div>
     </div>
   `;
+  // Charger les plannings contenu
+  if (currentUser.role === 'admin') {
+    allModels.forEach(m => loadModelPlanning(m.id));
+  }
 }
 
 async function renderChatters() {
@@ -2668,6 +2694,11 @@ async function renderCoaching() {
                 <input type="checkbox" ${s.outreach_us_enabled ? 'checked' : ''} onchange="toggleOutreachUS(${s.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
                 <span style="font-size:11px;color:${s.outreach_us_enabled ? 'var(--green)' : 'var(--text3)'}">${s.outreach_us_enabled ? 'Activé' : 'Désactivé'}</span>
               </label>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;color:var(--text3)">Dossier Drive :</span>
+              <input type="text" placeholder="Coller le lien Drive..." value="${s.drive_folder||''}" onchange="updateStudentDrive(${s.id},this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+              ${s.drive_folder ? '<a href="' + s.drive_folder + '" target="_blank" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Ouvrir</a>' : ''}
             </div>
           </div>`;
         }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>'}
@@ -2967,6 +2998,13 @@ async function toggleOutreachUS(studentId, enabled) {
   allStudents = await fetch('/api/students', { credentials: 'include' }).then(r => r.json());
 }
 
+async function updateStudentDrive(studentId, value) {
+  await fetch('/api/students/' + studentId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ drive_folder: value || null }) });
+  showToast('Dossier Drive mis à jour', 'success');
+  allStudents = await fetch('/api/students', { credentials: 'include' }).then(r => r.json());
+  renderCoaching();
+}
+
 async function addOutreachPair(studentAId, studentBId) {
   if (!studentBId) return;
   const res = await fetch('/api/student-outreach-pairs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_a_id: parseInt(studentAId), student_b_id: parseInt(studentBId) }) });
@@ -3261,6 +3299,56 @@ async function deleteModel(id) {
     await loadAllData();
     renderAllSections();
   }
+}
+
+async function updateModelDrive(modelId, field, value) {
+  const body = {};
+  body[field] = value || null;
+  await fetch('/api/models/' + modelId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  showToast('Lien mis à jour', 'success');
+  await loadAllData();
+  renderModels();
+  // Recharger les plannings
+  allModels.forEach(m => loadModelPlanning(m.id));
+}
+
+function showPlanningForm(modelId) {
+  var wrap = document.getElementById('planning-form-' + modelId);
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px">'
+    + '<input type="text" id="plan-label-' + modelId + '" placeholder="Ex: Semaine 14, Mars 2026..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<input type="text" id="plan-link-' + modelId + '" placeholder="Lien Drive..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<button onclick="addPlanning(' + modelId + ')" style="background:var(--accent);color:white;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">OK</button>'
+    + '</div>';
+}
+
+async function addPlanning(modelId) {
+  var label = document.getElementById('plan-label-' + modelId).value.trim();
+  var link = document.getElementById('plan-link-' + modelId).value.trim();
+  if (!label || !link) return showToast('Label et lien requis', 'error');
+  var res = await fetch('/api/models/' + modelId + '/planning', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ label: label, drive_link: link }) });
+  if (res.ok) { showToast('Planning ajouté', 'success'); document.getElementById('planning-form-' + modelId).innerHTML = ''; loadModelPlanning(modelId); }
+  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+async function loadModelPlanning(modelId) {
+  var container = document.getElementById('planning-list-' + modelId);
+  if (!container) return;
+  var res = await fetch('/api/models/' + modelId + '/planning', { credentials: 'include' });
+  if (!res.ok) return;
+  var items = await res.json();
+  container.innerHTML = items.map(function(p) {
+    return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:11px">'
+      + '<span style="flex:1;font-weight:600">' + p.label + '</span>'
+      + '<a href="' + p.drive_link + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Ouvrir</a>'
+      + '<button onclick="deletePlanning(' + p.id + ',' + modelId + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px">✕</button>'
+      + '</div>';
+  }).join('') || '<div style="font-size:11px;color:var(--text3)">Aucun planning</div>';
+}
+
+async function deletePlanning(id, modelId) {
+  await fetch('/api/model-planning/' + id, { method: 'DELETE', credentials: 'include' });
+  loadModelPlanning(modelId);
 }
 
 async function deleteAccount(id) {

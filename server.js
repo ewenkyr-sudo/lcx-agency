@@ -110,8 +110,19 @@ async function initDB() {
       ALTER TABLE students ADD COLUMN IF NOT EXISTS progression_step TEXT DEFAULT 'onboarding';
       ALTER TABLE students ADD COLUMN IF NOT EXISTS outreach_us_enabled BOOLEAN DEFAULT false;
       ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS market TEXT DEFAULT 'fr';
+      ALTER TABLE students ADD COLUMN IF NOT EXISTS drive_folder TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS drive_folder TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS drive_contract TEXT;
     EXCEPTION WHEN others THEN NULL;
     END $$;
+
+    CREATE TABLE IF NOT EXISTS model_content_planning (
+      id SERIAL PRIMARY KEY,
+      model_id INTEGER NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+      label TEXT NOT NULL,
+      drive_link TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
     CREATE TABLE IF NOT EXISTS tasks (
       id SERIAL PRIMARY KEY,
@@ -577,12 +588,12 @@ app.post('/api/students', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.put('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, program, models_signed, active_discussions, progression, contact, status } = req.body;
+  const { name, program, models_signed, active_discussions, progression, contact, status, drive_folder } = req.body;
   await pool.query(`UPDATE students SET
     name = COALESCE($1, name), program = COALESCE($2, program), models_signed = COALESCE($3, models_signed),
     active_discussions = COALESCE($4, active_discussions), progression = COALESCE($5, progression),
-    contact = COALESCE($6, contact), status = COALESCE($7, status) WHERE id = $8`,
-    [name, program, models_signed, active_discussions, progression, contact, status, req.params.id]);
+    contact = COALESCE($6, contact), status = COALESCE($7, status), drive_folder = COALESCE($8, drive_folder) WHERE id = $9`,
+    [name, program, models_signed, active_discussions, progression, contact, status, drive_folder, req.params.id]);
   res.json({ ok: true });
 });
 
@@ -825,10 +836,29 @@ app.delete('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) 
 });
 
 app.put('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
-  const { name, platforms, status } = req.body;
+  const { name, platforms, status, drive_folder, drive_contract } = req.body;
   await pool.query(`UPDATE models SET
-    name = COALESCE($1, name), platforms = COALESCE($2, platforms), status = COALESCE($3, status) WHERE id = $4`,
-    [name, platforms ? JSON.stringify(platforms) : null, status, req.params.id]);
+    name = COALESCE($1, name), platforms = COALESCE($2, platforms), status = COALESCE($3, status),
+    drive_folder = COALESCE($4, drive_folder), drive_contract = COALESCE($5, drive_contract) WHERE id = $6`,
+    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ MODEL CONTENT PLANNING ============
+app.get('/api/models/:id/planning', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM model_content_planning WHERE model_id = $1 ORDER BY created_at DESC', [req.params.id]);
+  res.json(rows);
+});
+
+app.post('/api/models/:id/planning', authMiddleware, adminOnly, async (req, res) => {
+  const { label, drive_link } = req.body;
+  if (!label || !drive_link) return res.status(400).json({ error: 'Label et lien requis' });
+  const { rows } = await pool.query('INSERT INTO model_content_planning (model_id, label, drive_link) VALUES ($1, $2, $3) RETURNING *', [req.params.id, label, drive_link]);
+  res.json(rows[0]);
+});
+
+app.delete('/api/model-planning/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM model_content_planning WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
