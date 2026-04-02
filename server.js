@@ -1395,6 +1395,67 @@ app.get('/api/student-outreach-admin-stats', authMiddleware, adminOnly, async (r
   res.json(results);
 });
 
+// ============ COACHING OUTREACH OVERVIEW (admin) ============
+app.get('/api/student-leads/coaching-overview', authMiddleware, adminOnly, async (req, res) => {
+  // Tous les élèves avec user_id
+  const { rows: students } = await pool.query(`
+    SELECT s.id, s.user_id, u.display_name as name
+    FROM students s JOIN users u ON s.user_id = u.id ORDER BY u.display_name
+  `);
+
+  const results = [];
+  for (const student of students) {
+    const sharedIds = await getSharedOutreachIds(student.user_id);
+
+    // Pipeline counts par marché (fr + us combinés)
+    const { rows: pipeline } = await pool.query(`
+      SELECT status, COUNT(*) as count FROM student_leads
+      WHERE user_id = ANY($1) GROUP BY status
+    `, [sharedIds]);
+
+    const counts = {};
+    pipeline.forEach(r => { counts[r.status] = parseInt(r.count); });
+
+    // Total et DMs envoyés
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const dmSent = total - (counts['to-send'] || 0);
+
+    // Leads ajoutés aujourd'hui
+    const { rows: todayRow } = await pool.query(
+      `SELECT COUNT(*) as c FROM student_leads WHERE user_id = ANY($1) AND created_at >= ${SQL_TODAY_START}`, [sharedIds]
+    );
+
+    // Derniers leads actifs (talking/call-booked/signed) — les plus récents
+    const { rows: recentLeads } = await pool.query(`
+      SELECT sl.id, sl.username, sl.ig_link, sl.status, sl.lead_type, sl.notes, sl.updated_at, sl.sent_at,
+        COALESCE(sl.market, 'fr') as market
+      FROM student_leads sl
+      WHERE sl.user_id = ANY($1) AND sl.status NOT IN ('to-send')
+      ORDER BY sl.updated_at DESC NULLS LAST LIMIT 50
+    `, [sharedIds]);
+
+    results.push({
+      student_id: student.id,
+      student_user_id: student.user_id,
+      student_name: student.name,
+      total_leads: total,
+      dm_sent: dmSent,
+      leads_today: parseInt(todayRow[0].c),
+      pipeline: {
+        'to-send': counts['to-send'] || 0,
+        'sent': counts['sent'] || 0,
+        'talking-cold': counts['talking-cold'] || 0,
+        'talking-warm': counts['talking-warm'] || 0,
+        'call-booked': counts['call-booked'] || 0,
+        'signed': counts['signed'] || 0
+      },
+      leads: recentLeads
+    });
+  }
+
+  res.json(results);
+});
+
 // ============ STUDENT OUTREACH PAIRS ============
 // Helper: get all user IDs sharing outreach with this student
 async function getSharedOutreachIds(studentUserId) {
