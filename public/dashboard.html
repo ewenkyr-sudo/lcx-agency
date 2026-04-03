@@ -773,6 +773,22 @@
     color: white;
   }
 
+  /* Settings tabs */
+  .settings-tab {
+    display:block;width:100%;text-align:left;padding:10px 16px;border:none;border-radius:8px;
+    background:transparent;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;
+    font-family:inherit;transition:all 0.15s;
+  }
+  .settings-tab:hover { background:var(--bg3);color:var(--text); }
+  .settings-tab.active { background:var(--accent);color:white;font-weight:600; }
+  .settings-pane { display:none; }
+  .settings-pane.active { display:block; }
+  @media (max-width: 768px) {
+    #settings-sidebar { display:none !important; }
+    #settings-tab-mobile { display:block !important; }
+    #settings-layout { flex-direction:column; }
+  }
+
   .loading {
     text-align: center;
     padding: 40px;
@@ -1406,148 +1422,225 @@
   <div class="section" id="section-settings">
     <div class="page-header">
       <div>
-        <div class="page-title">⚙️ Paramètres</div>
-        <div class="page-subtitle">Configuration de l'application — Admin uniquement</div>
+        <div class="page-title">Paramètres</div>
+        <div class="page-subtitle">Configuration de l'application</div>
       </div>
     </div>
 
-    <div style="display:grid;gap:20px">
+    <!-- Onglets navigation — desktop: menu latéral, mobile: dropdown -->
+    <select id="settings-tab-mobile" onchange="switchSettingsTab(this.value)" style="display:none;width:100%;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px;font-family:inherit;margin-bottom:16px;cursor:pointer">
+      <option value="general">Général</option>
+      <option value="outreach">Outreach</option>
+      <option value="equipe">Équipe</option>
+      <option value="coaching">Coaching</option>
+      <option value="notifications">Notifications</option>
+      <option value="securite">Sécurité</option>
+      <option value="export">Export & Données</option>
+    </select>
 
-      <!-- Agency Settings -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🏢 Paramètres de l'agence</h3>
-        <div style="display:grid;gap:12px;max-width:500px">
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Logo (emoji)</label>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="text" id="setting-agency-logo" class="form-input" style="width:60px;text-align:center;font-size:24px" placeholder="👑" maxlength="2" oninput="document.getElementById('logo-preview').textContent=this.value||'👑'">
-              <span id="logo-preview" style="width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--pink));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px">👑</span>
+    <div style="display:flex;gap:24px;align-items:flex-start" id="settings-layout">
+      <!-- Sidebar onglets (desktop) -->
+      <div id="settings-sidebar" style="width:200px;flex-shrink:0;position:sticky;top:20px">
+        <div style="display:grid;gap:4px">
+          <button class="settings-tab active" data-tab="general" onclick="switchSettingsTab('general')">Général</button>
+          <button class="settings-tab" data-tab="outreach" onclick="switchSettingsTab('outreach')">Outreach</button>
+          <button class="settings-tab" data-tab="equipe" onclick="switchSettingsTab('equipe')">Équipe</button>
+          <button class="settings-tab" data-tab="coaching" onclick="switchSettingsTab('coaching')">Coaching</button>
+          <button class="settings-tab" data-tab="notifications" onclick="switchSettingsTab('notifications')">Notifications</button>
+          <button class="settings-tab" data-tab="securite" onclick="switchSettingsTab('securite')">Sécurité</button>
+          <button class="settings-tab" data-tab="export" onclick="switchSettingsTab('export')">Export & Données</button>
+        </div>
+      </div>
+
+      <!-- Contenu onglets -->
+      <div style="flex:1;min-width:0">
+
+        <!-- TAB: Général -->
+        <div class="settings-pane active" id="settings-pane-general">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Identité de l'agence</h3>
+            <div style="display:grid;gap:12px;max-width:500px">
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Logo (emoji)</label>
+                <div style="display:flex;gap:10px;align-items:center">
+                  <input type="text" id="setting-agency-logo" class="form-input" style="width:60px;text-align:center;font-size:24px" placeholder="👑" maxlength="2" oninput="document.getElementById('logo-preview').textContent=this.value||'👑'">
+                  <span id="logo-preview" style="width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--pink));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px">👑</span>
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
+                <input type="text" id="setting-agency-name" class="form-input" placeholder="LCX Agency">
+              </div>
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Sous-titre</label>
+                <input type="text" id="setting-agency-subtitle" class="form-input" placeholder="Management Suite">
+              </div>
+              <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
             </div>
           </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
-            <input type="text" id="setting-agency-name" class="form-input" placeholder="LCX Agency">
-          </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Sous-titre</label>
-            <input type="text" id="setting-agency-subtitle" class="form-input" placeholder="Management Suite">
-          </div>
-          <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
-        </div>
-      </div>
-
-      <!-- Password Management -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🔑 Mots de passe par défaut</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Réinitialiser les mots de passe de tous les utilisateurs d'un rôle</p>
-        <div style="display:grid;gap:16px;max-width:500px">
-          <div style="display:flex;gap:10px;align-items:end">
-            <div style="flex:1">
-              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Équipe</label>
-              <input type="text" id="pwd-team" class="form-input" placeholder="Nouveau mot de passe">
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Gestion des modèles</h3>
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <button class="btn btn-primary" onclick="openModal('add-model')">+ Ajouter un modèle</button>
             </div>
-            <button class="btn btn-primary" onclick="resetPasswords('chatter', 'pwd-team')">Appliquer aux Chatters</button>
+            <div id="settings-models-content"></div>
           </div>
-          <div style="display:flex;gap:10px;align-items:end">
-            <div style="flex:1">
-              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Outreach</label>
-              <input type="text" id="pwd-outreach" class="form-input" placeholder="Nouveau mot de passe">
+        </div>
+
+        <!-- TAB: Outreach -->
+        <div class="settings-pane" id="settings-pane-outreach">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Statuts de leads</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Les statuts du pipeline outreach sont définis dans le code : À envoyer, Envoyé, Discussion froide, Discussion chaude, Call prévu, Signé</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="outreach-status-preview"></div>
+          </div>
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Marchés actifs</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Le marché US est activable par élève dans la section Coaching. Le marché FR est toujours actif.</p>
+          </div>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Heure de reset des stats</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Les stats "aujourd'hui" se réinitialisent à 9h du matin (configurable côté serveur)</p>
+            <div style="background:var(--bg3);padding:12px;border-radius:8px;font-size:13px;color:var(--text)">Heure de reset actuelle : <strong>09:00</strong></div>
+          </div>
+        </div>
+
+        <!-- TAB: Équipe -->
+        <div class="settings-pane" id="settings-pane-equipe">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Utilisateurs</h3>
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="openModal('add-user')">+ Ajouter un utilisateur</button>
             </div>
-            <button class="btn btn-primary" onclick="resetPasswords('outreach', 'pwd-outreach')">Appliquer aux Outreach</button>
-          </div>
-          <div style="display:flex;gap:10px;align-items:end">
-            <div style="flex:1">
-              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe VA</label>
-              <input type="text" id="pwd-va" class="form-input" placeholder="Nouveau mot de passe">
+            <div style="overflow-x:auto">
+              <table class="data-table table mobile-cards" id="settings-users-tbl" style="width:100%">
+                <thead><tr>
+                  <th>Photo</th><th>Nom</th><th>Mdp actuel</th><th>Rôle</th><th>Nouveau mdp</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="settings-users-table"></tbody>
+              </table>
             </div>
-            <button class="btn btn-primary" onclick="resetPasswords('va', 'pwd-va')">Appliquer aux VA</button>
           </div>
-          <div style="display:flex;gap:10px;align-items:end">
-            <div style="flex:1">
-              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Élèves</label>
-              <input type="text" id="pwd-student" class="form-input" placeholder="Nouveau mot de passe">
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Mots de passe par rôle</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Réinitialiser les mots de passe de tous les utilisateurs d'un rôle</p>
+            <div style="display:grid;gap:12px;max-width:500px">
+              <div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label style="display:block;font-size:12px;color:var(--text3);margin-bottom:4px">Chatters</label><input type="text" id="pwd-team" class="form-input" placeholder="Nouveau mot de passe"></div><button class="btn btn-primary" style="font-size:12px" onclick="resetPasswords('chatter', 'pwd-team')">Appliquer</button></div>
+              <div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label style="display:block;font-size:12px;color:var(--text3);margin-bottom:4px">Outreach</label><input type="text" id="pwd-outreach" class="form-input" placeholder="Nouveau mot de passe"></div><button class="btn btn-primary" style="font-size:12px" onclick="resetPasswords('outreach', 'pwd-outreach')">Appliquer</button></div>
+              <div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label style="display:block;font-size:12px;color:var(--text3);margin-bottom:4px">VA</label><input type="text" id="pwd-va" class="form-input" placeholder="Nouveau mot de passe"></div><button class="btn btn-primary" style="font-size:12px" onclick="resetPasswords('va', 'pwd-va')">Appliquer</button></div>
+              <div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label style="display:block;font-size:12px;color:var(--text3);margin-bottom:4px">Élèves</label><input type="text" id="pwd-student" class="form-input" placeholder="Nouveau mot de passe"></div><button class="btn btn-primary" style="font-size:12px" onclick="resetPasswords('student', 'pwd-student')">Appliquer</button></div>
+              <div style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label style="display:block;font-size:12px;color:var(--text3);margin-bottom:4px">Modèles</label><input type="text" id="pwd-model" class="form-input" placeholder="Nouveau mot de passe"></div><button class="btn btn-primary" style="font-size:12px" onclick="resetPasswords('model', 'pwd-model')">Appliquer</button></div>
             </div>
-            <button class="btn btn-primary" onclick="resetPasswords('student', 'pwd-student')">Appliquer aux Élèves</button>
           </div>
-          <div style="display:flex;gap:10px;align-items:end">
-            <div style="flex:1">
-              <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nouveau mot de passe Modèles</label>
-              <input type="text" id="pwd-model" class="form-input" placeholder="Nouveau mot de passe">
+        </div>
+
+        <!-- TAB: Coaching -->
+        <div class="settings-pane" id="settings-pane-coaching">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Étapes de progression</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Les élèves passent par ces étapes dans l'ordre :</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="coaching-steps-preview"></div>
+          </div>
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Programmes</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Programmes disponibles pour les élèves</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="padding:6px 14px;border-radius:8px;background:var(--bg3);font-size:13px;font-weight:600">Starter</span>
+              <span style="padding:6px 14px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600">Pro</span>
+              <span style="padding:6px 14px;border-radius:8px;background:var(--accent-glow);color:var(--accent);font-size:13px;font-weight:600">VIP</span>
+              <span style="padding:6px 14px;border-radius:8px;background:var(--yellow-bg);color:var(--yellow);font-size:13px;font-weight:600">Elite</span>
             </div>
-            <button class="btn btn-primary" onclick="resetPasswords('model', 'pwd-model')">Appliquer aux Modèles</button>
+          </div>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Commission agence</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">La commission est configurée par modèle dans la section "Mes modèles" de chaque élève. Le reste revient à l'agence.</p>
           </div>
         </div>
-      </div>
 
-      <!-- User Management -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">👥 Gestion des utilisateurs</h3>
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="openModal('add-user')">+ Ajouter un utilisateur</button>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="data-table table mobile-cards" id="settings-users-tbl" style="width:100%">
-            <thead><tr>
-              <th>Photo</th><th>Nom</th><th>Identifiant</th><th>Mdp actuel</th><th>Rôle</th><th>Nouveau mdp</th><th>Actions</th>
-            </tr></thead>
-            <tbody id="settings-users-table"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Models Management -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">💎 Gestion des modèles</h3>
-        <div style="display:flex;gap:10px;margin-bottom:16px">
-          <button class="btn btn-primary" onclick="openModal('add-model')">+ Ajouter un modèle</button>
-        </div>
-        <div id="settings-models-content"></div>
-      </div>
-
-      <!-- WhatsApp Notifications -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">📱 Notifications WhatsApp</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Reçois des notifications automatiques sur WhatsApp (résumé quotidien, alertes leads, calls)</p>
-        <div style="display:grid;gap:12px;max-width:500px">
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Fournisseur</label>
-            <select id="setting-wa-provider" class="form-input"><option value="callmebot">CallMeBot (gratuit)</option><option value="twilio">Twilio</option></select>
+        <!-- TAB: Notifications -->
+        <div class="settings-pane" id="settings-pane-notifications">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">WhatsApp</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Reçois des notifications automatiques sur WhatsApp (résumé quotidien, alertes leads, calls)</p>
+            <div style="display:grid;gap:12px;max-width:500px">
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Fournisseur</label>
+                <select id="setting-wa-provider" class="form-input"><option value="callmebot">CallMeBot (gratuit)</option><option value="twilio">Twilio</option></select>
+              </div>
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Numéro WhatsApp (avec indicatif)</label>
+                <input type="text" id="setting-wa-number" class="form-input" placeholder="+33612345678">
+              </div>
+              <div>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Clé API</label>
+                <input type="text" id="setting-wa-apikey" class="form-input" placeholder="Clé API">
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" onclick="saveWhatsAppSettings()">Sauvegarder</button>
+                <button class="btn" style="background:var(--green-bg);color:var(--green);border:none;cursor:pointer" onclick="testWhatsApp()">Tester</button>
+              </div>
+            </div>
           </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Numéro WhatsApp (avec indicatif, ex: +33612345678)</label>
-            <input type="text" id="setting-wa-number" class="form-input" placeholder="+33612345678">
-          </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Clé API (CallMeBot: apikey / Twilio: SID:AuthToken)</label>
-            <input type="text" id="setting-wa-apikey" class="form-input" placeholder="Clé API">
-          </div>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn-primary" onclick="saveWhatsAppSettings()">Sauvegarder</button>
-            <button class="btn" style="background:var(--green-bg);color:var(--green);border:none;cursor:pointer" onclick="testWhatsApp()">Tester</button>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Alertes automatiques</h3>
+            <div style="display:grid;gap:10px;max-width:500px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
+                <div><div style="font-size:13px;font-weight:600">Résumé quotidien</div><div style="font-size:11px;color:var(--text3)">Envoyé à 21h chaque jour</div></div>
+                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
+                <div><div style="font-size:13px;font-weight:600">Lead passe en Discussion chaude</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
+                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
+                <div><div style="font-size:13px;font-weight:600">Lead passe en Call prévu</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
+                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
+                <div><div style="font-size:13px;font-weight:600">Lead signé</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
+                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
+                <div><div style="font-size:13px;font-weight:600">Demande de call élève</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
+                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Exports -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">📦 Exports & Sauvegarde</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">
-          <a href="/api/export/leads" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Leads (CSV)</a>
-          <a href="/api/export/team" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Équipe (CSV)</a>
-          <a href="/api/export/students" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Élèves (CSV)</a>
-          <a href="/api/export/revenue" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:12px">Exporter Revenus (CSV)</a>
+        <!-- TAB: Sécurité -->
+        <div class="settings-pane" id="settings-pane-securite">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Contrôle d'accès</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Active le mode lecture seule ou une date d'expiration par utilisateur</p>
+            <div id="access-control-content"></div>
+          </div>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Journal d'activité</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Toutes les actions importantes sont enregistrées automatiquement</p>
+            <button class="btn btn-primary" style="font-size:13px" onclick="document.querySelectorAll('[data-section=\\'activity-log\\']')[0].click()">Voir le journal complet</button>
+          </div>
         </div>
-        <div id="db-size-info" style="font-size:13px;color:var(--text3)"></div>
-        <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer;margin-top:10px;font-size:12px" onclick="loadDbSize()">Voir l'espace utilisé</button>
-      </div>
 
-      <!-- Sécurité -->
-      <div class="panel" style="padding:24px">
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">🔒 Sécurité & Contrôle</h3>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Gère les accès de chaque utilisateur (lecture seule, expiration) depuis le tableau des utilisateurs ci-dessus</p>
-        <div id="access-control-content"></div>
-      </div>
+        <!-- TAB: Export -->
+        <div class="settings-pane" id="settings-pane-export">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Exports CSV</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+              <a href="/api/export/leads" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:14px;font-size:13px">Leads</a>
+              <a href="/api/export/team" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:14px;font-size:13px">Équipe</a>
+              <a href="/api/export/students" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:14px;font-size:13px">Élèves</a>
+              <a href="/api/export/revenue" class="btn btn-primary" style="text-align:center;text-decoration:none;padding:14px;font-size:13px">Revenus</a>
+            </div>
+          </div>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Espace de stockage</h3>
+            <div id="db-size-info" style="font-size:13px;color:var(--text3)"></div>
+            <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer;margin-top:10px;font-size:12px" onclick="loadDbSize()">Voir l'espace utilisé</button>
+          </div>
+        </div>
 
+      </div>
     </div>
   </div>
 
@@ -1962,7 +2055,7 @@ function switchSection(e) {
     'analytics': renderAnalytics,
     'finance': renderFinance,
     'activity-log': renderActivityLog,
-    'settings': function() { renderSettings(); loadWhatsAppSettings(); renderAccessControl(); }
+    'settings': function() { renderSettings(); switchSettingsTab(document.querySelector('.settings-tab.active')?.getAttribute('data-tab') || 'general'); }
   };
   if (loaders[section]) loaders[section]();
 }
@@ -4249,6 +4342,42 @@ function renderSettings() {
       <div style="font-size:12px;color:var(--text3)">Comptes: ${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' followers)').join(', ') || 'Aucun compte'}</div>
     </div>`;
   }).join('') || '<p style="color:var(--text3)">Aucun modèle</p>';
+
+  // Outreach status preview
+  var statusPreview = document.getElementById('outreach-status-preview');
+  if (statusPreview) {
+    statusPreview.innerHTML = Object.entries(leadStatusColors).map(function(e) {
+      return '<span style="padding:6px 14px;border-radius:8px;background:' + e[1].bg + ';color:' + e[1].color + ';font-size:13px;font-weight:600">' + e[1].label + '</span>';
+    }).join('');
+  }
+
+  // Coaching steps preview
+  var stepsPreview = document.getElementById('coaching-steps-preview');
+  if (stepsPreview) {
+    stepsPreview.innerHTML = STEPS.map(function(s, i) {
+      return '<div style="display:flex;align-items:center;gap:6px">'
+        + '<span style="padding:6px 14px;border-radius:8px;background:var(--bg3);font-size:13px;font-weight:600">' + s.icon + ' ' + s.label + '</span>'
+        + (i < STEPS.length - 1 ? '<span style="color:var(--text3)">→</span>' : '')
+        + '</div>';
+    }).join('');
+  }
+}
+
+function switchSettingsTab(tabName) {
+  // Panes
+  document.querySelectorAll('.settings-pane').forEach(function(p) { p.classList.remove('active'); });
+  var pane = document.getElementById('settings-pane-' + tabName);
+  if (pane) pane.classList.add('active');
+  // Sidebar buttons
+  document.querySelectorAll('.settings-tab').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.querySelector('.settings-tab[data-tab="' + tabName + '"]');
+  if (btn) btn.classList.add('active');
+  // Mobile dropdown
+  var mobile = document.getElementById('settings-tab-mobile');
+  if (mobile) mobile.value = tabName;
+  // Load sub-section data
+  if (tabName === 'notifications') loadWhatsAppSettings();
+  if (tabName === 'securite') renderAccessControl();
 }
 
 async function saveAgencySettings() {
