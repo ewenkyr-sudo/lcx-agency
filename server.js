@@ -384,6 +384,29 @@ async function initDB() {
       ALTER TABLE student_leads ADD COLUMN IF NOT EXISTS last_modified_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
     EXCEPTION WHEN others THEN NULL;
     END $$;
+
+    CREATE TABLE IF NOT EXISTS planning_shifts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      shift_date DATE NOT NULL,
+      shift_type TEXT DEFAULT 'custom',
+      start_time TEXT,
+      end_time TEXT,
+      model_ids TEXT DEFAULT '[]',
+      notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      reason TEXT,
+      status TEXT DEFAULT 'pending',
+      admin_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 }
 
@@ -2335,6 +2358,168 @@ app.post('/api/student-leads/check-duplicates', authMiddleware, async (req, res)
   const existing = new Set(rows.map(r => r.clean.toLowerCase()));
   const duplicates = usernames.filter(u => existing.has(u.replace(/^@/, '').toLowerCase()));
   res.json({ duplicates, total: usernames.length, duplicate_count: duplicates.length });
+});
+
+// ============ PLANNING SHIFTS ============
+app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
+  const { start, end, user_id } = req.query;
+  let query = `SELECT ps.*, u.display_name as user_name, u.role as user_role
+    FROM planning_shifts ps JOIN users u ON ps.user_id = u.id WHERE 1=1`;
+  const params = [];
+
+  if (req.user.role !== 'admin') {
+    params.push(req.user.id);
+    query += ` AND ps.user_id = $${params.length}`;
+  } else if (user_id) {
+    params.push(user_id);
+    query += ` AND ps.user_id = $${params.length}`;
+  }
+  if (start) { params.push(start); query += ` AND ps.shift_date >= $${params.length}`; }
+  if (end) { params.push(end); query += ` AND ps.shift_date <= $${params.length}`; }
+  query += ' ORDER BY ps.shift_date, ps.start_time';
+
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/planning-shifts', authMiddleware, async (req, res) => {
+  const { shift_date, shift_type, start_time, end_time, model_ids, notes, user_id } = req.body;
+  if (!shift_date) return res.status(400).json({ error: 'Date requise' });
+
+  // Admin can create for anyone, members only for themselves
+  let ownerId = req.user.id;
+  if (req.user.role === 'admin' && user_id) ownerId = user_id;
+
+  const { rows } = await pool.query(
+    'INSERT INTO planning_shifts (user_id, shift_date, shift_type, start_time, end_time, model_ids, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+    [ownerId, shift_date, shift_type || 'custom', start_time, end_time, JSON.stringify(model_ids || []), notes]
+  );
+  broadcast('planning-updated', {});
+  res.json(rows[0]);
+});
+
+app.put('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
+  const { shift_type, start_time, end_time, model_ids, notes } = req.body;
+  const shift = (await pool.query('SELECT user_id FROM planning_shifts WHERE id = $1', [req.params.id])).rows[0];
+  if (!shift) return res.status(404).json({ error: 'Shift introuvable' });
+  if (req.user.role !== 'admin' && shift.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+
+  await pool.query(`UPDATE planning_shifts SET
+    shift_type = COALESCE($1, shift_type), start_time = COALESCE($2, start_time),
+    end_time = COALESCE($3, end_time), model_ids = COALESCE($4, model_ids),
+    notes = COALESCE($5, notes) WHERE id = $6`,
+    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id]);
+  broadcast('planning-updated', {});
+  res.json({ ok: true });
+});
+
+app.delete('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
+  const shift = (await pool.query('SELECT user_id FROM planning_shifts WHERE id = $1', [req.params.id])).rows[0];
+  if (!shift) return res.status(404).json({ error: 'Shift introuvable' });
+  if (req.user.role !== 'admin' && shift.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM planning_shifts WHERE id = $1', [req.params.id]);
+  broadcast('planning-updated', {});
+  res.json({ ok: true });
+});
+
+// ============ LEAVE REQUESTS (CONGÉS) ============
+app.get('/api/leave-requests', authMiddleware, async (req, res) => {
+  let query, params;
+  if (req.user.role === 'admin') {
+    query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
+      FROM leave_requests lr JOIN users u ON lr.user_id = u.id ORDER BY lr.created_at DESC`;
+    params = [];
+  } else {
+    query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
+      FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.user_id = $1 ORDER BY lr.created_at DESC`;
+    params = [req.user.id];
+  }
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/leave-requests', authMiddleware, async (req, res) => {
+  const { start_date, end_date, reason } = req.body;
+  if (!start_date || !end_date) return res.status(400).json({ error: 'Dates requises' });
+  const { rows } = await pool.query(
+    'INSERT INTO leave_requests (user_id, start_date, end_date, reason) VALUES ($1,$2,$3,$4) RETURNING *',
+    [req.user.id, start_date, end_date, reason]
+  );
+  // WhatsApp notification
+  sendWhatsApp('🏖️ Demande de congé de ' + req.user.display_name + ' du ' + start_date + ' au ' + end_date);
+  await logActivity(req.user.id, req.user.display_name, 'leave-request', 'leave', rows[0].id, start_date + ' → ' + end_date);
+  broadcast('leave-request-new', rows[0]);
+  res.json(rows[0]);
+});
+
+app.put('/api/leave-requests/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { status, admin_notes } = req.body;
+  await pool.query('UPDATE leave_requests SET status = COALESCE($1, status), admin_notes = COALESCE($2, admin_notes) WHERE id = $3',
+    [status, admin_notes, req.params.id]);
+  const lr = (await pool.query('SELECT lr.*, u.display_name as user_name FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.id = $1', [req.params.id])).rows[0];
+  if (lr) {
+    broadcast('leave-request-updated', { id: parseInt(req.params.id), status });
+    await logActivity(req.user.id, req.user.display_name, 'leave-' + status, 'leave', parseInt(req.params.id), lr.user_name);
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/api/leave-requests/:id', authMiddleware, async (req, res) => {
+  const lr = (await pool.query('SELECT user_id FROM leave_requests WHERE id = $1', [req.params.id])).rows[0];
+  if (!lr) return res.status(404).json({ error: 'Introuvable' });
+  if (req.user.role !== 'admin' && lr.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+  await pool.query('DELETE FROM leave_requests WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ PLANNING STATS ============
+app.get('/api/planning-stats', authMiddleware, adminOnly, async (req, res) => {
+  const { start, end } = req.query;
+  // Hours planned from planning_shifts
+  const { rows: planned } = await pool.query(`
+    SELECT ps.user_id, u.display_name as user_name, u.role as user_role,
+      COUNT(*) as shift_count,
+      SUM(
+        CASE WHEN ps.start_time IS NOT NULL AND ps.end_time IS NOT NULL THEN
+          EXTRACT(EPOCH FROM (ps.end_time::time - ps.start_time::time)) / 3600
+        ELSE 8 END
+      ) as planned_hours
+    FROM planning_shifts ps JOIN users u ON ps.user_id = u.id
+    WHERE ($1::date IS NULL OR ps.shift_date >= $1::date)
+      AND ($2::date IS NULL OR ps.shift_date <= $2::date)
+      AND ps.shift_type != 'off'
+    GROUP BY ps.user_id, u.display_name, u.role
+    ORDER BY u.display_name
+  `, [start || null, end || null]);
+
+  // Hours actually worked from shift_clocks
+  const { rows: actual } = await pool.query(`
+    SELECT sc.user_id, SUM(sc.duration_minutes) as total_minutes
+    FROM shift_clocks sc
+    WHERE sc.clock_out IS NOT NULL
+      AND ($1::date IS NULL OR sc.clock_in::date >= $1::date)
+      AND ($2::date IS NULL OR sc.clock_in::date <= $2::date)
+    GROUP BY sc.user_id
+  `, [start || null, end || null]);
+
+  const actualMap = {};
+  actual.forEach(a => { actualMap[a.user_id] = parseInt(a.total_minutes || 0); });
+
+  const result = planned.map(p => ({
+    ...p,
+    planned_hours: parseFloat(p.planned_hours || 0).toFixed(1),
+    actual_hours: ((actualMap[p.user_id] || 0) / 60).toFixed(1),
+    actual_minutes: actualMap[p.user_id] || 0
+  }));
+
+  // Add users with clock data but no planning
+  actual.forEach(a => {
+    if (!result.find(r => r.user_id === a.user_id)) {
+      result.push({ user_id: a.user_id, user_name: 'Utilisateur #' + a.user_id, shift_count: 0, planned_hours: '0.0', actual_hours: (parseInt(a.total_minutes) / 60).toFixed(1), actual_minutes: parseInt(a.total_minutes) });
+    }
+  });
+
+  res.json(result);
 });
 
 // ============ WEBSOCKET ============

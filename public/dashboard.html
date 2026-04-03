@@ -1079,12 +1079,29 @@
     <div class="page-header">
       <div>
         <div class="page-title">Planning</div>
-        <div class="page-subtitle">Horaires de ton équipe</div>
+        <div class="page-subtitle" id="planning-subtitle">Horaires de ton équipe</div>
+      </div>
+      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:4px">
+          <button class="btn" id="plan-view-week" onclick="setPlanView('week')" style="padding:6px 14px;font-size:12px;border-radius:8px 0 0 8px;background:var(--accent);color:white;border:none;cursor:pointer">Semaine</button>
+          <button class="btn" id="plan-view-day" onclick="setPlanView('day')" style="padding:6px 14px;font-size:12px;border-radius:0 8px 8px 0;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Jour</button>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn" onclick="planNavigate(-1)" style="padding:6px 10px;font-size:14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px">‹</button>
+          <button class="btn" onclick="planNavigateToday()" style="padding:6px 12px;font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer;border-radius:8px">Aujourd'hui</button>
+          <button class="btn" onclick="planNavigate(1)" style="padding:6px 10px;font-size:14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px">›</button>
+        </div>
+        <button class="btn btn-primary" style="font-size:12px" onclick="showPlanShiftForm()">+ Ajouter un shift</button>
+        <button class="btn" style="font-size:12px;background:var(--yellow-bg);color:var(--yellow);border:none;cursor:pointer" onclick="showLeaveRequestForm()">Demander un congé</button>
       </div>
     </div>
-    <div class="panel">
-      <div id="planning-content"></div>
-    </div>
+    <div id="plan-shift-form-wrap"></div>
+    <div id="plan-leave-form-wrap"></div>
+    <div id="planning-content"></div>
+    <!-- Leave requests admin -->
+    <div id="planning-leaves"></div>
+    <!-- Stats recap -->
+    <div id="planning-stats"></div>
   </div>
 
   <!-- TASKS SECTION -->
@@ -2391,23 +2408,379 @@ async function loadDashboardChatterStats() {
   } catch (e) {}
 }
 
-function renderPlanning() {
-  const container = document.getElementById('planning-content');
-  const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+// ============ PLANNING MODULE ============
+var planView = 'week';
+var planDate = new Date();
+var planShifts = [];
+var planLeaves = [];
 
-  let html = '<div class="schedule-grid">';
-  html += '<div class="schedule-cell" style="background:var(--bg3)"></div>';
-  days.forEach(d => html += `<div class="schedule-header">${d}</div>`);
+var SHIFT_TYPES = {
+  'morning':   { label: 'Matin (6h-14h)', start: '06:00', end: '14:00', color: 'var(--blue)', bg: 'var(--blue-bg)' },
+  'afternoon': { label: 'Après-midi (14h-22h)', start: '14:00', end: '22:00', color: 'var(--yellow)', bg: 'var(--yellow-bg)' },
+  'night':     { label: 'Nuit (22h-06h)', start: '22:00', end: '06:00', color: 'var(--pink)', bg: 'var(--pink-bg)' },
+  'off':       { label: 'Jour off', start: null, end: null, color: 'var(--text3)', bg: 'var(--bg3)' },
+  'custom':    { label: 'Personnalisé', start: null, end: null, color: 'var(--accent)', bg: 'var(--accent-glow)' }
+};
 
-  allTeam.slice(0, 10).forEach(member => {
-    html += `<div class="schedule-name">${member.name}</div>`;
-    for (let i = 0; i < 7; i++) {
-      html += `<div class="schedule-cell"><div class="schedule-shift shift-off">OFF</div></div>`;
-    }
+var ROLE_COLORS = { chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', admin: 'var(--pink)', student: 'var(--accent)', model: 'var(--text3)' };
+var ROLE_BG = { chatter: 'var(--blue-bg)', outreach: 'var(--green-bg)', va: 'var(--yellow-bg)', admin: 'var(--pink-bg)', student: 'var(--accent-glow)', model: 'var(--bg3)' };
+
+function getMonday(d) { var dt = new Date(d); var day = dt.getDay(); var diff = dt.getDate() - day + (day === 0 ? -6 : 1); dt.setDate(diff); dt.setHours(0,0,0,0); return dt; }
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtDateFR(d) { return d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' }); }
+function fmtDayFR(d) { return d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }); }
+
+function setPlanView(v) {
+  planView = v;
+  document.getElementById('plan-view-week').style.background = v==='week' ? 'var(--accent)' : 'var(--bg3)';
+  document.getElementById('plan-view-week').style.color = v==='week' ? 'white' : 'var(--text2)';
+  document.getElementById('plan-view-day').style.background = v==='day' ? 'var(--accent)' : 'var(--bg3)';
+  document.getElementById('plan-view-day').style.color = v==='day' ? 'white' : 'var(--text2)';
+  renderPlanning();
+}
+function planNavigate(dir) { if (planView==='week') planDate.setDate(planDate.getDate()+7*dir); else planDate.setDate(planDate.getDate()+dir); renderPlanning(); }
+function planNavigateToday() { planDate = new Date(); renderPlanning(); }
+
+async function renderPlanning() {
+  var container = document.getElementById('planning-content');
+  if (!container) return;
+
+  var start, end;
+  if (planView === 'week') {
+    var mon = getMonday(planDate);
+    start = fmtDate(mon);
+    var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+    end = fmtDate(sun);
+  } else {
+    start = fmtDate(planDate);
+    end = start;
+  }
+
+  document.getElementById('planning-subtitle').textContent = planView === 'week'
+    ? 'Semaine du ' + fmtDateFR(new Date(start)) + ' au ' + fmtDateFR(new Date(end))
+    : fmtDayFR(planDate);
+
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }); };
+  var [shifts, leaves] = await Promise.all([
+    f('/api/planning-shifts?start=' + start + '&end=' + end),
+    f('/api/leave-requests')
+  ]);
+  planShifts = shifts;
+  planLeaves = leaves;
+
+  if (planView === 'week') renderPlanWeek(container, start);
+  else renderPlanDay(container, start);
+
+  // Leaves admin
+  if (currentUser.role === 'admin') renderPlanLeaves();
+  // Stats
+  renderPlanStats(start, end);
+}
+
+function renderPlanWeek(container, startStr) {
+  var mon = new Date(startStr);
+  var days = [];
+  for (var i = 0; i < 7; i++) { var d = new Date(mon); d.setDate(d.getDate()+i); days.push(d); }
+
+  // Group shifts by user
+  var userMap = {};
+  planShifts.forEach(function(s) {
+    if (!userMap[s.user_id]) userMap[s.user_id] = { name: s.user_name, role: s.user_role, shifts: {} };
+    userMap[s.user_id].shifts[s.shift_date.slice(0,10)] = s;
+  });
+
+  // If admin, show all team users even without shifts
+  if (currentUser.role === 'admin') {
+    allUsers.filter(function(u) { return u.role !== 'admin'; }).forEach(function(u) {
+      if (!userMap[u.id]) userMap[u.id] = { name: u.display_name, role: u.role, shifts: {} };
+    });
+  }
+
+  var users = Object.entries(userMap).sort(function(a,b) { return a[1].name.localeCompare(b[1].name); });
+
+  // Accepted leaves for overlay
+  var leaveSet = {};
+  planLeaves.filter(function(l) { return l.status === 'accepted'; }).forEach(function(l) {
+    var sd = new Date(l.start_date); var ed = new Date(l.end_date);
+    while (sd <= ed) { leaveSet[l.user_id + '_' + fmtDate(sd)] = true; sd.setDate(sd.getDate()+1); }
+  });
+
+  var html = '<div style="overflow-x:auto"><div class="schedule-grid" style="grid-template-columns:140px repeat(7,1fr);min-width:700px">';
+  // Header
+  html += '<div class="schedule-cell" style="background:var(--bg3);font-weight:700;font-size:12px">Membre</div>';
+  days.forEach(function(d) {
+    var isToday = fmtDate(d) === fmtDate(new Date());
+    html += '<div class="schedule-header" style="' + (isToday ? 'background:var(--accent-glow);color:var(--accent);font-weight:700' : '') + '">' + d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'}) + '</div>';
+  });
+
+  if (users.length === 0) {
+    html += '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text3)">Aucun planning</div>';
+  }
+
+  users.forEach(function(entry) {
+    var uid = entry[0];
+    var u = entry[1];
+    var rc = ROLE_COLORS[u.role] || 'var(--text2)';
+    html += '<div class="schedule-name" style="border-left:3px solid ' + rc + ';padding-left:10px"><span style="font-size:13px;font-weight:600">' + u.name + '</span><br><span style="font-size:10px;color:' + rc + '">' + u.role + '</span></div>';
+
+    days.forEach(function(d) {
+      var dk = fmtDate(d);
+      var s = u.shifts[dk];
+      var isLeave = leaveSet[uid + '_' + dk];
+      var isToday = dk === fmtDate(new Date());
+
+      if (isLeave) {
+        html += '<div class="schedule-cell" style="' + (isToday?'background:var(--accent-glow)':'') + '"><div style="padding:4px 8px;border-radius:6px;background:var(--red-bg);color:var(--red);font-size:11px;font-weight:600;text-align:center">Congé</div></div>';
+      } else if (s) {
+        var st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES['custom'];
+        var timeLabel = s.start_time && s.end_time ? s.start_time + '-' + s.end_time : st.label;
+        html += '<div class="schedule-cell" style="cursor:pointer;' + (isToday?'background:var(--accent-glow)':'') + '" onclick="editPlanShift(' + s.id + ')">'
+          + '<div style="padding:4px 8px;border-radius:6px;background:' + st.bg + ';color:' + st.color + ';font-size:11px;font-weight:600;text-align:center">'
+          + (s.shift_type === 'off' ? 'OFF' : timeLabel)
+          + '</div></div>';
+      } else {
+        html += '<div class="schedule-cell" style="cursor:pointer;' + (isToday?'background:var(--accent-glow)':'') + '" onclick="quickAddShift(' + uid + ',\'' + dk + '\')">'
+          + '<div style="padding:4px 8px;border-radius:6px;font-size:11px;color:var(--text3);text-align:center;border:1px dashed var(--border)">+</div></div>';
+      }
+    });
+  });
+
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+function renderPlanDay(container, dateStr) {
+  var hours = [];
+  for (var h = 6; h < 30; h++) hours.push(h % 24);
+
+  var dayShifts = planShifts.filter(function(s) { return s.shift_date.slice(0,10) === dateStr; });
+
+  // Group by user
+  var userMap = {};
+  dayShifts.forEach(function(s) {
+    if (!userMap[s.user_id]) userMap[s.user_id] = { name: s.user_name, role: s.user_role, shifts: [] };
+    userMap[s.user_id].shifts.push(s);
+  });
+
+  var users = Object.entries(userMap).sort(function(a,b) { return a[1].name.localeCompare(b[1].name); });
+
+  var html = '<div class="panel" style="padding:20px">';
+
+  if (users.length === 0) {
+    html += '<div style="text-align:center;padding:24px;color:var(--text3)">Aucun shift ce jour</div>';
+  }
+
+  users.forEach(function(entry) {
+    var u = entry[1];
+    var rc = ROLE_COLORS[u.role] || 'var(--text2)';
+    html += '<div style="margin-bottom:16px;padding:14px;background:var(--bg3);border-radius:10px;border-left:3px solid ' + rc + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>' + u.name + '</strong><span style="font-size:11px;color:' + rc + '">' + u.role + '</span></div>';
+
+    u.shifts.forEach(function(s) {
+      var st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES['custom'];
+      var timeLabel = s.start_time && s.end_time ? s.start_time + ' → ' + s.end_time : st.label;
+      var models = [];
+      try { models = JSON.parse(s.model_ids || '[]'); } catch(e) {}
+      var modelNames = models.map(function(mid) { var m = allModels.find(function(mm) { return mm.id === parseInt(mid); }); return m ? m.name : ''; }).filter(Boolean);
+
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:4px;cursor:pointer" onclick="editPlanShift(' + s.id + ')">'
+        + '<span style="padding:4px 10px;border-radius:6px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:600">' + (s.shift_type === 'off' ? 'OFF' : timeLabel) + '</span>'
+        + (modelNames.length > 0 ? '<span style="font-size:11px;color:var(--text2)">' + modelNames.join(', ') + '</span>' : '')
+        + (s.notes ? '<span style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</span>' : '')
+        + '<button class="btn-delete-small" onclick="event.stopPropagation();deletePlanShift(' + s.id + ')" style="font-size:10px">✕</button>'
+        + '</div>';
+    });
+    html += '</div>';
   });
 
   html += '</div>';
   container.innerHTML = html;
+}
+
+function showPlanShiftForm(userId, dateStr) {
+  var wrap = document.getElementById('plan-shift-form-wrap');
+  if (wrap.children.length && !userId) { wrap.innerHTML = ''; return; }
+  var isAdmin = currentUser.role === 'admin';
+  var userOpts = isAdmin ? allUsers.filter(function(u) { return u.role !== 'admin'; }).map(function(u) { return '<option value="' + u.id + '"' + (userId && parseInt(userId) === u.id ? ' selected' : '') + '>' + u.display_name + ' (' + u.role + ')</option>'; }).join('') : '';
+  var modelOpts = allModels.map(function(m) { return '<option value="' + m.id + '">' + m.name + '</option>'; }).join('');
+
+  wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Ajouter un shift</h3>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">'
+    + (isAdmin ? '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Membre</label><select id="ps-user" class="form-input" style="font-size:12px">' + userOpts + '</select></div>' : '')
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Date</label><input type="date" id="ps-date" class="form-input" style="font-size:12px" value="' + (dateStr || fmtDate(planDate)) + '"></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Type</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
+    + Object.entries(SHIFT_TYPES).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Début</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="06:00"></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Fin</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="14:00"></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Modèle(s)</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="3"><option value="">Aucun</option>' + modelOpts + '</select></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Notes</label><input type="text" id="ps-notes" class="form-input" style="font-size:12px" placeholder="Notes..."></div>'
+    + '</div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addPlanShift()">Ajouter</button><button class="btn" style="font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'plan-shift-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '</div>';
+  onShiftTypeChange();
+}
+
+function onShiftTypeChange() {
+  var type = document.getElementById('ps-type')?.value;
+  var st = SHIFT_TYPES[type];
+  if (st && st.start) { document.getElementById('ps-start').value = st.start; document.getElementById('ps-end').value = st.end; }
+}
+
+function quickAddShift(userId, dateStr) { showPlanShiftForm(userId, dateStr); }
+
+async function addPlanShift() {
+  var isAdmin = currentUser.role === 'admin';
+  var userId = isAdmin ? document.getElementById('ps-user')?.value : null;
+  var modelSel = document.getElementById('ps-models');
+  var modelIds = modelSel ? Array.from(modelSel.selectedOptions).map(function(o) { return o.value; }).filter(Boolean) : [];
+
+  var res = await fetch('/api/planning-shifts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({
+      shift_date: document.getElementById('ps-date').value,
+      shift_type: document.getElementById('ps-type').value,
+      start_time: document.getElementById('ps-start').value,
+      end_time: document.getElementById('ps-end').value,
+      model_ids: modelIds,
+      notes: document.getElementById('ps-notes').value.trim(),
+      user_id: userId ? parseInt(userId) : undefined
+    })
+  });
+  if (res.ok) { showToast('Shift ajouté', 'success'); document.getElementById('plan-shift-form-wrap').innerHTML = ''; renderPlanning(); }
+  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+async function editPlanShift(id) {
+  var s = planShifts.find(function(x) { return x.id === id; });
+  if (!s) return;
+  if (currentUser.role !== 'admin' && s.user_id !== currentUser.id) return showToast('Tu ne peux modifier que tes propres shifts', 'error');
+
+  var newType = prompt('Type de shift (morning/afternoon/night/off/custom) :', s.shift_type);
+  if (newType === null) return;
+  var newStart = s.start_time, newEnd = s.end_time;
+  if (newType === 'custom') {
+    newStart = prompt('Heure début (HH:MM) :', s.start_time || '');
+    newEnd = prompt('Heure fin (HH:MM) :', s.end_time || '');
+  } else {
+    var st = SHIFT_TYPES[newType];
+    if (st) { newStart = st.start; newEnd = st.end; }
+  }
+
+  await fetch('/api/planning-shifts/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ shift_type: newType, start_time: newStart, end_time: newEnd })
+  });
+  showToast('Shift modifié', 'success');
+  renderPlanning();
+}
+
+async function deletePlanShift(id) {
+  if (!confirm('Supprimer ce shift ?')) return;
+  await fetch('/api/planning-shifts/' + id, { method: 'DELETE', credentials: 'include' });
+  showToast('Shift supprimé', 'success');
+  renderPlanning();
+}
+
+// ---- Leave requests ----
+function showLeaveRequestForm() {
+  var wrap = document.getElementById('plan-leave-form-wrap');
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">Demande de congé</h3>'
+    + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Du</label><input type="date" id="lr-start" class="form-input" style="font-size:12px"></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Au</label><input type="date" id="lr-end" class="form-input" style="font-size:12px"></div>'
+    + '<div style="flex:1"><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Motif</label><input type="text" id="lr-reason" class="form-input" style="font-size:12px" placeholder="Raison..."></div>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="submitLeaveRequest()">Envoyer</button>'
+    + '</div></div>';
+}
+
+async function submitLeaveRequest() {
+  var res = await fetch('/api/leave-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ start_date: document.getElementById('lr-start').value, end_date: document.getElementById('lr-end').value, reason: document.getElementById('lr-reason').value.trim() })
+  });
+  if (res.ok) { showToast('Demande envoyée', 'success'); document.getElementById('plan-leave-form-wrap').innerHTML = ''; renderPlanning(); }
+  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+}
+
+function renderPlanLeaves() {
+  var container = document.getElementById('planning-leaves');
+  if (!container) return;
+  var pending = planLeaves.filter(function(l) { return l.status === 'pending'; });
+  if (pending.length === 0 && currentUser.role !== 'admin') { container.innerHTML = ''; return; }
+
+  container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">Demandes de congé' + (pending.length > 0 ? ' <span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px">' + pending.length + '</span>' : '') + '</h3>'
+    + '<div style="display:grid;gap:8px">'
+    + planLeaves.map(function(l) {
+      var stColor = l.status === 'pending' ? 'var(--yellow)' : l.status === 'accepted' ? 'var(--green)' : 'var(--red)';
+      var stLabel = l.status === 'pending' ? 'En attente' : l.status === 'accepted' ? 'Accepté' : 'Refusé';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:8px;border-left:3px solid ' + stColor + '">'
+        + '<strong style="font-size:13px;min-width:100px">' + l.user_name + '</strong>'
+        + '<span style="font-size:12px;color:var(--text2)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'
+        + (l.reason ? '<span style="font-size:11px;color:var(--text3);flex:1">' + l.reason + '</span>' : '<span style="flex:1"></span>')
+        + (currentUser.role === 'admin' && l.status === 'pending'
+          ? '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'accepted\')">Accepter</button>'
+            + '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'refused\')">Refuser</button>'
+          : '<span style="font-size:11px;font-weight:600;color:' + stColor + '">' + stLabel + '</span>')
+        + '</div>';
+    }).join('')
+    + '</div></div>';
+}
+
+async function handleLeave(id, status) {
+  await fetch('/api/leave-requests/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status: status }) });
+  showToast(status === 'accepted' ? 'Congé accepté' : 'Congé refusé', 'success');
+  renderPlanning();
+}
+
+// ---- Stats recap ----
+async function renderPlanStats(start, end) {
+  if (currentUser.role !== 'admin') return;
+  var container = document.getElementById('planning-stats');
+  if (!container) return;
+
+  var mon = getMonday(planDate);
+  var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+  var weekStart = fmtDate(mon);
+  var weekEnd = fmtDate(sun);
+  var monthStart = new Date(planDate.getFullYear(), planDate.getMonth(), 1);
+  var monthEnd = new Date(planDate.getFullYear(), planDate.getMonth()+1, 0);
+
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }); };
+  var [weekStats, monthStats] = await Promise.all([
+    f('/api/planning-stats?start=' + weekStart + '&end=' + weekEnd),
+    f('/api/planning-stats?start=' + fmtDate(monthStart) + '&end=' + fmtDate(monthEnd))
+  ]);
+
+  container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Récapitulatif heures</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+    // Semaine
+    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">Cette semaine</h4>'
+    + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>Membre</th><th>Planifié</th><th>Réel</th></tr></thead><tbody>'
+    + weekStats.map(function(s) {
+      var planned = parseFloat(s.planned_hours);
+      var actual = parseFloat(s.actual_hours);
+      var diffColor = actual >= planned ? 'var(--green)' : 'var(--red)';
+      return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
+        + '<td data-label="Planifié" class="mc-half">' + planned.toFixed(0) + 'h</td>'
+        + '<td data-label="Réel" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">Aucune donnée</td></tr>'
+    + '</tbody></table></div>'
+    // Mois
+    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">Ce mois (' + planDate.toLocaleDateString('fr-FR',{month:'long'}) + ')</h4>'
+    + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>Membre</th><th>Planifié</th><th>Réel</th></tr></thead><tbody>'
+    + monthStats.map(function(s) {
+      var planned = parseFloat(s.planned_hours);
+      var actual = parseFloat(s.actual_hours);
+      var diffColor = actual >= planned ? 'var(--green)' : 'var(--red)';
+      return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
+        + '<td data-label="Planifié" class="mc-half">' + planned.toFixed(0) + 'h</td>'
+        + '<td data-label="Réel" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">Aucune donnée</td></tr>'
+    + '</tbody></table></div>'
+    + '</div></div>';
 }
 
 let taskFilter = 'all';
@@ -3789,6 +4162,9 @@ function connectWebSocket() {
     }
     if (msg.event === 'call-request-new' || msg.event === 'call-request-updated') {
       if (currentUser.role === 'student') renderStudentHome();
+    }
+    if (msg.event === 'planning-updated' || msg.event === 'leave-request-new' || msg.event === 'leave-request-updated') {
+      renderPlanning();
     }
   });
 
