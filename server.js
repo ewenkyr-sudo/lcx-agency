@@ -116,6 +116,9 @@ async function initDB() {
       ALTER TABLE models ADD COLUMN IF NOT EXISTS lifecycle_status TEXT DEFAULT 'active';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS read_only BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS entry_type TEXT DEFAULT 'shift';
+      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'normal';
+      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS description TEXT;
     EXCEPTION WHEN others THEN NULL;
     END $$;
 
@@ -2383,23 +2386,22 @@ app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/planning-shifts', authMiddleware, async (req, res) => {
-  const { shift_date, shift_type, start_time, end_time, model_ids, notes, user_id } = req.body;
+  const { shift_date, shift_type, start_time, end_time, model_ids, notes, user_id, entry_type, priority, description } = req.body;
   if (!shift_date) return res.status(400).json({ error: 'Date requise' });
 
-  // Admin can create for anyone, members only for themselves
   let ownerId = req.user.id;
   if (req.user.role === 'admin' && user_id) ownerId = user_id;
 
   const { rows } = await pool.query(
-    'INSERT INTO planning_shifts (user_id, shift_date, shift_type, start_time, end_time, model_ids, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-    [ownerId, shift_date, shift_type || 'custom', start_time, end_time, JSON.stringify(model_ids || []), notes]
+    'INSERT INTO planning_shifts (user_id, shift_date, shift_type, start_time, end_time, model_ids, notes, entry_type, priority, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',
+    [ownerId, shift_date, shift_type || 'custom', start_time, end_time, JSON.stringify(model_ids || []), notes, entry_type || 'shift', priority || 'normal', description]
   );
   broadcast('planning-updated', {});
   res.json(rows[0]);
 });
 
 app.put('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
-  const { shift_type, start_time, end_time, model_ids, notes } = req.body;
+  const { shift_type, start_time, end_time, model_ids, notes, entry_type, priority, description } = req.body;
   const shift = (await pool.query('SELECT user_id FROM planning_shifts WHERE id = $1', [req.params.id])).rows[0];
   if (!shift) return res.status(404).json({ error: 'Shift introuvable' });
   if (req.user.role !== 'admin' && shift.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
@@ -2407,8 +2409,9 @@ app.put('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
   await pool.query(`UPDATE planning_shifts SET
     shift_type = COALESCE($1, shift_type), start_time = COALESCE($2, start_time),
     end_time = COALESCE($3, end_time), model_ids = COALESCE($4, model_ids),
-    notes = COALESCE($5, notes) WHERE id = $6`,
-    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id]);
+    notes = COALESCE($5, notes), entry_type = COALESCE($7, entry_type),
+    priority = COALESCE($8, priority), description = COALESCE($9, description) WHERE id = $6`,
+    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id, entry_type, priority, description]);
   broadcast('planning-updated', {});
   res.json({ ok: true });
 });

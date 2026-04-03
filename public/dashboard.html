@@ -2435,12 +2435,7 @@ async function renderPlanning() {
   renderPlanMemberList();
   // Auto-select first member or self
   if (!planSelectedUser) {
-    if (currentUser.role === 'admin') {
-      var firstNonAdmin = allUsers.find(function(u) { return u.role !== 'admin'; });
-      planSelectedUser = firstNonAdmin ? firstNonAdmin.id : currentUser.id;
-    } else {
-      planSelectedUser = currentUser.id;
-    }
+    planSelectedUser = currentUser.id;
   }
   await renderPlanDetail();
   if (currentUser.role === 'admin') renderPlanLeaves();
@@ -2452,7 +2447,10 @@ function renderPlanMemberList() {
 
   var members;
   if (currentUser.role === 'admin') {
-    members = allUsers.filter(function(u) { return u.role !== 'admin'; });
+    // Admin en premier, puis le reste
+    members = [allUsers.find(function(u) { return u.id === currentUser.id; })].concat(
+      allUsers.filter(function(u) { return u.id !== currentUser.id; })
+    ).filter(Boolean);
   } else {
     members = [currentUser];
   }
@@ -2543,46 +2541,73 @@ async function renderPlanDetail() {
     var isLeave = leaveSet[dk];
     var dayLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' });
 
+    var dayShiftEntries = dayShifts.filter(function(s) { return s.entry_type !== 'task'; });
+    var dayTaskEntries = dayShifts.filter(function(s) { return s.entry_type === 'task'; });
+
     html += '<div style="background:' + (isToday ? 'rgba(139,92,246,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">'
       + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">Aujourd\'hui</span>' : '') + '</div>'
-      + '<button onclick="quickAddShift(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:600">+ Shift</button>'
-      + '</div>';
+      + '<div style="display:flex;gap:6px">'
+      + '<button onclick="quickAddShift(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">+ Shift</button>'
+      + (currentUser.role === 'admin' ? '<button onclick="quickAddTask(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:12px;font-weight:600">+ Tâche</button>' : '')
+      + '</div></div>';
 
     if (isLeave) {
       html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--red-bg);border-radius:8px;color:var(--red);font-weight:600;font-size:13px">Congé</div>';
-    } else if (dayShifts.length === 0) {
-      html += '<div style="color:var(--text3);font-size:12px;font-style:italic">Pas de shift</div>';
     } else {
-      dayShifts.forEach(function(s) {
-        var st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES['custom'];
-        var timeStr = s.start_time && s.end_time ? s.start_time + ' → ' + s.end_time : '';
-        var models = []; try { models = JSON.parse(s.model_ids || '[]'); } catch(e) {}
-        var modelNames = models.map(function(mid) { var m = allModels.find(function(mm) { return mm.id === parseInt(mid); }); return m ? m.name : ''; }).filter(Boolean);
+      // --- Shifts ---
+      if (dayShiftEntries.length > 0) {
+        dayShiftEntries.forEach(function(s) {
+          var st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES['custom'];
+          var timeStr = s.start_time && s.end_time ? s.start_time + ' → ' + s.end_time : '';
+          var models = []; try { models = JSON.parse(s.model_ids || '[]'); } catch(e) {}
+          var modelNames = models.map(function(mid) { var m = allModels.find(function(mm) { return mm.id === parseInt(mid); }); return m ? m.name : ''; }).filter(Boolean);
+          if (s.start_time && s.end_time && s.shift_type !== 'off') {
+            var sh = parseInt(s.start_time.split(':')[0]) + parseInt(s.start_time.split(':')[1])/60;
+            var eh = parseInt(s.end_time.split(':')[0]) + parseInt(s.end_time.split(':')[1])/60;
+            if (eh < sh) eh += 24;
+            totalHours += eh - sh;
+          }
+          html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
+            + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
+            + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
+            + (modelNames.length > 0 ? '<div style="display:flex;gap:4px;flex-wrap:wrap">' + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('') + '</div>' : '')
+            + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
+            + '<div style="display:flex;gap:4px;flex-shrink:0">'
+            + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">✕</button>'
+            + '</div></div>';
+        });
+      }
 
-        // Calculate hours
-        if (s.start_time && s.end_time && s.shift_type !== 'off') {
-          var sh = parseInt(s.start_time.split(':')[0]) + parseInt(s.start_time.split(':')[1])/60;
-          var eh = parseInt(s.end_time.split(':')[0]) + parseInt(s.end_time.split(':')[1])/60;
-          if (eh < sh) eh += 24;
-          totalHours += eh - sh;
-        }
+      // --- Tâches planifiées ---
+      if (dayTaskEntries.length > 0) {
+        if (dayShiftEntries.length > 0) html += '<div style="height:1px;background:var(--border);margin:8px 0"></div>';
+        dayTaskEntries.forEach(function(s) {
+          var isUrgent = s.priority === 'urgent';
+          var timeStr = s.start_time && s.end_time ? s.start_time + ' → ' + s.end_time : (s.start_time || '');
+          var models = []; try { models = JSON.parse(s.model_ids || '[]'); } catch(e) {}
+          var modelNames = models.map(function(mid) { var m = allModels.find(function(mm) { return mm.id === parseInt(mid); }); return m ? m.name : ''; }).filter(Boolean);
+          var desc = s.description || s.notes || '';
 
-        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
-          // Shift type badge
-          + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
-          // Time
-          + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
-          // Models
-          + (modelNames.length > 0 ? '<div style="display:flex;gap:4px;flex-wrap:wrap">' + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('') + '</div>' : '')
-          // Notes
-          + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
-          // Actions
-          + '<div style="display:flex;gap:4px;flex-shrink:0">'
-          + '<button onclick="editPlanShift(' + s.id + ')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:4px">Modifier</button>'
-          + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">✕</button>'
-          + '</div></div>';
-      });
+          html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px;border-left:3px solid ' + (isUrgent ? 'var(--red)' : 'var(--green)') + '">'
+            + '<div style="min-width:50px">'
+            + (timeStr ? '<div style="font-size:12px;font-weight:700;color:var(--text)">' + (s.start_time || '') + '</div>' : '')
+            + (s.end_time && s.start_time ? '<div style="font-size:10px;color:var(--text3)">' + s.end_time + '</div>' : '')
+            + '</div>'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + desc + '</div>'
+            + '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">'
+            + (isUrgent ? '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--red-bg);color:var(--red);font-weight:600">URGENT</span>' : '')
+            + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('')
+            + '</div></div>'
+            + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px;flex-shrink:0">✕</button>'
+            + '</div>';
+        });
+      }
+
+      if (dayShifts.length === 0) {
+        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">Aucun shift ou tâche</div>';
+      }
     }
     html += '</div>';
   });
@@ -2601,33 +2626,58 @@ async function renderPlanDetail() {
   renderPlanStats(start, end);
 }
 
-function showPlanShiftForm(userId, dateStr) {
-  // Remove existing form if any
+function showPlanShiftForm(userId, dateStr, defaultEntryType) {
   var existing = document.getElementById('plan-shift-form-inline');
-  if (existing) { existing.remove(); return; }
+  if (existing) { existing.remove(); if (!dateStr) return; }
 
   var targetUser = userId || planSelectedUser;
+  var entryType = defaultEntryType || 'shift';
   var modelOpts = allModels.map(function(m) { return '<option value="' + m.id + '">' + m.name + '</option>'; }).join('');
 
   var formHtml = '<div id="plan-shift-form-inline" style="padding:16px;background:var(--bg2);border:1px solid var(--accent);border-radius:12px;margin-bottom:16px">'
-    + '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:12px">Nouveau shift</div>'
     + '<input type="hidden" id="ps-user" value="' + targetUser + '">'
+    // Toggle shift / tâche
+    + '<div style="display:flex;gap:0;margin-bottom:14px">'
+    + '<button id="ps-toggle-shift" onclick="toggleEntryType(\'shift\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:8px 0 0 8px;background:' + (entryType==='shift'?'var(--accent)':'var(--bg3)') + ';color:' + (entryType==='shift'?'white':'var(--text2)') + '">Shift (horaire de travail)</button>'
+    + '<button id="ps-toggle-task" onclick="toggleEntryType(\'task\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:0 8px 8px 0;background:' + (entryType==='task'?'var(--green)':'var(--bg3)') + ';color:' + (entryType==='task'?'white':'var(--text2)') + '">Tâche planifiée</button>'
+    + '</div>'
+    + '<input type="hidden" id="ps-entry-type" value="' + entryType + '">'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Date</label><input type="date" id="ps-date" class="form-input" style="font-size:12px" value="' + (dateStr || fmtDate(new Date())) + '"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Type</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
+    // Shift fields
+    + '<div id="ps-shift-fields" style="display:' + (entryType==='shift'?'contents':'none') + '">'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Type de shift</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
     + Object.entries(SHIFT_TYPES).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + (e[1].time ? ' (' + e[1].time + ')' : '') + '</option>'; }).join('')
-    + '</select></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Début</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="06:00"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Fin</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="14:00"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Modèle(s)</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="2"><option value="">Aucun</option>' + modelOpts + '</select></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Notes</label><input type="text" id="ps-notes" class="form-input" style="font-size:12px" placeholder="Notes..."></div>'
+    + '</select></div></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Début</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'18:00':'06:00') + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Fin</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'19:00':'14:00') + '"></div>'
+    // Task fields
+    + '<div id="ps-task-fields" style="display:' + (entryType==='task'?'contents':'none') + '">'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Priorité</label><select id="ps-priority" class="form-input" style="font-size:12px"><option value="normal">Normale</option><option value="urgent">Urgente</option></select></div></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Modèle(s) / Compte(s)</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="2"><option value="">Aucun</option>' + modelOpts + '</select></div>'
+    // Description (task) or Notes (shift)
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px" id="ps-desc-label">' + (entryType==='task'?'Description de la tâche':'Notes') + '</label><input type="text" id="ps-description" class="form-input" style="font-size:12px" placeholder="' + (entryType==='task'?'Ex: Envoyer 40 DMs sur @btfavmenace':'Notes...') + '"></div>'
     + '</div>'
     + '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addPlanShift()">Ajouter</button><button class="btn" style="font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'plan-shift-form-inline\').remove()">Annuler</button></div>'
     + '</div>';
 
   var detail = document.getElementById('planning-detail');
   if (detail) detail.insertAdjacentHTML('afterbegin', formHtml);
-  onShiftTypeChange();
+  if (entryType === 'shift') onShiftTypeChange();
+}
+
+function toggleEntryType(type) {
+  document.getElementById('ps-entry-type').value = type;
+  document.getElementById('ps-toggle-shift').style.background = type==='shift' ? 'var(--accent)' : 'var(--bg3)';
+  document.getElementById('ps-toggle-shift').style.color = type==='shift' ? 'white' : 'var(--text2)';
+  document.getElementById('ps-toggle-task').style.background = type==='task' ? 'var(--green)' : 'var(--bg3)';
+  document.getElementById('ps-toggle-task').style.color = type==='task' ? 'white' : 'var(--text2)';
+  document.getElementById('ps-shift-fields').style.display = type==='shift' ? 'contents' : 'none';
+  document.getElementById('ps-task-fields').style.display = type==='task' ? 'contents' : 'none';
+  document.getElementById('ps-desc-label').textContent = type==='task' ? 'Description de la tâche' : 'Notes';
+  document.getElementById('ps-description').placeholder = type==='task' ? 'Ex: Envoyer 40 DMs sur @btfavmenace' : 'Notes...';
+  if (type === 'task') { document.getElementById('ps-start').value = '18:00'; document.getElementById('ps-end').value = '19:00'; }
+  else onShiftTypeChange();
 }
 
 function onShiftTypeChange() {
@@ -2637,24 +2687,30 @@ function onShiftTypeChange() {
 }
 
 function quickAddShift(userId, dateStr) { showPlanShiftForm(userId, dateStr); }
+function quickAddTask(userId, dateStr) { showPlanShiftForm(userId, dateStr, 'task'); }
 
 async function addPlanShift() {
   var userId = document.getElementById('ps-user')?.value;
+  var entryType = document.getElementById('ps-entry-type')?.value || 'shift';
   var modelSel = document.getElementById('ps-models');
   var modelIds = modelSel ? Array.from(modelSel.selectedOptions).map(function(o) { return o.value; }).filter(Boolean) : [];
+  var desc = document.getElementById('ps-description')?.value?.trim() || '';
 
   var res = await fetch('/api/planning-shifts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({
       shift_date: document.getElementById('ps-date').value,
-      shift_type: document.getElementById('ps-type').value,
+      shift_type: entryType === 'task' ? 'custom' : document.getElementById('ps-type').value,
       start_time: document.getElementById('ps-start').value,
       end_time: document.getElementById('ps-end').value,
       model_ids: modelIds,
-      notes: document.getElementById('ps-notes').value.trim(),
+      notes: entryType === 'shift' ? desc : null,
+      description: entryType === 'task' ? desc : null,
+      entry_type: entryType,
+      priority: document.getElementById('ps-priority')?.value || 'normal',
       user_id: userId ? parseInt(userId) : undefined
     })
   });
-  if (res.ok) { showToast('Shift ajouté', 'success'); var f = document.getElementById('plan-shift-form-inline'); if (f) f.remove(); renderPlanDetail(); }
+  if (res.ok) { showToast(entryType === 'task' ? 'Tâche ajoutée' : 'Shift ajouté', 'success'); var f = document.getElementById('plan-shift-form-inline'); if (f) f.remove(); renderPlanDetail(); }
   else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
