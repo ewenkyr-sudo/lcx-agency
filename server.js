@@ -127,6 +127,15 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- Sessions actives (présence en ligne)
+    CREATE TABLE IF NOT EXISTS active_sessions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      last_ping TIMESTAMPTZ DEFAULT NOW(),
+      connected_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id)
+    );
+
     -- Activity log
     CREATE TABLE IF NOT EXISTS activity_log (
       id SERIAL PRIMARY KEY,
@@ -2093,6 +2102,17 @@ app.get('*', (req, res) => {
 });
 
 // ============ ACTIVITY LOG ============
+// ============ ONLINE PRESENCE ============
+app.get('/api/online-users', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT a.user_id, u.display_name, u.role, u.avatar_url, a.connected_at, a.last_ping
+    FROM active_sessions a JOIN users u ON a.user_id = u.id
+    WHERE a.last_ping > NOW() - INTERVAL '5 minutes'
+    ORDER BY u.display_name
+  `);
+  res.json(rows);
+});
+
 app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
   const { rows } = await pool.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1', [limit]);
@@ -2327,6 +2347,46 @@ function broadcast(event, data) {
     if (client.readyState === 1) client.send(message);
   });
 }
+
+// Présence en ligne via WebSocket
+wss.on('connection', (ws) => {
+  ws._userId = null;
+
+  ws.on('message', async (raw) => {
+    try {
+      const msg = JSON.parse(raw);
+
+      // Client s'identifie
+      if (msg.type === 'auth') {
+        const decoded = jwt.verify(msg.token, JWT_SECRET);
+        const { rows } = await pool.query('SELECT id, display_name, role, avatar_url FROM users WHERE id = $1', [decoded.id]);
+        if (rows.length === 0) return;
+        ws._userId = rows[0].id;
+        ws._userName = rows[0].display_name;
+        ws._userRole = rows[0].role;
+        ws._userAvatar = rows[0].avatar_url;
+
+        // Upsert session
+        await pool.query(`INSERT INTO active_sessions (user_id, last_ping, connected_at) VALUES ($1, NOW(), NOW())
+          ON CONFLICT (user_id) DO UPDATE SET last_ping = NOW(), connected_at = NOW()`, [ws._userId]);
+
+        broadcast('user-online', { user_id: ws._userId, display_name: ws._userName, role: ws._userRole, avatar_url: ws._userAvatar });
+      }
+
+      // Ping de présence
+      if (msg.type === 'ping' && ws._userId) {
+        await pool.query('UPDATE active_sessions SET last_ping = NOW() WHERE user_id = $1', [ws._userId]);
+      }
+    } catch(e) {}
+  });
+
+  ws.on('close', async () => {
+    if (ws._userId) {
+      await pool.query('DELETE FROM active_sessions WHERE user_id = $1', [ws._userId]).catch(() => {});
+      broadcast('user-offline', { user_id: ws._userId });
+    }
+  });
+});
 
 // ============ FOLLOWERS SCRAPER ============
 const https = require('https');

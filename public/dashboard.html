@@ -1815,6 +1815,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('shift-clock-btn').style.display = 'block';
       renderShiftClock();
     }
+    // Charger les utilisateurs en ligne
+    loadOnlineUsers();
     // Badges messages + permission notifications
     updateUnreadBadges();
     if ('Notification' in window && Notification.permission === 'default') {
@@ -2159,22 +2161,10 @@ function renderDashboard() {
     <div class="two-col">
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Équipe en ligne</div>
+          <div class="panel-title">En ligne <span id="online-count-badge" style="background:var(--green);color:white;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;display:none"></span></div>
         </div>
-        <div class="dash-team-list">
-          ${allTeam.filter(m => m.status === 'online').slice(0, 6).map(m => {
-              const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 36) : avatarHTML({ display_name: m.name }, 36);
-              return `
-              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-                ${av}
-                <div style="flex:1">
-                  <div style="font-size:13px;font-weight:600">${m.name}</div>
-                  <div style="font-size:11px;color:var(--text3)">${m.role}</div>
-                </div>
-                <span class="badge badge-online" style="font-size:11px">● En ligne</span>
-              </div>`;
-          }).join('')}
-          ${allTeam.filter(m => m.status === 'online').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Personne en ligne</div>' : ''}
+        <div class="dash-team-list" id="online-team-widget">
+          <div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Chargement...</div>
         </div>
       </div>
 
@@ -2601,18 +2591,19 @@ function renderTeamTable(tableId, members) {
   const tbody = table.querySelector('tbody');
   tbody.innerHTML = members.map(m => {
     const av = m.avatar_url ? avatarHTML({ avatar_url: m.avatar_url, display_name: m.name }, 32) : avatarHTML({ display_name: m.name }, 32);
+    var online = isUserOnline(m.user_id);
     return `
     <tr>
-      <td data-label="" class="mc-title">
+      <td data-label="" class="mc-title" data-user-id="${m.user_id || 0}">
         <div class="member-info" style="gap:10px">
-          ${av}
-          <div><div class="member-name">${m.name}</div></div>
+          <div style="position:relative">${av}${online ? '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--bg2)"></span>' : ''}</div>
+          <div><div class="member-name">${m.name}${online ? '<span class="online-dot" style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%;margin-left:6px"></span>' : ''}</div></div>
         </div>
       </td>
       <td data-label="Rôle" class="mc-half">${m.role}</td>
       <td data-label="Shift" class="mc-half">${m.shift || 'N/A'}</td>
       <td data-label="Plateformes" class="mc-half">${m.platform || 'N/A'}</td>
-      <td data-label="Status" class="mc-half"><span class="badge badge-${m.status}">${m.status}</span></td>
+      <td data-label="Status" class="mc-half"><span class="badge badge-${online ? 'online' : m.status}">${online ? 'En ligne' : m.status}</span></td>
       <td data-label="" class="mc-actions">${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
@@ -3628,12 +3619,43 @@ async function updateUnreadBadges() {
 }
 
 // ========== WEBSOCKET TEMPS RÉEL ==========
+let onlineUsers = [];
+let wsRef = null;
+let pingInterval = null;
+
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${protocol}//${location.host}`);
+  wsRef = ws;
+
+  ws.addEventListener('open', () => {
+    // S'authentifier via le cookie JWT
+    const token = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='));
+    if (token) {
+      ws.send(JSON.stringify({ type: 'auth', token: token.split('=')[1] }));
+    }
+    // Ping toutes les 2 minutes pour maintenir la présence
+    if (pingInterval) clearInterval(pingInterval);
+    pingInterval = setInterval(() => {
+      if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' }));
+    }, 120000);
+  });
 
   ws.addEventListener('message', async (event) => {
     const msg = JSON.parse(event.data);
+
+    // Présence en ligne
+    if (msg.event === 'user-online') {
+      if (!onlineUsers.find(u => u.user_id === msg.data.user_id)) {
+        onlineUsers.push(msg.data);
+      }
+      updateOnlineUI();
+    }
+    if (msg.event === 'user-offline') {
+      onlineUsers = onlineUsers.filter(u => u.user_id !== msg.data.user_id);
+      updateOnlineUI();
+    }
+
     if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted') {
       await loadLeads();
       renderLeads();
@@ -3661,12 +3683,10 @@ function connectWebSocket() {
           const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
           if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }
         }
-        // Aussi rafraîchir le chat admin si ouvert
         if (adminChatUserId === msg.data.from_user_id && currentUser.role === 'admin') {
           openAdminChat(adminChatUserId);
         }
         updateUnreadBadges();
-        // Notification push
         if (Notification.permission === 'granted') {
           new Notification('LCX Agency', { body: (msg.data.from_name || 'Quelqu\'un') + ' : ' + (msg.data.content || '').substring(0, 50), icon: '/icons/icon-192.png' });
         }
@@ -3678,10 +3698,73 @@ function connectWebSocket() {
   });
 
   ws.addEventListener('close', () => {
-    // Reconnexion automatique après 2s
+    if (pingInterval) clearInterval(pingInterval);
     setTimeout(connectWebSocket, 2000);
   });
 }
+
+// Charger les users en ligne au démarrage
+async function loadOnlineUsers() {
+  try {
+    var res = await fetch('/api/online-users', { credentials: 'include' });
+    if (res.ok) onlineUsers = await res.json();
+    updateOnlineUI();
+  } catch(e) {}
+}
+
+function isUserOnline(userId) {
+  return onlineUsers.some(u => u.user_id === userId);
+}
+
+function timeSince(dateStr) {
+  var diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (diff < 1) return "à l'instant";
+  if (diff < 60) return diff + ' min';
+  var hours = Math.floor(diff / 60);
+  return hours + 'h' + (diff % 60 > 0 ? (diff % 60) + 'min' : '');
+}
+
+function updateOnlineUI() {
+  // Compteur dans la sidebar
+  var badge = document.getElementById('online-count-badge');
+  if (badge) {
+    badge.textContent = onlineUsers.length;
+    badge.style.display = onlineUsers.length > 0 ? '' : 'none';
+  }
+
+  // Widget dashboard "Équipe en ligne"
+  var widget = document.getElementById('online-team-widget');
+  if (widget) {
+    widget.innerHTML = onlineUsers.map(function(u) {
+      var av = u.avatar_url
+        ? '<img src="' + u.avatar_url + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
+        : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white">' + (u.display_name||'?').charAt(0) + '</div>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        + '<div style="position:relative">' + av + '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--bg2)"></span></div>'
+        + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + u.display_name + '</div><div style="font-size:11px;color:var(--text3)">' + u.role + '</div></div>'
+        + '<span style="font-size:11px;color:var(--green)">' + timeSince(u.connected_at) + '</span>'
+        + '</div>';
+    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Personne en ligne</div>';
+  }
+
+  // Points verts sur les noms dans les tables équipe (chatters, outreach, va)
+  document.querySelectorAll('[data-user-id]').forEach(function(el) {
+    var uid = parseInt(el.getAttribute('data-user-id'));
+    var dot = el.querySelector('.online-dot');
+    if (isUserOnline(uid)) {
+      if (!dot) {
+        dot = document.createElement('span');
+        dot.className = 'online-dot';
+        dot.style.cssText = 'display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%;margin-left:6px';
+        el.appendChild(dot);
+      }
+      dot.style.display = '';
+    } else if (dot) {
+      dot.style.display = 'none';
+    }
+  });
+}
+
 connectWebSocket();
 
 // ========== OUTREACH LEADS ==========
