@@ -966,10 +966,13 @@ async function renderStudentTasks() {
       + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">Terminée</option></select>'
       + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text3)') + '">📅 ' + dl + (overdue ? ' (en retard)' : '') + '</div>' : '')
       + (t.creator_name ? '<div style="color:var(--text3)">Par ' + t.creator_name + '</div>' : '')
+      + (t.created_by === currentUser.id ? '<button class="btn-delete-small" onclick="deleteStudentTask(' + t.id + ')" style="margin-left:auto">✕</button>' : '')
       + '</div></div>';
   }
 
-  c.innerHTML = '<div class="page-header"><div><div class="page-title">Mes Tâches</div><div class="page-subtitle">' + pending.length + ' en cours · ' + completed.length + ' terminées</div></div></div>'
+  c.innerHTML = '<div class="page-header"><div><div class="page-title">Mes Tâches</div><div class="page-subtitle">' + pending.length + ' en cours · ' + completed.length + ' terminées</div></div>'
+    + '<div class="header-actions"><button class="btn btn-primary" onclick="showStudentTaskForm()">+ Nouvelle tâche</button></div></div>'
+    + '<div id="student-task-form-wrap"></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:16px">'
     + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">À faire</h3>'
     + (pending.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px;font-size:13px">Aucune tâche en cours</div>' : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
@@ -977,8 +980,48 @@ async function renderStudentTasks() {
     + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">Terminées</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
 }
 
+function showStudentTaskForm() {
+  const wrap = document.getElementById('student-task-form-wrap');
+  if (!wrap) return;
+  if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:16px;background:var(--bg2)">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Titre *</label><input type="text" id="st-title" class="form-input" placeholder="Titre de la tâche"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Description</label><input type="text" id="st-desc" class="form-input" placeholder="Description..."></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Priorité</label><select id="st-priority" class="form-input"><option value="normal">Normale</option><option value="urgent">Urgente</option></select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Deadline</label><input type="date" id="st-deadline" class="form-input"></div>'
+    + '</div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="addStudentTask()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-task-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '</div>';
+}
+
+async function addStudentTask() {
+  const title = document.getElementById('st-title').value.trim();
+  if (!title) { showToast('Titre requis', 'error'); return; }
+  const description = document.getElementById('st-desc').value.trim();
+  const priority = document.getElementById('st-priority').value;
+  const deadline = document.getElementById('st-deadline').value || null;
+  const res = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ title, description, priority, deadline })
+  });
+  if (res.ok) {
+    showToast('Tâche ajoutée', 'success');
+    document.getElementById('student-task-form-wrap').innerHTML = '';
+    renderStudentTasks();
+  }
+}
+
 async function updateStudentTaskStatus(id, status) {
   await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) });
+  renderStudentTasks();
+}
+
+async function deleteStudentTask(id) {
+  if (!confirm('Supprimer cette tâche ?')) return;
+  await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   renderStudentTasks();
 }
 
