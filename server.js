@@ -7,10 +7,17 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'lcx-agency-secret-change-me-in-production';
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Server cannot start.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Journée de travail commence à 9h (pour les stats "aujourd'hui")
 const DAY_START_HOUR = 9;
@@ -18,6 +25,7 @@ const DAY_START_HOUR = 9;
 const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAMP::date - INTERVAL '1 day' ELSE CURRENT_TIMESTAMP::date END + INTERVAL '${DAY_START_HOUR} hours')`;
 
 // ============ MIDDLEWARE ============
+app.use(helmet());
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -42,7 +50,7 @@ async function initDB() {
     );
     DO $$ BEGIN
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password TEXT;
+      -- plain_password column removed for security
     EXCEPTION WHEN others THEN NULL;
     END $$;
 
@@ -421,50 +429,50 @@ async function seedData() {
   console.log('Seeding initial data...');
 
   const adminHash = bcrypt.hashSync('admin123', 10);
-  await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', ['ewen', adminHash, 'Ewen', 'admin', 'admin123']);
+  await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', ['ewen', adminHash, 'Ewen', 'admin']);
 
   const defaultHash = bcrypt.hashSync('team123', 10);
   const studentHash = bcrypt.hashSync('eleve123', 10);
 
   const teamUsers = [
-    ['sarah', defaultHash, 'Sarah', 'chatter', 'team123'],
-    ['tom', defaultHash, 'Tom', 'chatter', 'team123'],
-    ['karim', defaultHash, 'Karim', 'chatter', 'team123'],
-    ['lea', defaultHash, 'Léa', 'chatter', 'team123'],
-    ['nathan', defaultHash, 'Nathan', 'chatter', 'team123'],
-    ['maxime', defaultHash, 'Maxime', 'outreach', 'team123'],
-    ['yasmine', defaultHash, 'Yasmine', 'outreach', 'team123'],
-    ['dylan', defaultHash, 'Dylan', 'outreach', 'team123'],
-    ['ines', defaultHash, 'Inès', 'outreach', 'team123'],
-    ['amine', defaultHash, 'Amine', 'va', 'team123'],
-    ['rania', defaultHash, 'Rania', 'va', 'team123'],
-    ['jules', defaultHash, 'Jules', 'va', 'team123'],
+    ['sarah', defaultHash, 'Sarah', 'chatter'],
+    ['tom', defaultHash, 'Tom', 'chatter'],
+    ['karim', defaultHash, 'Karim', 'chatter'],
+    ['lea', defaultHash, 'Léa', 'chatter'],
+    ['nathan', defaultHash, 'Nathan', 'chatter'],
+    ['maxime', defaultHash, 'Maxime', 'outreach'],
+    ['yasmine', defaultHash, 'Yasmine', 'outreach'],
+    ['dylan', defaultHash, 'Dylan', 'outreach'],
+    ['ines', defaultHash, 'Inès', 'outreach'],
+    ['amine', defaultHash, 'Amine', 'va'],
+    ['rania', defaultHash, 'Rania', 'va'],
+    ['jules', defaultHash, 'Jules', 'va'],
   ];
   for (const u of teamUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
   }
 
   const modelUsers = [
-    ['luna', defaultHash, 'Luna', 'model', 'team123'],
-    ['jade', defaultHash, 'Jade', 'model', 'team123'],
-    ['mia', defaultHash, 'Mia', 'model', 'team123'],
-    ['emma', defaultHash, 'Emma', 'model', 'team123'],
-    ['clara', defaultHash, 'Clara', 'model', 'team123'],
+    ['luna', defaultHash, 'Luna', 'model'],
+    ['jade', defaultHash, 'Jade', 'model'],
+    ['mia', defaultHash, 'Mia', 'model'],
+    ['emma', defaultHash, 'Emma', 'model'],
+    ['clara', defaultHash, 'Clara', 'model'],
   ];
   for (const u of modelUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
   }
 
   const studentUsers = [
-    ['lucas', studentHash, 'Lucas', 'student', 'eleve123'],
-    ['theo', studentHash, 'Théo', 'student', 'eleve123'],
-    ['yassine', studentHash, 'Yassine', 'student', 'eleve123'],
-    ['enzo', studentHash, 'Enzo', 'student', 'eleve123'],
-    ['mehdi', studentHash, 'Mehdi', 'student', 'eleve123'],
-    ['rayan', studentHash, 'Rayan', 'student', 'eleve123'],
+    ['lucas', studentHash, 'Lucas', 'student'],
+    ['theo', studentHash, 'Théo', 'student'],
+    ['yassine', studentHash, 'Yassine', 'student'],
+    ['enzo', studentHash, 'Enzo', 'student'],
+    ['mehdi', studentHash, 'Mehdi', 'student'],
+    ['rayan', studentHash, 'Rayan', 'student'],
   ];
   for (const u of studentUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5)', u);
+    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
   }
 
   // Models
@@ -593,31 +601,59 @@ function adminOnly(req, res, next) {
 }
 
 // ============ WHATSAPP NOTIFICATIONS ============
+async function sendWhatsAppToNumber(number, apiKey, message, provider) {
+  number = number.replace(/[^0-9]/g, '');
+  if (!number || !apiKey) return;
+  if (provider === 'callmebot' || !provider) {
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${number}&text=${encodeURIComponent(message)}&apikey=${apiKey}`;
+    httpGet(url).catch(e => console.log('WhatsApp error:', e.message));
+  }
+}
+
 async function sendWhatsApp(message) {
   try {
-    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key IN ('whatsapp_number', 'whatsapp_api_key', 'whatsapp_provider') ORDER BY key");
+    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key IN ('whatsapp_number', 'whatsapp_api_key', 'whatsapp_provider', 'whatsapp_extra_recipients') ORDER BY key");
     const settings = {};
     rows.forEach(r => settings[r.key] = r.value);
     if (!settings.whatsapp_number || !settings.whatsapp_api_key) return;
 
-    const number = settings.whatsapp_number.replace(/[^0-9]/g, '');
     const provider = settings.whatsapp_provider || 'callmebot';
-
-    if (provider === 'callmebot') {
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${number}&text=${encodeURIComponent(message)}&apikey=${settings.whatsapp_api_key}`;
-      httpGet(url).catch(e => console.log('WhatsApp error:', e.message));
-    } else if (provider === 'twilio') {
-      // Twilio integration placeholder - needs account SID and auth token
-      const twilioSid = settings.whatsapp_api_key.split(':')[0];
-      const twilioAuth = settings.whatsapp_api_key.split(':')[1];
-      const twilioFrom = settings.whatsapp_from || '';
-      // Would need actual Twilio SDK here
+    // Send to primary number
+    await sendWhatsAppToNumber(settings.whatsapp_number, settings.whatsapp_api_key, message, provider);
+    // Send to extra recipients (format: number:apikey,number:apikey)
+    if (settings.whatsapp_extra_recipients) {
+      const extras = settings.whatsapp_extra_recipients.split(',').map(s => s.trim()).filter(Boolean);
+      for (const entry of extras) {
+        const [num, key] = entry.split(':').map(s => s.trim());
+        if (num && key) {
+          await new Promise(r => setTimeout(r, 2000)); // CallMeBot rate limit
+          await sendWhatsAppToNumber(num, key, message, provider);
+        }
+      }
     }
   } catch(e) { console.log('WhatsApp send error:', e.message); }
 }
 
+async function getNotifSetting(key) {
+  const { rows } = await pool.query("SELECT value FROM settings WHERE key = $1", [key]);
+  return rows[0]?.value;
+}
+
+async function isNotifEnabled(key) {
+  const val = await getNotifSetting(key);
+  return val !== 'false';
+}
+
 // ============ AUTH ROUTES ============
-app.post('/api/login', async (req, res) => {
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives, réessayez dans 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   const { rows } = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
   const user = rows[0];
@@ -632,7 +668,7 @@ app.post('/api/login', async (req, res) => {
     }
   }
   const token = jwt.sign({ id: user.id, username: user.username, display_name: user.display_name, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-  res.cookie('token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+  res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role } });
 });
 
@@ -648,7 +684,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, plain_password, read_only, expires_at, created_at FROM users ORDER BY role, display_name');
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, created_at FROM users ORDER BY role, display_name');
   res.json(rows);
 });
 
@@ -657,7 +693,7 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
   if (!username || !password || !display_name || !role) return res.status(400).json({ error: 'Champs requis manquants' });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role, plain_password) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, hash, display_name, role, password]);
+    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4) RETURNING id', [username, hash, display_name, role]);
     const newId = rows[0].id;
     // Auto-créer l'entrée student si rôle élève
     if (role === 'student') {
@@ -676,7 +712,7 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/password', authMiddleware, adminOnly, async (req, res) => {
   const { password } = req.body;
   const hash = bcrypt.hashSync(password, 10);
-  await pool.query('UPDATE users SET password = $1, plain_password = $2 WHERE id = $3', [hash, password, req.params.id]);
+  await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, req.params.id]);
   res.json({ ok: true });
 });
 
@@ -880,7 +916,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
 });
 
 // ============ CALLS CRUD ============
-app.get('/api/calls', authMiddleware, async (req, res) => {
+app.get('/api/calls', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT c.*, s.name as student_name FROM calls c
     JOIN students s ON c.student_id = s.id
@@ -1002,9 +1038,9 @@ app.put('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
 // Reset all passwords for a role
 app.post('/api/admin/reset-passwords', authMiddleware, adminOnly, async (req, res) => {
   const { role, new_password } = req.body;
-  if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'Mot de passe trop court (min 4 caractères)' });
+  if (!new_password || new_password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (min 8 caractères)' });
   const hash = bcrypt.hashSync(new_password, 10);
-  const result = await pool.query('UPDATE users SET password = $1, plain_password = $2 WHERE role = $3 AND id != $4', [hash, new_password, role, req.user.id]);
+  const result = await pool.query('UPDATE users SET password = $1 WHERE role = $2 AND id != $3', [hash, role, req.user.id]);
   res.json({ ok: true, updated: result.rowCount });
 });
 
@@ -1016,7 +1052,7 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     if (!gaby) {
       const hash = bcrypt.hashSync('team123', 10);
       gaby = (await pool.query(
-        "INSERT INTO users (username, password, display_name, role, plain_password) VALUES ('gaby', $1, 'Gaby', 'outreach', 'team123') RETURNING id", [hash]
+        "INSERT INTO users (username, password, display_name, role) VALUES ('gaby', $1, 'Gaby', 'outreach') RETURNING id", [hash]
       )).rows[0];
       // Créer aussi comme team member
       await pool.query(
@@ -1137,6 +1173,8 @@ app.post('/api/shifts', authMiddleware, async (req, res) => {
     [req.user.id, shiftDate, model_name, ppv_total || 0, tips_total || 0, shift_notes]
   );
   broadcast('shift-added', rows[0]);
+  // Check revenue objective alert
+  checkRevenueObjectiveAlert(model_name, shiftDate).catch(e => console.log('Revenue alert error:', e.message));
   res.json(rows[0]);
 });
 
@@ -1823,11 +1861,11 @@ app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
     const leadInfo = (await pool.query('SELECT sl.username, u.display_name as student_name FROM student_leads sl JOIN users u ON sl.user_id = u.id WHERE sl.id = $1', [req.params.id])).rows[0];
     const labels = {'talking-warm': 'Discussion chaude', 'call-booked': 'Call prévu', 'signed': 'Signé'};
     await logActivity(req.user.id, req.user.display_name, 'lead-' + status, 'lead', parseInt(req.params.id), leadInfo?.username + ' (' + leadInfo?.student_name + ')');
-    if (status === 'talking-warm' || status === 'call-booked') {
+    if ((status === 'talking-warm' || status === 'call-booked') && await isNotifEnabled('notif_alert_lead_warm')) {
       sendWhatsApp('🔥 ' + (leadInfo?.username || '?') + ' est passé en ' + labels[status] + ' (élève: ' + (leadInfo?.student_name || '?') + ')');
     }
-    if (status === 'signed') {
-      sendWhatsApp('🎉 ' + (leadInfo?.username || '?') + ' a été signé ! (élève: ' + (leadInfo?.student_name || '?') + ')');
+    if (status === 'signed' && await isNotifEnabled('notif_alert_lead_signed')) {
+      sendWhatsApp('🎉 LEAD SIGNÉ !\n\n👤 ' + (leadInfo?.username || '?') + '\n🎓 Élève: ' + (leadInfo?.student_name || '?') + '\n📅 ' + new Date().toLocaleDateString('fr-FR') + '\n\nBravo à toute l\'équipe !');
     }
   }
   res.json({ ok: true });
@@ -1968,6 +2006,10 @@ app.get('/api/messages/:userId', authMiddleware, async (req, res) => {
   const otherId = parseInt(req.params.userId);
   const myId = req.user.id;
   if (req.user.role !== 'admin' && req.user.role !== 'student') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role === 'student' && otherId !== myId) {
+    const isAdmin = await pool.query('SELECT id FROM users WHERE id = $1 AND role = $2', [otherId, 'admin']);
+    if (isAdmin.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
+  }
   const { rows } = await pool.query(`SELECT * FROM messages WHERE (from_user_id = $1 AND to_user_id = $2) OR (from_user_id = $2 AND to_user_id = $1) ORDER BY created_at ASC`, [myId, otherId]);
   // Mark as read
   await pool.query('UPDATE messages SET read = true WHERE to_user_id = $1 AND from_user_id = $2 AND read = false', [myId, otherId]);
@@ -2152,6 +2194,31 @@ app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
   const { rows } = await pool.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1', [limit]);
   res.json(rows);
+});
+
+// Save notification settings & reschedule crons
+app.post('/api/admin/save-notif-settings', authMiddleware, adminOnly, async (req, res) => {
+  const keys = ['notif_daily_report', 'notif_weekly_report', 'notif_alert_lead_signed', 'notif_alert_lead_warm', 'notif_alert_revenue_objective', 'notif_alert_inactive_chatter', 'notif_daily_hour', 'whatsapp_extra_recipients'];
+  for (const key of keys) {
+    if (req.body[key] !== undefined) {
+      await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, String(req.body[key])]);
+    }
+  }
+  // Reschedule cron jobs with new settings
+  await setupCronJobs();
+  res.json({ ok: true });
+});
+
+// Test daily report
+app.post('/api/admin/test-daily-report', authMiddleware, adminOnly, async (req, res) => {
+  await sendDailyReport();
+  res.json({ ok: true });
+});
+
+// Test weekly report
+app.post('/api/admin/test-weekly-report', authMiddleware, adminOnly, async (req, res) => {
+  await sendWeeklyReport();
+  res.json({ ok: true });
 });
 
 // Test WhatsApp
@@ -2693,43 +2760,242 @@ app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, 
 });
 
 // ============ DAILY WHATSAPP SUMMARY ============
-function scheduleDailySummary() {
-  const now = new Date();
-  let target = new Date();
-  target.setHours(21, 0, 0, 0);
-  if (now >= target) target.setDate(target.getDate() + 1);
-  const delay = target.getTime() - now.getTime();
+// ============ SCHEDULED REPORTS (node-cron) ============
 
-  setTimeout(async () => {
-    try {
-      const todayStart = new Date();
-      todayStart.setHours(9, 0, 0, 0);
+async function sendDailyReport() {
+  if (!(await isNotifEnabled('notif_daily_report'))) return;
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(9, 0, 0, 0);
+    const todayStr = new Date().toISOString().split('T')[0];
 
-      const { rows: stats } = await pool.query(`
-        SELECT
-          COUNT(*) as total_leads,
-          COUNT(*) FILTER (WHERE created_at >= $1) as leads_today,
-          COUNT(*) FILTER (WHERE sent_at >= $1) as dms_today,
-          COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies_total,
-          COUNT(*) FILTER (WHERE status = 'call-booked') as calls_booked,
-          COUNT(*) FILTER (WHERE status = 'signed') as signed
-        FROM student_leads
-      `, [todayStart.toISOString()]);
+    // Revenue du jour (chatter shifts)
+    const { rows: revRows } = await pool.query(
+      "SELECT model_name, COALESCE(SUM(ppv_total),0) as ppv, COALESCE(SUM(tips_total),0) as tips FROM chatter_shifts WHERE date = $1 GROUP BY model_name ORDER BY (SUM(ppv_total) + SUM(tips_total)) DESC",
+      [todayStr]
+    );
+    const totalRevenue = revRows.reduce((s, r) => s + parseFloat(r.ppv) + parseFloat(r.tips), 0);
+    const top3 = revRows.slice(0, 3);
 
-      const s = stats[0];
-      const msg = `📊 Résumé du jour - LCX Agency\n\n`
-        + `📩 Leads ajoutés: ${s.leads_today}\n`
-        + `💬 DMs envoyés: ${s.dms_today}\n`
-        + `📞 Calls bookés: ${s.calls_booked}\n`
-        + `✅ Signés: ${s.signed}\n`
-        + `📈 Total leads: ${s.total_leads}`;
+    // Leads du jour
+    const { rows: leadStats } = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE created_at >= $1) as leads_today,
+        COUNT(*) FILTER (WHERE sent_at >= $1) as dms_today,
+        COUNT(*) FILTER (WHERE status = 'signed' AND updated_at >= $1) as signed_today
+      FROM student_leads
+    `, [todayStart.toISOString()]);
+    const ls = leadStats[0];
 
-      await sendWhatsApp(msg);
-    } catch(e) { console.log('Daily summary error:', e.message); }
+    // Leads outreach du jour
+    const { rows: outreachStats } = await pool.query(`
+      SELECT COUNT(*) FILTER (WHERE created_at >= $1) as contacted,
+             COUNT(*) FILTER (WHERE status = 'signed' AND updated_at >= $1) as signed
+      FROM outreach_leads
+    `, [todayStart.toISOString()]);
+    const os = outreachStats[0];
+    const totalContacted = parseInt(ls.leads_today) + parseInt(os.contacted);
+    const totalSigned = parseInt(ls.signed_today) + parseInt(os.signed);
 
-    // Reschedule for next day
-    scheduleDailySummary();
-  }, delay);
+    // Membres inactifs (clock_in > 4h sans clock_out)
+    const { rows: inactive } = await pool.query(`
+      SELECT u.display_name, sc.clock_in FROM shift_clocks sc
+      JOIN users u ON sc.user_id = u.id
+      WHERE sc.clock_out IS NULL AND sc.clock_in < NOW() - INTERVAL '4 hours'
+    `);
+
+    // Membres absents (team members qui ne se sont pas pointés aujourd'hui)
+    const { rows: absent } = await pool.query(`
+      SELECT u.display_name FROM users u
+      WHERE u.role IN ('chatter', 'outreach', 'va')
+      AND u.id NOT IN (SELECT user_id FROM shift_clocks WHERE clock_in::date = CURRENT_DATE)
+      AND u.id NOT IN (SELECT user_id FROM leave_requests WHERE status = 'approved' AND start_date <= $1 AND end_date >= $1)
+    `, [todayStr]);
+
+    let msg = `📊 RAPPORT QUOTIDIEN\n📅 ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `\n💰 REVENUS DU JOUR\n`;
+    msg += `Total: $${totalRevenue.toFixed(2)}\n`;
+    if (top3.length > 0) {
+      msg += `\n🏆 TOP MODÈLES\n`;
+      top3.forEach((m, i) => {
+        const icons = ['🥇', '🥈', '🥉'];
+        msg += `${icons[i]} ${m.model_name}: $${(parseFloat(m.ppv) + parseFloat(m.tips)).toFixed(2)}\n`;
+      });
+    }
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `\n📨 OUTREACH\n`;
+    msg += `📩 Leads contactés: ${totalContacted}\n`;
+    msg += `✅ Leads signés: ${totalSigned}\n`;
+    msg += `💬 DMs envoyés: ${ls.dms_today}\n`;
+    if (inactive.length > 0 || absent.length > 0) {
+      msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `\n⚠️ ÉQUIPE\n`;
+      if (inactive.length > 0) msg += `🔴 Inactifs +4h: ${inactive.map(m => m.display_name).join(', ')}\n`;
+      if (absent.length > 0) msg += `⬜ Absents: ${absent.map(m => m.display_name).join(', ')}\n`;
+    }
+
+    await sendWhatsApp(msg);
+    console.log('Daily report sent');
+  } catch(e) { console.log('Daily report error:', e.message); }
+}
+
+async function sendWeeklyReport() {
+  if (!(await isNotifEnabled('notif_weekly_report'))) return;
+  try {
+    const now = new Date();
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - 7);
+    const prevWeekStart = new Date(now); prevWeekStart.setDate(now.getDate() - 14);
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const prevWeekStartStr = prevWeekStart.toISOString().split('T')[0];
+    const nowStr = now.toISOString().split('T')[0];
+
+    // Revenue this week vs previous week
+    const { rows: thisWeek } = await pool.query(
+      "SELECT COALESCE(SUM(ppv_total + tips_total), 0) as total FROM chatter_shifts WHERE date >= $1 AND date < $2",
+      [weekStartStr, nowStr]
+    );
+    const { rows: prevWeek } = await pool.query(
+      "SELECT COALESCE(SUM(ppv_total + tips_total), 0) as total FROM chatter_shifts WHERE date >= $1 AND date < $2",
+      [prevWeekStartStr, weekStartStr]
+    );
+    const thisTotal = parseFloat(thisWeek[0].total);
+    const prevTotal = parseFloat(prevWeek[0].total);
+    const evolution = prevTotal > 0 ? ((thisTotal - prevTotal) / prevTotal * 100).toFixed(1) : 'N/A';
+    const evoIcon = thisTotal >= prevTotal ? '📈' : '📉';
+
+    // Best model of the week
+    const { rows: bestModel } = await pool.query(
+      "SELECT model_name, SUM(ppv_total + tips_total) as total FROM chatter_shifts WHERE date >= $1 AND date < $2 GROUP BY model_name ORDER BY total DESC LIMIT 1",
+      [weekStartStr, nowStr]
+    );
+
+    // Leads processed
+    const { rows: weekLeads } = await pool.query(`
+      SELECT COUNT(*) as total,
+             COUNT(*) FILTER (WHERE status = 'signed') as signed
+      FROM student_leads WHERE created_at >= $1
+    `, [weekStart.toISOString()]);
+
+    // Revenue objectives met
+    const currentMonth = now.toISOString().slice(0, 7);
+    const { rows: objectives } = await pool.query(
+      "SELECT m.name, mro.target, mro.current FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE mro.month = $1",
+      [currentMonth]
+    );
+    const metCount = objectives.filter(o => parseFloat(o.current) >= parseFloat(o.target) && parseFloat(o.target) > 0).length;
+    const totalObj = objectives.filter(o => parseFloat(o.target) > 0).length;
+
+    let msg = `📋 RAPPORT HEBDOMADAIRE\n📅 Semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${now.toLocaleDateString('fr-FR')}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `\n💰 REVENUS\n`;
+    msg += `Cette semaine: $${thisTotal.toFixed(2)}\n`;
+    msg += `Semaine précédente: $${prevTotal.toFixed(2)}\n`;
+    msg += `${evoIcon} Évolution: ${evolution === 'N/A' ? 'N/A' : (thisTotal >= prevTotal ? '+' : '') + evolution + '%'}\n`;
+    if (bestModel.length > 0) {
+      msg += `\n🏆 MEILLEUR MODÈLE\n`;
+      msg += `${bestModel[0].model_name}: $${parseFloat(bestModel[0].total).toFixed(2)}\n`;
+    }
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `\n📨 LEADS\n`;
+    msg += `Total traités: ${weekLeads[0].total}\n`;
+    msg += `Signés: ${weekLeads[0].signed}\n`;
+    if (totalObj > 0) {
+      msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `\n🎯 OBJECTIFS\n`;
+      msg += `Atteints: ${metCount}/${totalObj}\n`;
+      objectives.filter(o => parseFloat(o.target) > 0).forEach(o => {
+        const pct = (parseFloat(o.current) / parseFloat(o.target) * 100).toFixed(0);
+        const icon = parseFloat(o.current) >= parseFloat(o.target) ? '✅' : '⏳';
+        msg += `${icon} ${o.name}: ${pct}%\n`;
+      });
+    }
+
+    await sendWhatsApp(msg);
+    console.log('Weekly report sent');
+  } catch(e) { console.log('Weekly report error:', e.message); }
+}
+
+async function checkRevenueObjectiveAlert(modelName, date) {
+  if (!(await isNotifEnabled('notif_alert_revenue_objective'))) return;
+  try {
+    const currentMonth = date.slice(0, 7);
+    const { rows } = await pool.query(`
+      SELECT mro.target, mro.current, m.name FROM model_revenue_objectives mro
+      JOIN models m ON mro.model_id = m.id
+      WHERE m.name = $1 AND mro.month = $2 AND mro.target > 0
+    `, [modelName, currentMonth]);
+    if (rows.length === 0) return;
+    const obj = rows[0];
+    // Get today's revenue for this model
+    const { rows: todayRev } = await pool.query(
+      "SELECT COALESCE(SUM(ppv_total + tips_total), 0) as total FROM chatter_shifts WHERE model_name = $1 AND date = $2",
+      [modelName, date]
+    );
+    const dailyTarget = parseFloat(obj.target) / 30;
+    const todayTotal = parseFloat(todayRev[0].total);
+    if (todayTotal > dailyTarget && dailyTarget > 0) {
+      sendWhatsApp(`🚀 OBJECTIF DÉPASSÉ !\n\n💎 ${modelName} a dépassé son objectif journalier\n💰 Aujourd'hui: $${todayTotal.toFixed(2)} (objectif: $${dailyTarget.toFixed(2)}/jour)\n📊 Progression mois: $${parseFloat(obj.current).toFixed(2)}/$${parseFloat(obj.target).toFixed(2)}`);
+    }
+  } catch(e) {}
+}
+
+async function checkInactiveChatters() {
+  if (!(await isNotifEnabled('notif_alert_inactive_chatter'))) return;
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.display_name, sc.clock_in,
+        EXTRACT(EPOCH FROM (NOW() - sc.clock_in)) / 3600 as hours_in
+      FROM shift_clocks sc
+      JOIN users u ON sc.user_id = u.id
+      WHERE sc.clock_out IS NULL
+        AND sc.clock_in < NOW() - INTERVAL '2 hours'
+        AND u.role = 'chatter'
+    `);
+    for (const chatter of rows) {
+      // Check if we already sent an alert recently (check activity_log)
+      const { rows: recent } = await pool.query(
+        "SELECT id FROM activity_log WHERE action = 'inactive-chatter-alert' AND details = $1 AND created_at > NOW() - INTERVAL '4 hours'",
+        [chatter.display_name]
+      );
+      if (recent.length === 0) {
+        sendWhatsApp(`⚠️ CHATTER INACTIF\n\n👤 ${chatter.display_name}\n⏱️ Pointé depuis ${Math.round(chatter.hours_in)}h sans activité\n\nVérifie que tout va bien.`);
+        await pool.query("INSERT INTO activity_log (user_name, action, target_type, details) VALUES ($1, 'inactive-chatter-alert', 'system', $1)", [chatter.display_name]);
+      }
+    }
+  } catch(e) { console.log('Inactive chatter check error:', e.message); }
+}
+
+let dailyCronJob = null;
+let weeklyCronJob = null;
+let inactiveCheckJob = null;
+
+async function setupCronJobs() {
+  // Get configured daily report hour (default: 20:00 Paris time)
+  const dailyHour = (await getNotifSetting('notif_daily_hour')) || '20:00';
+  const [hour, minute] = dailyHour.split(':').map(Number);
+
+  // Stop existing jobs
+  if (dailyCronJob) dailyCronJob.stop();
+  if (weeklyCronJob) weeklyCronJob.stop();
+  if (inactiveCheckJob) inactiveCheckJob.stop();
+
+  // Daily report - configurable time (default 20:00), timezone Europe/Paris
+  dailyCronJob = cron.schedule(`${minute || 0} ${hour || 20} * * *`, () => {
+    sendDailyReport();
+  }, { timezone: 'Europe/Paris' });
+
+  // Weekly report - Monday 9:00 AM Paris time
+  weeklyCronJob = cron.schedule('0 9 * * 1', () => {
+    sendWeeklyReport();
+  }, { timezone: 'Europe/Paris' });
+
+  // Check inactive chatters every 30 minutes
+  inactiveCheckJob = cron.schedule('*/30 * * * *', () => {
+    checkInactiveChatters();
+  }, { timezone: 'Europe/Paris' });
+
+  console.log(`Cron jobs configured: daily report at ${dailyHour} (Paris), weekly Monday 9h, inactive check every 30min`);
 }
 
 // ============ START ============
@@ -2737,8 +3003,8 @@ async function start() {
   await initDB();
   await seedData();
 
-  // Schedule daily WhatsApp summary at 21:00
-  scheduleDailySummary();
+  // Schedule WhatsApp reports & alerts via node-cron
+  await setupCronJobs();
 
   // Lancer le premier scrape après 10 secondes
   setTimeout(() => updateAllFollowers(), 10000);

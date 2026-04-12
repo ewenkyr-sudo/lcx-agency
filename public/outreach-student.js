@@ -3,6 +3,7 @@
 
 let assignedStudents = [];
 let studentOutreachData = {}; // { studentUserId: { leads: [], options: {}, filter: 'all' } }
+const debouncedRenderSOLeadTable = debounce(function(id) { renderSOLeadTable(id); }, 300);
 
 async function loadAssignedStudents() {
   if (currentUser.role !== 'outreach') return;
@@ -79,7 +80,7 @@ async function renderStudentOutreachForAssistant(studentUserId, studentName) {
       return '<button class="btn so-filter-' + studentUserId + '" onclick="filterSOLeads(' + studentUserId + ',\'' + f + '\',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:' + (active ? 'var(--accent)' : 'var(--bg3)') + ';color:' + (active ? 'white' : 'var(--text2)') + ';border:none;cursor:pointer">' + label + '</button>';
     }).join('')
     + '</div>'
-    + '<div style="margin-bottom:16px"><input type="text" id="so-search-' + studentUserId + '" class="form-input" placeholder="Rechercher..." oninput="renderSOLeadTable(' + studentUserId + ')" style="max-width:350px"></div>'
+    + '<div style="margin-bottom:16px"><input type="text" id="so-search-' + studentUserId + '" class="form-input" placeholder="Rechercher..." oninput="debouncedRenderSOLeadTable(' + studentUserId + ')" style="max-width:350px"></div>'
     + '<div class="panel"><table class="table mobile-cards" id="so-table-' + studentUserId + '"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div>';
 
   renderSOLeadTable(studentUserId);
@@ -108,7 +109,7 @@ function renderSOLeadTable(studentUserId) {
       + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteSOLead(' + studentUserId + ',' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="9">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
 }
 
 function soInlineSelect(studentUserId, leadId, field, currentValue, optType) {
@@ -194,7 +195,7 @@ async function updateSOLead(leadId, data) {
 }
 
 async function deleteSOLead(studentUserId, leadId) {
-  if (!confirm('Supprimer ce lead ?')) return;
+  if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
   await fetch('/api/student-leads/' + leadId, { method: 'DELETE', credentials: 'include' });
   var name = (assignedStudents.find(function(a) { return a.student_user_id === studentUserId; }) || {}).student_name || '';
   renderStudentOutreachForAssistant(studentUserId, name);

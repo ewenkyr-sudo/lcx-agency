@@ -20,6 +20,9 @@ let studentData = { leads: [], recruits: [], models: [], revenue: [], callReques
 let userOptions = { script: [], account: [], type: [] };
 let currentChatUserId = null;
 
+// ========== DEBOUNCED SEARCH ==========
+const debouncedRenderStudentLeadTable = debounce(function() { renderStudentLeadTable(); }, 300);
+
 // ========== DATA LOADING ==========
 async function loadStudentData() {
   const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
@@ -175,7 +178,7 @@ async function renderStudentOutreach() {
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
-    <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderStudentLeadTable()" style="max-width:350px"></div>
+    <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderStudentLeadTable()" style="max-width:350px"></div>
     <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
   renderStudentLeadTable();
@@ -219,7 +222,7 @@ function renderStudentLeadTable() {
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead', '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
 }
 
 function filterStudentLeads(f, btn) {
@@ -286,8 +289,7 @@ function autoFillUsername(url, targetId) {
 
 async function deleteAllStudentLeads() {
   var label = currentStudentMarket === 'us' ? 'US' : 'FR';
-  if (!confirm('Supprimer TOUS les leads ' + label + ' ? Cette action est irréversible.')) return;
-  if (!confirm('Tu es sûr ? Tous les leads ' + label + ' seront supprimés définitivement.')) return;
+  if (!(await confirmDelete('Supprimer TOUS les leads ' + label + ' ? Cette action est irréversible.'))) return;
   var res = await fetch('/api/student-leads/all?market=' + currentStudentMarket, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     var data = await res.json();
@@ -335,7 +337,7 @@ async function updateStudentLeadField(id, field, value) {
 }
 
 async function deleteStudentLead(id) {
-  if (!confirm('Supprimer ce lead ?')) return;
+  if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
   await fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' });
   await loadStudentData(); renderStudentLeadTable();
 }
@@ -444,7 +446,7 @@ async function renderStudentRecruits() {
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (r.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteRecruit(' + r.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Aucune modèle</td></tr>';
+  }).join('') || '<tr><td colspan="5">' + emptyStateHTML('users', 'Aucune modèle en recrutement') + '</td></tr>';
 }
 
 function showRecruitForm() {
@@ -474,7 +476,7 @@ async function updateRecruit(id, status) {
 }
 
 async function deleteRecruit(id) {
-  if (!confirm('Supprimer ?')) return;
+  if (!(await confirmDelete('Supprimer cette recrue ? Cette action est irréversible.'))) return;
   await fetch('/api/student-recruits/' + id, { method:'DELETE', credentials:'include' });
   renderStudentRecruits();
 }
@@ -515,7 +517,7 @@ async function renderStudentModels() {
         <div><span style="color:var(--text3)">Commission due:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
       </div>
     </div>`;
-  }).join('') || '<div class="panel" style="padding:24px;text-align:center;color:var(--text3)">Aucun modèle</div>';
+  }).join('') || '<div class="panel">' + emptyStateHTML('users', 'Aucun modèle', '+ Ajouter un modèle', 'showStudentModelForm()') + '</div>';
 }
 
 function showStudentModelForm() {
@@ -546,7 +548,7 @@ async function updateStudentModel(id, data) {
 }
 
 async function deleteStudentModel(id) {
-  if (!confirm('Supprimer ce modèle et tous ses revenus ?')) return;
+  if (!(await confirmDelete('Supprimer ce modèle et tous ses revenus ? Cette action est irréversible.'))) return;
   await fetch('/api/student-models/' + id, { method:'DELETE', credentials:'include' });
   renderStudentModels();
 }
@@ -588,7 +590,7 @@ async function renderStudentRevenue() {
       ${studentData.revenue.map(r => {
         const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
         return '<tr><td data-label="Mois" class="mc-half">' + r.month + '</td><td data-label="Modèle" class="mc-half"><strong>' + r.model_name + '</strong></td><td data-label="Revenue" class="mc-half" style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td><td data-label="Commission" class="mc-half" style="color:var(--accent)">$' + comm + ' (' + r.commission_rate + '%)</td></tr>';
-      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Aucun revenu</td></tr>'}
+      }).join('') || '<tr><td colspan="4">' + emptyStateHTML('dollar', 'Aucun revenu enregistré') + '</td></tr>'}
     </tbody></table></div>
   `;
 
@@ -719,7 +721,7 @@ async function renderStudentResources() {
           </div>`).join('')}
         </div>
       </div>
-    `).join('') || '<div class="panel" style="padding:24px;text-align:center;color:var(--text3)">Aucune ressource</div>'}
+    `).join('') || '<div class="panel">' + emptyStateHTML('book', 'Aucune ressource disponible') + '</div>'}
   `;
 }
 
@@ -763,7 +765,7 @@ async function addResource() {
 }
 
 async function deleteResource(id) {
-  if (!confirm('Supprimer cette ressource ?')) return;
+  if (!(await confirmDelete('Supprimer cette ressource ? Cette action est irréversible.'))) return;
   await fetch('/api/resources/' + id, { method:'DELETE', credentials:'include' });
   renderStudentResources();
 }
@@ -975,7 +977,7 @@ async function renderStudentTasks() {
     + '<div id="student-task-form-wrap"></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:16px">'
     + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">À faire</h3>'
-    + (pending.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px;font-size:13px">Aucune tâche en cours</div>' : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
+    + (pending.length === 0 ? emptyStateHTML('clipboard', 'Aucune tâche en cours', '+ Créer une tâche', 'showStudentTaskForm()') : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
     + '</div>'
     + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">Terminées</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
 }
@@ -1020,7 +1022,7 @@ async function updateStudentTaskStatus(id, status) {
 }
 
 async function deleteStudentTask(id) {
-  if (!confirm('Supprimer cette tâche ?')) return;
+  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   renderStudentTasks();
 }

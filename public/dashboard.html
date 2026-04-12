@@ -105,6 +105,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
+    min-height: 44px;
     border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
@@ -512,7 +513,7 @@
 
   .modal-title { font-size: 16px; font-weight: 700; }
   .modal-close {
-    width: 32px; height: 32px;
+    width: 44px; height: 44px;
     border-radius: 8px;
     background: var(--bg3);
     border: none;
@@ -546,6 +547,31 @@
   }
   .form-input:focus, .form-select:focus { border-color: var(--accent); }
   .form-select option { background: var(--bg3); color: var(--text); }
+
+  /* Toggle switch */
+  .toggle-slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg4);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+  input:checked + .toggle-slider {
+    background: var(--accent);
+  }
+  input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+  }
 
   .modal-footer {
     display: flex; gap: 10px; justify-content: flex-end;
@@ -769,6 +795,11 @@
     font-size: 12px;
     font-weight: 600;
     transition: all 0.2s;
+    min-height: 36px;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .btn-delete-small:hover {
     background: var(--red);
@@ -882,8 +913,10 @@
 
     /* Boutons touch-friendly */
     .btn, .btn-primary, button { min-height: 44px; font-size: 14px; }
-    .lead-filter, .perf-period { min-height: 36px !important; font-size: 13px !important; }
+    .lead-filter, .perf-period, .task-filter, .coaching-lead-filter { min-height: 44px !important; font-size: 13px !important; padding: 8px 16px !important; }
     select.form-input { min-height: 44px; }
+    .btn-delete-small, .btn-delete { min-height: 44px; min-width: 44px; }
+    .nav-item { min-height: 48px; }
 
     /* Tableaux -> Cartes */
     .table.mobile-cards { min-width: 0; }
@@ -942,6 +975,108 @@
     to { opacity: 0; transform: translateY(-10px); }
   }
   .section.active { animation: fadeIn 0.3s ease; }
+
+  /* ===== SKELETON LOADING ===== */
+  @keyframes skeletonPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+  .skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .skeleton-card {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 20px;
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+  }
+  .skeleton-card .sk-line {
+    background: var(--bg4);
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .skeleton-card .sk-line:last-child { margin-bottom: 0; }
+  .skeleton-card .sk-line-sm { height: 12px; width: 60%; }
+  .skeleton-card .sk-line-lg { height: 28px; width: 40%; }
+  .skeleton-table {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .skeleton-table .sk-row {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+  }
+  .skeleton-table .sk-row:last-child { border-bottom: none; }
+  .skeleton-table .sk-cell {
+    background: var(--bg4);
+    border-radius: 6px;
+    height: 14px;
+  }
+  @media (max-width: 1200px) { .skeleton-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 400px) { .skeleton-grid { grid-template-columns: 1fr; } }
+
+  /* ===== EMPTY STATES ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .empty-state-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .empty-state-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--accent2);
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .empty-state-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+
+  /* ===== CONFIRM DELETE MODAL ===== */
+  .confirm-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--red-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .confirm-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--red);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 </style>
 </head>
 <body>
@@ -1082,6 +1217,21 @@
         <div class="page-subtitle">Vue d'ensemble de ton agence</div>
       </div>
       <div class="header-actions" id="dashboard-actions"></div>
+    </div>
+    <div id="app-skeleton">
+      <div class="skeleton-grid">
+        <div class="skeleton-card"><div class="sk-line sk-line-sm"></div><div class="sk-line sk-line-lg"></div></div>
+        <div class="skeleton-card" style="animation-delay:0.15s"><div class="sk-line sk-line-sm"></div><div class="sk-line sk-line-lg"></div></div>
+        <div class="skeleton-card" style="animation-delay:0.3s"><div class="sk-line sk-line-sm"></div><div class="sk-line sk-line-lg"></div></div>
+        <div class="skeleton-card" style="animation-delay:0.45s"><div class="sk-line sk-line-sm"></div><div class="sk-line sk-line-lg"></div></div>
+      </div>
+      <div class="skeleton-table">
+        <div class="sk-row"><div class="sk-cell" style="flex:2"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div></div>
+        <div class="sk-row" style="animation-delay:0.1s"><div class="sk-cell" style="flex:2"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div></div>
+        <div class="sk-row" style="animation-delay:0.2s"><div class="sk-cell" style="flex:2"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div></div>
+        <div class="sk-row" style="animation-delay:0.3s"><div class="sk-cell" style="flex:2"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div></div>
+        <div class="sk-row" style="animation-delay:0.4s"><div class="sk-cell" style="flex:2"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div><div class="sk-cell" style="flex:1"></div></div>
+      </div>
     </div>
     <div id="dashboard-content"></div>
   </div>
@@ -1308,7 +1458,7 @@
 
     <!-- Recherche -->
     <div style="margin-bottom:16px">
-      <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderLeads()" style="max-width:350px">
+      <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderLeads()" style="max-width:350px">
     </div>
 
     <!-- Tableau des leads -->
@@ -1583,21 +1733,22 @@
 
         <!-- TAB: Notifications -->
         <div class="settings-pane" id="settings-pane-notifications">
+          <!-- Connexion WhatsApp -->
           <div class="panel" style="padding:24px;margin-bottom:20px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">WhatsApp</h3>
-            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Reçois des notifications automatiques sur WhatsApp (résumé quotidien, alertes leads, calls)</p>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Connexion WhatsApp</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Configure ta connexion CallMeBot pour recevoir les notifications</p>
             <div style="display:grid;gap:12px;max-width:500px">
               <div>
                 <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Fournisseur</label>
                 <select id="setting-wa-provider" class="form-input"><option value="callmebot">CallMeBot (gratuit)</option><option value="twilio">Twilio</option></select>
               </div>
               <div>
-                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Numéro WhatsApp (avec indicatif)</label>
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Numéro WhatsApp principal (avec indicatif)</label>
                 <input type="text" id="setting-wa-number" class="form-input" placeholder="+33612345678">
               </div>
               <div>
                 <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Clé API</label>
-                <input type="text" id="setting-wa-apikey" class="form-input" placeholder="Clé API">
+                <input type="text" id="setting-wa-apikey" class="form-input" placeholder="Clé API CallMeBot">
               </div>
               <div style="display:flex;gap:10px">
                 <button class="btn btn-primary" onclick="saveWhatsAppSettings()">Sauvegarder</button>
@@ -1605,29 +1756,87 @@
               </div>
             </div>
           </div>
+
+          <!-- Destinataires supplémentaires -->
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Destinataires supplémentaires</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Ajoute d'autres numéros qui recevront les rapports. Format: numéro:cléAPI (un par ligne)</p>
+            <div style="max-width:500px">
+              <textarea id="setting-wa-extra" class="form-input" rows="3" placeholder="+33600000000:apikey123&#10;+33600000001:apikey456" style="resize:vertical;font-size:13px"></textarea>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">Chaque destinataire doit avoir configuré CallMeBot avec son propre numéro et sa propre clé API</div>
+            </div>
+          </div>
+
+          <!-- Rapports programmés -->
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Rapports programmés</h3>
+            <div style="display:grid;gap:12px;max-width:500px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div style="flex:1">
+                  <div style="font-size:14px;font-weight:600">📊 Rapport quotidien</div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:4px">Revenus, top modèles, leads, équipe absente</div>
+                  <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                    <label style="font-size:12px;color:var(--text2)">Heure d'envoi:</label>
+                    <input type="time" id="setting-notif-daily-hour" class="form-input" value="20:00" style="width:100px;padding:6px 8px;font-size:12px">
+                  </div>
+                </div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-daily" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div>
+                  <div style="font-size:14px;font-weight:600">📋 Rapport hebdomadaire</div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:4px">Chaque lundi à 9h — revenus, évolution, objectifs</div>
+                </div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-weekly" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:4px">
+                <button class="btn" style="background:var(--blue-bg);color:var(--blue);border:none;cursor:pointer;font-size:12px" onclick="testDailyReport()">Tester rapport quotidien</button>
+                <button class="btn" style="background:var(--blue-bg);color:var(--blue);border:none;cursor:pointer;font-size:12px" onclick="testWeeklyReport()">Tester rapport hebdo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alertes temps réel -->
           <div class="panel" style="padding:24px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Alertes automatiques</h3>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Alertes temps réel</h3>
             <div style="display:grid;gap:10px;max-width:500px">
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
-                <div><div style="font-size:13px;font-weight:600">Résumé quotidien</div><div style="font-size:11px;color:var(--text3)">Envoyé à 21h chaque jour</div></div>
-                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div><div style="font-size:14px;font-weight:600">🎉 Lead signé</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Alerte immédiate quand un lead passe en "Signé"</div></div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-lead-signed" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
-                <div><div style="font-size:13px;font-weight:600">Lead passe en Discussion chaude</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
-                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div><div style="font-size:14px;font-weight:600">🔥 Lead chaud / Call prévu</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Quand un lead passe en "Talking Warm" ou "Call Booked"</div></div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-lead-warm" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
-                <div><div style="font-size:13px;font-weight:600">Lead passe en Call prévu</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
-                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div><div style="font-size:14px;font-weight:600">🚀 Objectif revenu dépassé</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Quand un modèle dépasse son objectif journalier</div></div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-revenue-obj" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
-                <div><div style="font-size:13px;font-weight:600">Lead signé</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
-                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg3);border-radius:10px">
+                <div><div style="font-size:14px;font-weight:600">⚠️ Chatter inactif</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Aucune activité détectée depuis +2h pendant un shift actif</div></div>
+                <label style="position:relative;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+                  <input type="checkbox" id="setting-notif-inactive-chatter" checked style="opacity:0;width:0;height:0">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg3);border-radius:8px">
-                <div><div style="font-size:13px;font-weight:600">Demande de call élève</div><div style="font-size:11px;color:var(--text3)">Notification immédiate</div></div>
-                <span style="color:var(--green);font-size:12px;font-weight:600">Actif</span>
-              </div>
+            </div>
+            <div style="margin-top:16px">
+              <button class="btn btn-primary" onclick="saveNotifSettings()">Sauvegarder les notifications</button>
             </div>
           </div>
         </div>
@@ -1904,6 +2113,22 @@
   </div>
 </div>
 
+<!-- Modal: Confirm Delete -->
+<div class="modal-overlay" id="modal-confirm-delete">
+  <div class="modal" style="width:400px">
+    <div class="modal-body" style="padding:32px 24px;text-align:center">
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14M10 11v6M14 11v6"/></svg>
+      </div>
+      <div id="confirm-delete-message" style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:24px">Supprimer cet élément ? Cette action est irréversible.</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-secondary" onclick="confirmDeleteNo()">Annuler</button>
+        <button class="btn" style="background:var(--red);color:white" onclick="confirmDeleteYes()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ========== GLOBAL STATE ==========
 let currentUser = null;
@@ -1979,6 +2204,9 @@ async function handleLogout() {
 
 // ========== DATA LOADING ==========
 async function loadAllData() {
+  const skeleton = document.getElementById('app-skeleton');
+  const content = document.getElementById('dashboard-content');
+  if (skeleton && !allModels.length) { skeleton.style.display = 'block'; if (content) content.style.display = 'none'; }
   try {
     const [dashboard, students, team, tasks, calls, models, accounts, stats] = await Promise.all([
       fetch('/api/dashboard', { credentials: 'include' }).then(r => r.json()),
@@ -2001,6 +2229,9 @@ async function loadAllData() {
     allStats = stats;
   } catch (err) {
     console.error('Data loading error:', err);
+  } finally {
+    if (skeleton) skeleton.style.display = 'none';
+    if (content) content.style.display = '';
   }
 }
 
@@ -2119,10 +2350,62 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', function(e) {
     if (e.target === this) {
       const modalName = this.id.replace('modal-', '');
+      if (modalName === 'confirm-delete') { confirmDeleteNo(); return; }
       closeModal(modalName);
     }
   });
 });
+
+// ========== UTILITIES ==========
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+const emptyStateSVG = {
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>',
+  users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+  dollar: '<svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  book: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>',
+  message: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+};
+
+function emptyStateHTML(iconKey, title, ctaText, ctaAction) {
+  return '<div class="empty-state">'
+    + '<div class="empty-state-icon">' + (emptyStateSVG[iconKey] || emptyStateSVG.search) + '</div>'
+    + '<div class="empty-state-title">' + title + '</div>'
+    + (ctaText ? '<button class="btn btn-primary" onclick="' + ctaAction + '">' + ctaText + '</button>' : '')
+    + '</div>';
+}
+
+let _confirmDeleteResolve = null;
+function confirmDelete(message) {
+  return new Promise(function(resolve) {
+    _confirmDeleteResolve = resolve;
+    document.getElementById('confirm-delete-message').textContent = message || 'Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.';
+    document.getElementById('modal-confirm-delete').classList.add('show');
+  });
+}
+function confirmDeleteYes() {
+  document.getElementById('modal-confirm-delete').classList.remove('show');
+  if (_confirmDeleteResolve) _confirmDeleteResolve(true);
+  _confirmDeleteResolve = null;
+}
+function confirmDeleteNo() {
+  document.getElementById('modal-confirm-delete').classList.remove('show');
+  if (_confirmDeleteResolve) _confirmDeleteResolve(false);
+  _confirmDeleteResolve = null;
+}
+
+// ========== DEBOUNCED SEARCH ==========
+const debouncedRenderLeads = debounce(function() { renderLeads(); }, 300);
+const debouncedRenderCoachingLeadTable = debounce(function() { renderCoachingLeadTable(); }, 300);
 
 // ========== FORMS ==========
 async function submitForm(formName) {
@@ -2748,7 +3031,7 @@ async function editPlanShift(id) {
 }
 
 async function deletePlanShift(id) {
-  if (!confirm('Supprimer ce shift ?')) return;
+  if (!(await confirmDelete('Supprimer ce shift ? Cette action est irréversible.'))) return;
   await fetch('/api/planning-shifts/' + id, { method: 'DELETE', credentials: 'include' });
   showToast('Shift supprimé', 'success');
   renderPlanning();
@@ -2892,7 +3175,7 @@ function renderTasks() {
   if (taskView === 'week') { renderTaskWeek(container, filtered); return; }
 
   // Vue liste
-  container.innerHTML = filtered.length === 0 ? '<div class="panel" style="padding:24px;text-align:center;color:var(--text3)">Aucune tâche</div>' :
+  container.innerHTML = filtered.length === 0 ? '<div class="panel">' + emptyStateHTML('clipboard', 'Aucune tâche', '+ Nouvelle tâche', 'showTaskForm()') + '</div>' :
     '<div style="display:grid;gap:10px">' + filtered.map(function(t) { return renderTaskCard(t); }).join('') + '</div>';
 }
 
@@ -3030,7 +3313,7 @@ async function updateTaskStatus(id, status) {
 }
 
 async function deleteTask(id) {
-  if (!confirm('Supprimer cette tâche ?')) return;
+  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   allTasks = await fetch('/api/tasks', { credentials: 'include' }).then(function(r) { return r.json(); });
   renderTasks();
@@ -3518,7 +3801,7 @@ async function renderCoachingOutreach() {
     }).join('')
     + '</div>'
     // Recherche
-    + '<div style="margin-bottom:12px"><input type="text" id="coaching-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="renderCoachingLeadTable()" style="max-width:350px"></div>'
+    + '<div style="margin-bottom:12px"><input type="text" id="coaching-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderCoachingLeadTable()" style="max-width:350px"></div>'
     // Tableau
     + '<div style="overflow-x:auto"><table class="table mobile-cards" id="coaching-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>';
 
@@ -3556,7 +3839,7 @@ function renderCoachingLeadTable() {
       + '<td data-label="Notes" class="mc-full"><input type="text" value="' + (l.notes||'').replace(/"/g,'&quot;') + '" onchange="updateCoachingLead(' + l.id + ',{notes:this.value})" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;font-size:12px;width:100%;font-family:inherit"></td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteCoachingLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
 }
 
 async function updateCoachingLead(id, data) {
@@ -3568,7 +3851,7 @@ async function updateCoachingLead(id, data) {
 }
 
 async function deleteCoachingLead(id) {
-  if (!confirm('Supprimer ce lead ?')) return;
+  if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
   await fetch('/api/student-leads/' + id, { method: 'DELETE', credentials: 'include' });
   coachingOutreachLeads = coachingOutreachLeads.filter(function(l) { return l.id !== id; });
   renderCoachingLeadTable();
@@ -3576,8 +3859,7 @@ async function deleteCoachingLead(id) {
 
 async function deleteAllCoachingLeads() {
   var label = coachingOutreachMarket === 'us' ? 'US' : 'FR';
-  if (!confirm('Supprimer TOUS les leads ' + label + ' de cet élève ?')) return;
-  if (!confirm('Tu es sûr ? Tous les leads seront supprimés définitivement.')) return;
+  if (!(await confirmDelete('Supprimer TOUS les leads ' + label + ' de cet élève ? Cette action est irréversible.'))) return;
   var res = await fetch('/api/student-leads/all?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket, { method: 'DELETE', credentials: 'include' });
   if (res.ok) { showToast('Leads supprimés', 'success'); renderCoachingOutreach(); }
 }
@@ -3848,7 +4130,7 @@ async function renderCoachingTasks() {
   container.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="coachingShowTaskForm()">+ Nouvelle tâche</button></div>'
     + '<div id="coaching-task-form-wrap"></div>'
     + '<div style="margin-bottom:12px"><h4 style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:8px">À faire (' + pending.length + ')</h4>'
-    + (pending.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:12px;font-size:12px">Aucune tâche en cours</div>' : '<div style="display:grid;gap:8px">' + pending.map(card).join('') + '</div>')
+    + (pending.length === 0 ? emptyStateHTML('clipboard', 'Aucune tâche en cours') : '<div style="display:grid;gap:8px">' + pending.map(card).join('') + '</div>')
     + '</div>'
     + (completed.length > 0 ? '<div><h4 style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">Terminées (' + completed.length + ')</h4><div style="display:grid;gap:8px">' + completed.map(card).join('') + '</div></div>' : '');
 }
@@ -3893,7 +4175,7 @@ async function coachingUpdateTaskStatus(id, status) {
 }
 
 async function coachingDeleteTask(id) {
-  if (!confirm('Supprimer cette tâche ?')) return;
+  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   renderCoachingTasks();
 }
@@ -4173,7 +4455,7 @@ function formatChartDate(dateStr, days) {
 
 // ========== DELETE OPERATIONS ==========
 async function deleteStudent(id) {
-  if (!confirm('Supprimer cet élève?')) return;
+  if (!(await confirmDelete('Supprimer cet élève ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/students/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4182,7 +4464,7 @@ async function deleteStudent(id) {
 }
 
 async function deleteTeamMember(id) {
-  if (!confirm('Supprimer ce membre?')) return;
+  if (!(await confirmDelete('Supprimer ce membre ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/team/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4191,7 +4473,7 @@ async function deleteTeamMember(id) {
 }
 
 async function deleteTask(id) {
-  if (!confirm('Supprimer cette tâche?')) return;
+  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4200,7 +4482,7 @@ async function deleteTask(id) {
 }
 
 async function deleteModel(id) {
-  if (!confirm('Supprimer ce modèle?')) return;
+  if (!(await confirmDelete('Supprimer ce modèle ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/models/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4250,7 +4532,7 @@ async function loadModelPlanning(modelId) {
       + '<a href="' + p.drive_link + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Ouvrir</a>'
       + '<button onclick="deletePlanning(' + p.id + ',' + modelId + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px">✕</button>'
       + '</div>';
-  }).join('') || '<div style="font-size:11px;color:var(--text3)">Aucun planning</div>';
+  }).join('') || '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text3)">' + emptyStateSVG.calendar.replace('width="28"','width="20"') + ' Aucun planning</div>';
 }
 
 async function deletePlanning(id, modelId) {
@@ -4259,7 +4541,7 @@ async function deletePlanning(id, modelId) {
 }
 
 async function deleteAccount(id) {
-  if (!confirm('Supprimer ce compte?')) return;
+  if (!(await confirmDelete('Supprimer ce compte ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4268,7 +4550,7 @@ async function deleteAccount(id) {
 }
 
 async function deleteCall(id) {
-  if (!confirm('Supprimer cet appel?')) return;
+  if (!(await confirmDelete('Supprimer cet appel ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/calls/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -4373,7 +4655,7 @@ function renderShifts() {
       <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${s.shift_notes || '-'}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucun rapport de shift</td></tr>';
+  }).join('') || '<tr><td colspan="9">' + emptyStateHTML('clock', 'Aucun rapport de shift') + '</td></tr>';
 }
 
 function showAddShiftForm() {
@@ -4415,7 +4697,7 @@ async function addShift() {
 }
 
 async function deleteShift(id) {
-  if (!confirm('Supprimer ce rapport ?')) return;
+  if (!(await confirmDelete('Supprimer ce rapport ? Cette action est irréversible.'))) return;
   await fetch('/api/shifts/' + id, { method: 'DELETE', credentials: 'include' });
   await loadShifts();
   renderShifts();
@@ -4773,7 +5055,7 @@ function renderLeads() {
       <td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">${date}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Aucun lead</td></tr>';
+  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
 }
 
 function showToast(message, type = 'info') {
@@ -4899,7 +5181,7 @@ async function updateLeadStatus(id, status) {
 }
 
 async function deleteLead(id) {
-  if (!confirm('Supprimer ce lead ?')) return;
+  if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
   await fetch('/api/leads/' + id, { method: 'DELETE', credentials: 'include' });
   await loadLeads();
   renderLeads();
@@ -4918,7 +5200,7 @@ function filterLeads(filter, btn) {
 }
 
 async function importCSV() {
-  if (!confirm('Importer tous les leads du fichier CSV (Gaby) ?')) return;
+  if (!(await confirmDelete('Importer tous les leads du fichier CSV ? Les leads existants seront mis à jour.'))) return;
   const btn = document.getElementById('btn-import-csv');
   btn.textContent = 'Import en cours...';
   btn.disabled = true;
@@ -5043,7 +5325,7 @@ function renderSettings() {
         <strong>${u.display_name}</strong> <span style="color:var(--text3);font-size:12px">@${u.username}</span>
       </td>
       <td data-label="Mdp actuel" class="mc-half">
-        <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--yellow)">${u.plain_password || '???'}</code>
+        <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--text3)">••••••</code>
       </td>
       <td data-label="Rôle" class="mc-half">
         <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
@@ -5144,7 +5426,7 @@ async function resetPasswords(role, inputId) {
   const input = document.getElementById(inputId);
   const pwd = input.value.trim();
   if (!pwd || pwd.length < 4) { showToast('Mot de passe trop court (min 4 caractères)', 'error'); return; }
-  if (!confirm(`Réinitialiser le mot de passe de tous les ${role}s ?`)) return;
+  if (!(await confirmDelete(`Réinitialiser le mot de passe de tous les ${role}s ? Cette action est irréversible.`))) return;
   const res = await fetch('/api/admin/reset-passwords', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -5243,7 +5525,7 @@ async function changeUserPassword(userId) {
 }
 
 async function deleteUser(userId) {
-  if (!confirm('Supprimer cet utilisateur ?')) return;
+  if (!(await confirmDelete('Supprimer cet utilisateur ? Cette action est irréversible.'))) return;
   const res = await fetch(`/api/users/${userId}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadSettings();
@@ -5251,7 +5533,7 @@ async function deleteUser(userId) {
   }
 }
 
-// ============ WHATSAPP SETTINGS ============
+// ============ WHATSAPP & NOTIFICATION SETTINGS ============
 async function saveWhatsAppSettings() {
   await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({
@@ -5260,7 +5542,7 @@ async function saveWhatsAppSettings() {
       whatsapp_api_key: document.getElementById('setting-wa-apikey').value.trim()
     })
   });
-  showToast('Paramètres WhatsApp sauvegardés', 'success');
+  showToast('Connexion WhatsApp sauvegardée', 'success');
 }
 
 async function testWhatsApp() {
@@ -5269,10 +5551,49 @@ async function testWhatsApp() {
   showToast('Message test envoyé !', 'success');
 }
 
+async function testDailyReport() {
+  showToast('Envoi du rapport quotidien...', 'info');
+  await fetch('/api/admin/test-daily-report', { method: 'POST', credentials: 'include' });
+  showToast('Rapport quotidien envoyé !', 'success');
+}
+
+async function testWeeklyReport() {
+  showToast('Envoi du rapport hebdomadaire...', 'info');
+  await fetch('/api/admin/test-weekly-report', { method: 'POST', credentials: 'include' });
+  showToast('Rapport hebdomadaire envoyé !', 'success');
+}
+
+async function saveNotifSettings() {
+  const extra = document.getElementById('setting-wa-extra').value.trim().split('\n').map(s => s.trim()).filter(Boolean).join(',');
+  const res = await fetch('/api/admin/save-notif-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({
+      notif_daily_report: document.getElementById('setting-notif-daily').checked ? 'true' : 'false',
+      notif_weekly_report: document.getElementById('setting-notif-weekly').checked ? 'true' : 'false',
+      notif_alert_lead_signed: document.getElementById('setting-notif-lead-signed').checked ? 'true' : 'false',
+      notif_alert_lead_warm: document.getElementById('setting-notif-lead-warm').checked ? 'true' : 'false',
+      notif_alert_revenue_objective: document.getElementById('setting-notif-revenue-obj').checked ? 'true' : 'false',
+      notif_alert_inactive_chatter: document.getElementById('setting-notif-inactive-chatter').checked ? 'true' : 'false',
+      notif_daily_hour: document.getElementById('setting-notif-daily-hour').value || '20:00',
+      whatsapp_extra_recipients: extra
+    })
+  });
+  if (res.ok) showToast('Notifications sauvegardées !', 'success');
+  else showToast('Erreur lors de la sauvegarde', 'error');
+}
+
 function loadWhatsAppSettings() {
   if (agencySettings.whatsapp_provider) document.getElementById('setting-wa-provider').value = agencySettings.whatsapp_provider;
   if (agencySettings.whatsapp_number) document.getElementById('setting-wa-number').value = agencySettings.whatsapp_number;
   if (agencySettings.whatsapp_api_key) document.getElementById('setting-wa-apikey').value = agencySettings.whatsapp_api_key;
+  // Notification toggles
+  document.getElementById('setting-notif-daily').checked = agencySettings.notif_daily_report !== 'false';
+  document.getElementById('setting-notif-weekly').checked = agencySettings.notif_weekly_report !== 'false';
+  document.getElementById('setting-notif-lead-signed').checked = agencySettings.notif_alert_lead_signed !== 'false';
+  document.getElementById('setting-notif-lead-warm').checked = agencySettings.notif_alert_lead_warm !== 'false';
+  document.getElementById('setting-notif-revenue-obj').checked = agencySettings.notif_alert_revenue_objective !== 'false';
+  document.getElementById('setting-notif-inactive-chatter').checked = agencySettings.notif_alert_inactive_chatter !== 'false';
+  if (agencySettings.notif_daily_hour) document.getElementById('setting-notif-daily-hour').value = agencySettings.notif_daily_hour;
+  if (agencySettings.whatsapp_extra_recipients) document.getElementById('setting-wa-extra').value = agencySettings.whatsapp_extra_recipients.split(',').join('\n');
 }
 
 async function loadDbSize() {
@@ -5433,7 +5754,7 @@ async function renderFinance() {
         + '<td data-label="Statut" class="mc-half"><select onchange="updatePayment(' + p.id + ',{status:this.value})" style="background:' + stBg + ';color:' + stColor + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><option value="pending"' + (p.status==='pending'?' selected':'') + '>En attente</option><option value="paid"' + (p.status==='paid'?' selected':'') + '>Payé</option><option value="cancelled"' + (p.status==='cancelled'?' selected':'') + '>Annulé</option></select></td>'
         + '<td data-label="Notes" class="mc-full" style="font-size:12px;color:var(--text2)">' + (p.notes||'-') + '</td>'
         + '<td data-label=""><button class="btn-delete-small" onclick="deletePayment(' + p.id + ')">✕</button></td></tr>';
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Aucun paiement</td></tr>'
+    }).join('') || '<tr><td colspan="6">' + emptyStateHTML('dollar', 'Aucun paiement') + '</td></tr>'
     + '</tbody></table></div>'
 
     // Objectifs revenus modèles
@@ -5503,7 +5824,7 @@ async function updatePayment(id, data) {
 }
 
 async function deletePayment(id) {
-  if (!confirm('Supprimer ce paiement ?')) return;
+  if (!(await confirmDelete('Supprimer ce paiement ? Cette action est irréversible.'))) return;
   await fetch('/api/payments/' + id, { method: 'DELETE', credentials: 'include' });
   renderFinance();
 }
@@ -5627,7 +5948,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
         });
       });
       // Vérifie les mises à jour toutes les 30 secondes
-      setInterval(() => reg.update(), 3000);
+      setInterval(() => reg.update(), 60000);
     });
   }
 </script>
