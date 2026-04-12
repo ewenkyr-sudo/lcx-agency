@@ -1146,18 +1146,26 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
 
 // Get shifts — chatter voit ses propres shifts, admin voit tout
 app.get('/api/shifts', authMiddleware, async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
   if (req.user.role === 'chatter') {
-    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 ORDER BY date DESC, created_at DESC', [req.user.id]);
-    return res.json(rows);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE user_id = $1', [req.user.id]);
+    const total = parseInt(countRows[0].total);
+    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 ORDER BY date DESC, created_at DESC LIMIT $2 OFFSET $3', [req.user.id, limit, offset]);
+    return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   if (req.user.role === 'admin') {
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts');
+    const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
       SELECT cs.*, u.display_name as chatter_name
       FROM chatter_shifts cs
       JOIN users u ON cs.user_id = u.id
       ORDER BY cs.date DESC, cs.created_at DESC
-    `);
-    return res.json(rows);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   res.status(403).json({ error: 'Accès refusé' });
 });
@@ -1233,14 +1241,19 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
 // Get leads — outreach voit ses propres leads, admin voit tout
 app.get('/api/leads', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-  // Tout le monde voit tous les leads agence
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads');
+  const total = parseInt(countRows[0].total);
   const { rows } = await pool.query(`
     SELECT ol.*, u.display_name as agent_name
     FROM outreach_leads ol
     JOIN users u ON ol.user_id = u.id
     ORDER BY ol.created_at DESC
-  `);
-  res.json(rows);
+    LIMIT $1 OFFSET $2
+  `, [limit, offset]);
+  res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
 // Add lead
@@ -2191,9 +2204,13 @@ app.get('/api/online-users', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
-  const limit = parseInt(req.query.limit) || 100;
-  const { rows } = await pool.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1', [limit]);
-  res.json(rows);
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log');
+  const total = parseInt(countRows[0].total);
+  const { rows } = await pool.query('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
+  res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
 // Save notification settings & reschedule crons

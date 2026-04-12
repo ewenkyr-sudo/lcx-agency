@@ -2236,7 +2236,7 @@ async function loadAllData() {
   const content = document.getElementById('dashboard-content');
   if (skeleton && !allModels.length) { skeleton.style.display = 'block'; if (content) content.style.display = 'none'; }
   try {
-    const [dashboard, students, team, tasks, calls, models, accounts, stats] = await Promise.all([
+    const [dashboard, students, team, tasks, calls, models, accounts] = await Promise.all([
       fetch('/api/dashboard', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/students', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/team', { credentials: 'include' }).then(r => r.json()),
@@ -2244,7 +2244,6 @@ async function loadAllData() {
       fetch('/api/calls', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/models', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/accounts', { credentials: 'include' }).then(r => r.json()),
-      fetch('/api/stats', { credentials: 'include' }).then(r => r.json()),
     ]);
 
     window.dashboardData = dashboard;
@@ -2254,7 +2253,6 @@ async function loadAllData() {
     allCalls = calls;
     allModels = models;
     allAccounts = accounts;
-    allStats = stats;
   } catch (err) {
     console.error('Data loading error:', err);
   } finally {
@@ -2325,8 +2323,13 @@ function switchSection(e) {
     document.querySelector('.sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('show');
   }
-  // Charger les sections élève dynamiquement
+  // Charger les sections dynamiquement (lazy loading)
   const loaders = {
+    'planning': renderPlanning,
+    'chatters': renderChatters,
+    'outreach': renderOutreach,
+    'stats': renderStats,
+    'coaching': renderCoaching,
     'student-home': renderStudentHome,
     'student-outreach': renderStudentOutreach,
     'student-planning': renderStudentPlanning,
@@ -2432,8 +2435,18 @@ function confirmDeleteNo() {
 }
 
 // ========== DEBOUNCED SEARCH ==========
-const debouncedRenderLeads = debounce(function() { renderLeads(); }, 300);
+const debouncedRenderLeads = debounce(function() { leadsPage = 1; loadLeadsPage(); }, 300);
 const debouncedRenderCoachingLeadTable = debounce(function() { renderCoachingLeadTable(); }, 300);
+
+// ========== PAGINATION HELPER ==========
+function paginationHTML(page, totalPages, onPageFn) {
+  if (totalPages <= 1) return '';
+  return '<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0">'
+    + '<button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="' + onPageFn + '(' + (page - 1) + ')" ' + (page <= 1 ? 'disabled style="opacity:0.4;pointer-events:none;font-size:12px;padding:6px 14px"' : '') + '>← Précédent</button>'
+    + '<span style="font-size:13px;color:var(--text2)">Page ' + page + ' sur ' + totalPages + '</span>'
+    + '<button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="' + onPageFn + '(' + (page + 1) + ')" ' + (page >= totalPages ? 'disabled style="opacity:0.4;pointer-events:none;font-size:12px;padding:6px 14px"' : '') + '>Suivant →</button>'
+    + '</div>';
+}
 
 // ========== FORMS ==========
 async function submitForm(formName) {
@@ -2518,14 +2531,9 @@ async function submitForm(formName) {
 // ========== RENDERING SECTIONS ==========
 function renderAllSections() {
   renderDashboard();
-  renderPlanning();
   renderTasks();
   renderModels();
-  renderChatters();
-  renderOutreach();
   renderVA();
-  renderStats();
-  renderCoaching();
 }
 
 function renderDashboard() {
@@ -4863,13 +4871,26 @@ async function deleteCall(id) {
 
 // ========== CHATTER SHIFTS ==========
 let allShifts = [];
+let shiftsPage = 1;
+let shiftsTotalPages = 1;
 
 async function loadShifts() {
   if (currentUser.role !== 'chatter' && currentUser.role !== 'admin') return;
   try {
-    const res = await fetch('/api/shifts', { credentials: 'include' });
-    if (res.ok) allShifts = await res.json();
+    const res = await fetch('/api/shifts?page=' + shiftsPage + '&limit=25', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      allShifts = data.data;
+      shiftsPage = data.page;
+      shiftsTotalPages = data.totalPages;
+    }
   } catch (e) { console.error('Shifts load error:', e); }
+}
+
+async function loadShiftsPage(p) {
+  shiftsPage = Math.max(1, Math.min(p, shiftsTotalPages));
+  await loadShifts();
+  renderShifts();
 }
 
 async function loadChatterKPIs() {
@@ -4959,6 +4980,14 @@ function renderShifts() {
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="9">' + emptyStateHTML('clock', 'Aucun rapport de shift') + '</td></tr>';
+  // Pagination
+  var paginEl = document.getElementById('shifts-pagination');
+  if (!paginEl) {
+    paginEl = document.createElement('div');
+    paginEl.id = 'shifts-pagination';
+    document.getElementById('shifts-table').parentNode.after(paginEl);
+  }
+  paginEl.innerHTML = paginationHTML(shiftsPage, shiftsTotalPages, 'loadShiftsPage');
 }
 
 function showAddShiftForm() {
@@ -5186,6 +5215,8 @@ connectWebSocket();
 // ========== OUTREACH LEADS ==========
 let allLeads = [];
 let currentLeadFilter = 'all';
+let leadsPage = 1;
+let leadsTotalPages = 1;
 let outreachOptions = { script: [], account: [], type: [] };
 
 async function loadOutreachOptions() {
@@ -5218,9 +5249,20 @@ async function updateLeadField(id, field, value) {
 async function loadLeads() {
   if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
   try {
-    const res = await fetch('/api/leads', { credentials: 'include' });
-    if (res.ok) allLeads = await res.json();
+    const res = await fetch('/api/leads?page=' + leadsPage + '&limit=25', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      allLeads = data.data;
+      leadsPage = data.page;
+      leadsTotalPages = data.totalPages;
+    }
   } catch (e) { console.error('Leads load error:', e); }
+}
+
+async function loadLeadsPage(p) {
+  leadsPage = Math.max(1, Math.min(p, leadsTotalPages));
+  await loadLeads();
+  renderLeads();
 }
 
 async function loadOutreachKPIs() {
@@ -5359,6 +5401,14 @@ function renderLeads() {
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  // Pagination
+  var paginEl = document.getElementById('leads-pagination');
+  if (!paginEl) {
+    paginEl = document.createElement('div');
+    paginEl.id = 'leads-pagination';
+    document.getElementById('leads-table').parentNode.after(paginEl);
+  }
+  paginEl.innerHTML = paginationHTML(leadsPage, leadsTotalPages, 'loadLeadsPage');
 }
 
 function showToast(message, type = 'info') {
@@ -6156,13 +6206,20 @@ async function updateRevenueObj(id, data) {
 }
 
 // ============ ACTIVITY LOG SECTION ============
-async function renderActivityLog() {
+let activityLogPage = 1;
+let activityLogTotalPages = 1;
+
+async function renderActivityLog(page) {
   if (currentUser.role !== 'admin') return;
   var container = document.getElementById('activity-log-content');
   if (!container) return;
+  if (page) activityLogPage = page;
 
-  var res = await fetch('/api/activity-log?limit=200', { credentials: 'include' });
-  var logs = res.ok ? await res.json() : [];
+  var res = await fetch('/api/activity-log?page=' + activityLogPage + '&limit=25', { credentials: 'include' });
+  var result = res.ok ? await res.json() : { data: [], page: 1, totalPages: 1 };
+  var logs = result.data;
+  activityLogPage = result.page;
+  activityLogTotalPages = result.totalPages;
 
   var actionLabels = {
     'lead-talking-warm': { label: 'Lead discussion chaude', color: 'var(--yellow)', icon: '🔥' },
@@ -6170,11 +6227,12 @@ async function renderActivityLog() {
     'lead-signed': { label: 'Lead signé', color: 'var(--green)', icon: '✅' },
     'call-request': { label: 'Demande de call', color: 'var(--blue)', icon: '📞' },
     'clock-in': { label: 'Pointage entrée', color: 'var(--green)', icon: '🟢' },
-    'clock-out': { label: 'Pointage sortie', color: 'var(--red)', icon: '🔴' }
+    'clock-out': { label: 'Pointage sortie', color: 'var(--red)', icon: '🔴' },
+    'inactive-chatter-alert': { label: 'Alerte chatter inactif', color: 'var(--yellow)', icon: '⚠️' }
   };
 
   container.innerHTML = '<div class="panel" style="padding:20px">'
-    + '<div style="display:grid;gap:6px;max-height:600px;overflow-y:auto">'
+    + '<div style="display:grid;gap:6px">'
     + logs.map(function(l) {
       var info = actionLabels[l.action] || { label: l.action, color: 'var(--text2)', icon: '📝' };
       var date = new Date(l.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -6185,8 +6243,10 @@ async function renderActivityLog() {
         + '<span style="color:var(--text2)">' + (l.user_name || '?') + '</span>'
         + (l.details ? '<span style="color:var(--text3);font-size:12px">' + l.details + '</span>' : '')
         + '</div>';
-    }).join('') || '<div style="text-align:center;color:var(--text3);padding:20px">Aucune activité</div>'
-    + '</div></div>';
+    }).join('') || emptyStateHTML('clipboard', 'Aucune activité')
+    + '</div>'
+    + paginationHTML(activityLogPage, activityLogTotalPages, 'renderActivityLog')
+    + '</div>';
 }
 
 // ============ SHIFT CLOCK (pour outreach/chatters) ============
@@ -6250,7 +6310,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
           if (newWorker.state === 'activated') window.location.reload();
         });
       });
-      // Vérifie les mises à jour toutes les 30 secondes
+      // Vérifie les mises à jour toutes les 60 secondes
       setInterval(() => reg.update(), 60000);
     });
   }
