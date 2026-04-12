@@ -819,6 +819,169 @@ function getWeekStart() {
   return d.toISOString().split('T')[0];
 }
 
+// ========== STUDENT PLANNING (read-only week view) ==========
+let studentPlanDate = new Date();
+
+async function renderStudentPlanning() {
+  const c = document.getElementById('section-student-planning');
+  if (!c) return;
+
+  const mon = getMonday(studentPlanDate);
+  const sun = new Date(mon); sun.setDate(sun.getDate()+6);
+  const start = fmtDate(mon);
+  const end = fmtDate(sun);
+
+  const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
+  const [shifts, leaves] = await Promise.all([
+    f('/api/planning-shifts?start=' + start + '&end=' + end),
+    f('/api/leave-requests')
+  ]);
+
+  // Map shifts by date
+  const shiftsByDate = {};
+  shifts.forEach(s => {
+    const dk = s.shift_date.slice(0,10);
+    if (!shiftsByDate[dk]) shiftsByDate[dk] = [];
+    shiftsByDate[dk].push(s);
+  });
+
+  // Leave set
+  const leaveSet = {};
+  leaves.filter(l => l.status === 'accepted').forEach(l => {
+    const sd = new Date(l.start_date); const ed = new Date(l.end_date);
+    while (sd <= ed) { leaveSet[fmtDate(sd)] = true; sd.setDate(sd.getDate()+1); }
+  });
+
+  const days = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(mon); d.setDate(d.getDate()+i); days.push(d); }
+
+  let totalHours = 0;
+
+  let html = '<div class="page-header"><div><div class="page-title">Mon Planning</div><div class="page-subtitle">Semaine du ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun) + '</div></div></div>'
+    + '<div class="panel" style="padding:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<button onclick="studentPlanNavigate(-1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
+    + '<div style="text-align:center"><div style="font-size:15px;font-weight:700">' + mon.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}) + ' — ' + sun.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) + '</div></div>'
+    + '<button onclick="studentPlanNavigate(1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
+    + '</div>'
+    + '<div style="display:grid;gap:8px">';
+
+  days.forEach(d => {
+    const dk = fmtDate(d);
+    const isToday = dk === fmtDate(new Date());
+    const dayShifts = shiftsByDate[dk] || [];
+    const isLeave = leaveSet[dk];
+    const dayLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' });
+    const dayShiftEntries = dayShifts.filter(s => s.entry_type !== 'task');
+    const dayTaskEntries = dayShifts.filter(s => s.entry_type === 'task');
+
+    html += '<div style="background:' + (isToday ? 'rgba(139,92,246,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
+      + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + ';margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">Aujourd\'hui</span>' : '') + '</div>';
+
+    if (isLeave) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--red-bg);border-radius:8px;color:var(--red);font-weight:600;font-size:13px">Congé</div>';
+    } else {
+      if (dayShiftEntries.length > 0) {
+        dayShiftEntries.forEach(s => {
+          const st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES['custom'];
+          const timeStr = s.start_time && s.end_time ? s.start_time + ' → ' + s.end_time : '';
+          if (s.start_time && s.end_time && s.shift_type !== 'off') {
+            const sh = parseInt(s.start_time.split(':')[0]) + parseInt(s.start_time.split(':')[1])/60;
+            let eh = parseInt(s.end_time.split(':')[0]) + parseInt(s.end_time.split(':')[1])/60;
+            if (eh < sh) eh += 24;
+            totalHours += eh - sh;
+          }
+          html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
+            + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
+            + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
+            + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '')
+            + '</div>';
+        });
+      }
+      if (dayTaskEntries.length > 0) {
+        if (dayShiftEntries.length > 0) html += '<div style="height:1px;background:var(--border);margin:8px 0"></div>';
+        dayTaskEntries.forEach(s => {
+          const isUrgent = s.priority === 'urgent';
+          const desc = s.description || s.notes || '';
+          html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px;border-left:3px solid ' + (isUrgent ? 'var(--red)' : 'var(--green)') + '">'
+            + '<div style="min-width:50px">'
+            + (s.start_time ? '<div style="font-size:12px;font-weight:700;color:var(--text)">' + s.start_time + '</div>' : '')
+            + (s.end_time ? '<div style="font-size:10px;color:var(--text3)">' + s.end_time + '</div>' : '')
+            + '</div>'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + desc + '</div>'
+            + (isUrgent ? '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--red-bg);color:var(--red);font-weight:600;display:inline-block;margin-top:4px">URGENT</span>' : '')
+            + '</div></div>';
+        });
+      }
+      if (dayShifts.length === 0) {
+        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">Aucun shift ou tâche</div>';
+      }
+    }
+    html += '</div>';
+  });
+
+  html += '</div>'
+    + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg3);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-size:13px;color:var(--text2)">Total semaine</span>'
+    + '<span style="font-size:18px;font-weight:800;color:var(--accent)">' + totalHours.toFixed(0) + 'h</span>'
+    + '</div>'
+    + '</div>';
+
+  c.innerHTML = html;
+}
+
+function studentPlanNavigate(dir) {
+  studentPlanDate.setDate(studentPlanDate.getDate() + (dir * 7));
+  renderStudentPlanning();
+}
+
+// ========== STUDENT TASKS ==========
+async function renderStudentTasks() {
+  const c = document.getElementById('section-student-tasks');
+  if (!c) return;
+
+  const tasks = await fetch('/api/tasks', { credentials: 'include' }).then(r => r.ok ? r.json() : []);
+
+  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'En attente' }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'En cours' }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Terminée' } };
+
+  const pending = tasks.filter(t => t.status !== 'completed');
+  const completed = tasks.filter(t => t.status === 'completed');
+
+  function card(t) {
+    const isUrgent = t.priority === 'urgent';
+    const dl = t.deadline || '';
+    const today = new Date().toISOString().slice(0,10);
+    const overdue = dl && dl < today && t.status !== 'completed';
+    const borderColor = overdue ? 'var(--red)' : isUrgent ? 'var(--red)' : 'var(--accent)';
+    const st = statusColors[t.status] || statusColors['pending'];
+    return '<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
+      + (isUrgent ? '<span style="position:absolute;top:10px;right:10px;background:var(--red);color:white;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">URGENT</span>' : '')
+      + '<strong style="font-size:14px;display:block;margin-bottom:6px;' + (t.status === 'completed' ? 'text-decoration:line-through;opacity:0.5' : '') + '">' + t.title + '</strong>'
+      + (t.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + t.description + '</div>' : '')
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
+      + '<select onchange="updateStudentTaskStatus(' + t.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
+      + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En attente</option>'
+      + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En cours</option>'
+      + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">Terminée</option></select>'
+      + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text3)') + '">📅 ' + dl + (overdue ? ' (en retard)' : '') + '</div>' : '')
+      + (t.creator_name ? '<div style="color:var(--text3)">Par ' + t.creator_name + '</div>' : '')
+      + '</div></div>';
+  }
+
+  c.innerHTML = '<div class="page-header"><div><div class="page-title">Mes Tâches</div><div class="page-subtitle">' + pending.length + ' en cours · ' + completed.length + ' terminées</div></div></div>'
+    + '<div class="panel" style="padding:20px;margin-bottom:16px">'
+    + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">À faire</h3>'
+    + (pending.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px;font-size:13px">Aucune tâche en cours</div>' : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
+    + '</div>'
+    + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">Terminées</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
+}
+
+async function updateStudentTaskStatus(id, status) {
+  await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) });
+  renderStudentTasks();
+}
+
 // ========== INIT STUDENT SECTIONS ==========
 async function initStudentSections() {
   if (currentUser.role !== 'student' && currentUser.role !== 'admin') return;

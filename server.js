@@ -817,10 +817,19 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 // ============ TASKS CRUD ============
 app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
+  const filterUserId = req.query.student_user_id || req.query.user_id;
   if (req.user.role === 'admin') {
-    query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
-      FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
-      ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+    if (filterUserId) {
+      query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
+        FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
+        WHERE t.assigned_to_id = $1 OR t.created_by = $1
+        ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+      params = [filterUserId];
+    } else {
+      query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
+        FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
+        ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+    }
   } else {
     query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
       FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
