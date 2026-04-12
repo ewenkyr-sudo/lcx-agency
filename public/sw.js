@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lcx-agency-2026-04-12-planning-tasks';
+const CACHE_NAME = 'lcx-agency-2026-04-12-planning-tasks-2';
 const ASSETS = [
   '/',
   '/login.html',
