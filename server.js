@@ -2284,6 +2284,112 @@ app.put('/api/model-revenue-objectives/:id', authMiddleware, adminOnly, async (r
   res.json({ ok: true });
 });
 
+// ============ MODEL COCKPIT ============
+app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
+  try {
+    const modelId = parseInt(req.params.id);
+    const { rows: modelRows } = await pool.query('SELECT * FROM models WHERE id = $1', [modelId]);
+    if (modelRows.length === 0) return res.status(404).json({ error: 'Modèle introuvable' });
+    const model = modelRows[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentMonth = todayStr.slice(0, 7);
+
+    // Accounts & followers
+    const { rows: accounts } = await pool.query('SELECT * FROM accounts WHERE model_id = $1 ORDER BY platform', [modelId]);
+    const totalFollowers = accounts.reduce((s, a) => s + (a.current_followers || 0), 0);
+
+    // Revenue today
+    const { rows: revToday } = await pool.query(
+      "SELECT COALESCE(SUM(ppv_total),0) as ppv, COALESCE(SUM(tips_total),0) as tips FROM chatter_shifts WHERE model_name = $1 AND date = $2",
+      [model.name, todayStr]
+    );
+    const revenueToday = parseFloat(revToday[0].ppv) + parseFloat(revToday[0].tips);
+
+    // Revenue this month
+    const { rows: revMonth } = await pool.query(
+      "SELECT COALESCE(SUM(ppv_total),0) as ppv, COALESCE(SUM(tips_total),0) as tips FROM chatter_shifts WHERE model_name = $1 AND date >= $2",
+      [model.name, currentMonth + '-01']
+    );
+    const revenueMonth = parseFloat(revMonth[0].ppv) + parseFloat(revMonth[0].tips);
+    const ppvMonth = parseFloat(revMonth[0].ppv);
+    const tipsMonth = parseFloat(revMonth[0].tips);
+
+    // Revenue objective this month
+    const { rows: objRows } = await pool.query(
+      'SELECT * FROM model_revenue_objectives WHERE model_id = $1 AND month = $2', [modelId, currentMonth]
+    );
+    const objective = objRows[0] || { target: 0, current: 0 };
+
+    // Revenue last 30 days (daily)
+    const { rows: rev30 } = await pool.query(
+      "SELECT date, SUM(ppv_total) as ppv, SUM(tips_total) as tips FROM chatter_shifts WHERE model_name = $1 AND date >= (CURRENT_DATE - INTERVAL '30 days')::date::text GROUP BY date ORDER BY date",
+      [model.name]
+    );
+
+    // Revenue last 3 months (weekly)
+    const { rows: revWeekly } = await pool.query(
+      "SELECT date_trunc('week', date::date)::date::text as week, SUM(ppv_total) as ppv, SUM(tips_total) as tips FROM chatter_shifts WHERE model_name = $1 AND date >= (CURRENT_DATE - INTERVAL '3 months')::date::text GROUP BY week ORDER BY week",
+      [model.name]
+    );
+
+    // Assigned team members
+    const { rows: team } = await pool.query(
+      "SELECT tm.*, u.id as user_id FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id WHERE tm.role = 'chatter' ORDER BY tm.name"
+    );
+    const assignedTeam = team.filter(t => {
+      try { return JSON.parse(t.models_assigned || '[]').includes(model.name); } catch { return false; }
+    });
+
+    // Online status
+    const { rows: online } = await pool.query("SELECT user_id FROM active_sessions WHERE last_ping > NOW() - INTERVAL '5 minutes'");
+    const onlineIds = online.map(o => o.user_id);
+
+    // Team member revenue this month on this model
+    const { rows: teamRev } = await pool.query(
+      "SELECT user_id, SUM(ppv_total + tips_total) as revenue, COUNT(*) as shifts FROM chatter_shifts WHERE model_name = $1 AND date >= $2 GROUP BY user_id",
+      [model.name, currentMonth + '-01']
+    );
+    const teamRevMap = {};
+    teamRev.forEach(r => { teamRevMap[r.user_id] = { revenue: parseFloat(r.revenue), shifts: parseInt(r.shifts) }; });
+
+    // Today's shift clocks for assigned chatters
+    const { rows: todayClocks } = await pool.query(
+      "SELECT user_id, clock_in, clock_out, duration_minutes FROM shift_clocks WHERE clock_in::date = CURRENT_DATE ORDER BY clock_in"
+    );
+
+    // Recent activity (last 20 related to this model)
+    const { rows: activity } = await pool.query(
+      "SELECT * FROM activity_log WHERE details ILIKE $1 ORDER BY created_at DESC LIMIT 20",
+      ['%' + model.name + '%']
+    );
+
+    // Also get recent shifts as activity
+    const { rows: recentShifts } = await pool.query(
+      "SELECT cs.*, u.display_name as chatter_name FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id WHERE cs.model_name = $1 ORDER BY cs.created_at DESC LIMIT 10",
+      [model.name]
+    );
+
+    res.json({
+      model, accounts, totalFollowers,
+      revenueToday, ppvToday: parseFloat(revToday[0].ppv), tipsToday: parseFloat(revToday[0].tips),
+      revenueMonth, ppvMonth, tipsMonth,
+      objective: { target: parseFloat(objective.target), current: parseFloat(objective.current) },
+      rev30, revWeekly,
+      assignedTeam: assignedTeam.map(t => ({
+        ...t,
+        online: onlineIds.includes(t.user_id),
+        monthRevenue: teamRevMap[t.user_id]?.revenue || 0,
+        monthShifts: teamRevMap[t.user_id]?.shifts || 0,
+        todayClocks: todayClocks.filter(c => c.user_id === t.user_id)
+      })),
+      activity, recentShifts
+    });
+  } catch(e) {
+    console.error('Cockpit error:', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ============ PAYMENTS ============
 app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id ORDER BY p.month DESC, m.name');
