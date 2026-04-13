@@ -822,10 +822,6 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, created_at FROM users ORDER BY role, display_name');
-    return res.json(rows);
-  }
   const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, created_at FROM users WHERE agency_id = $1 ORDER BY role, display_name', [req.user.agency_id]);
   res.json(rows);
 });
@@ -870,10 +866,6 @@ app.get('/api/students', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM students WHERE user_id = $1', [req.user.id]);
     return res.json(rows);
   }
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id ORDER BY s.name');
-    return res.json(rows);
-  }
   const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id WHERE s.agency_id = $1 ORDER BY s.name', [req.user.agency_id]);
   res.json(rows);
 });
@@ -902,12 +894,6 @@ app.delete('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ TEAM MEMBERS CRUD ============
 app.get('/api/team', authMiddleware, async (req, res) => {
   const role = req.query.role;
-  const isPlatformAdmin = req.user.role === 'platform_admin';
-  if (isPlatformAdmin) {
-    let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id`;
-    if (role) { query += ` WHERE tm.role = $1 ORDER BY tm.name`; const { rows } = await pool.query(query, [role]); return res.json(rows); }
-    else { query += ` ORDER BY tm.name`; const { rows } = await pool.query(query); return res.json(rows); }
-  }
   let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id WHERE tm.agency_id = $1`;
   if (role) {
     query += ` AND tm.role = $2 ORDER BY tm.name`;
@@ -944,10 +930,6 @@ app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ MODELS CRUD ============
 app.get('/api/models', authMiddleware, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT * FROM models ORDER BY name');
-    return res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
-  }
   const { rows } = await pool.query('SELECT * FROM models WHERE agency_id = $1 ORDER BY name', [req.user.agency_id]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
 });
@@ -965,10 +947,6 @@ app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ ACCOUNTS CRUD ============
 app.get('/api/accounts', authMiddleware, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query(`SELECT a.*, m.name as model_name FROM accounts a JOIN models m ON a.model_id = m.id ORDER BY m.name, a.platform`);
-    return res.json(rows);
-  }
   const { rows } = await pool.query(`
     SELECT a.*, m.name as model_name FROM accounts a
     JOIN models m ON a.model_id = m.id WHERE m.agency_id = $1 ORDER BY m.name, a.platform
@@ -990,10 +968,6 @@ app.delete('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ DAILY STATS ============
 app.get('/api/stats', authMiddleware, async (req, res) => {
   const days = parseInt(req.query.days) || 7;
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query(`SELECT ds.*, a.handle, a.platform, a.current_followers, m.name as model_name FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text ORDER BY ds.date DESC, m.name, a.platform`, [days]);
-    return res.json(rows);
-  }
   const { rows } = await pool.query(`
     SELECT ds.*, a.handle, a.platform, a.current_followers, m.name as model_name
     FROM daily_stats ds
@@ -1018,7 +992,7 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
   const filterUserId = req.query.student_user_id || req.query.user_id;
-  const agencyFilter = req.user.role === 'platform_admin' ? '' : ' AND t.agency_id = ' + parseInt(req.user.agency_id);
+  const agencyFilter = ' AND t.agency_id = ' + parseInt(req.user.agency_id);
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     if (filterUserId) {
       query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
@@ -1105,12 +1079,11 @@ app.delete('/api/calls/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ DASHBOARD STATS ============
 app.get('/api/dashboard', authMiddleware, async (req, res) => {
   const aid = req.user.agency_id;
-  const isPlatform = req.user.role === 'platform_admin';
-  const af = isPlatform ? '' : ' AND m.agency_id = ' + parseInt(aid);
+  const af = ' AND m.agency_id = ' + parseInt(aid);
   const totalFollowers = (await pool.query('SELECT COALESCE(SUM(a.current_followers), 0) as total FROM accounts a JOIN models m ON a.model_id = m.id WHERE 1=1' + af)).rows[0].total;
   const modelsCount = (await pool.query("SELECT COUNT(*) as count FROM models m WHERE m.status = 'active'" + af)).rows[0].count;
-  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members' + (isPlatform ? '' : ' WHERE agency_id = ' + parseInt(aid)))).rows[0].count;
-  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active'" + (isPlatform ? '' : ' AND agency_id = ' + parseInt(aid)))).rows[0].count;
+  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE agency_id = ' + parseInt(aid))).rows[0].count;
+  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active' AND agency_id = " + parseInt(aid))).rows[0].count;
   const todayStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as today FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date = CURRENT_DATE::text" + af)).rows[0].today;
   const weekStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as week FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text" + af)).rows[0].week;
 
@@ -1331,17 +1304,16 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
-    const isPlatform = req.user.role === 'platform_admin';
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts' + (isPlatform ? '' : ' WHERE agency_id = $1'), isPlatform ? [] : [req.user.agency_id]);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE agency_id = $1', [req.user.agency_id]);
     const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
       SELECT cs.*, u.display_name as chatter_name
       FROM chatter_shifts cs
       JOIN users u ON cs.user_id = u.id
-      ${isPlatform ? '' : 'WHERE cs.agency_id = $3'}
+      WHERE cs.agency_id = $3
       ORDER BY cs.date DESC, cs.created_at DESC
       LIMIT $1 OFFSET $2
-    `, isPlatform ? [limit, offset] : [limit, offset, req.user.agency_id]);
+    `, [limit, offset, req.user.agency_id]);
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   res.status(403).json({ error: 'Accès refusé' });
@@ -1392,7 +1364,6 @@ app.get('/api/shifts/my-stats', authMiddleware, async (req, res) => {
 
 // Stats admin globales chatters
 app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) => {
-  const isPlatform = req.user.role === 'platform_admin';
   const { rows } = await pool.query(`
     SELECT
       u.id as user_id,
@@ -1407,10 +1378,10 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
       COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.tips_total ELSE 0 END), 0) as week_tips
     FROM users u
     LEFT JOIN chatter_shifts cs ON cs.user_id = u.id
-    WHERE u.role = 'chatter' ${isPlatform ? '' : 'AND u.agency_id = $1'}
+    WHERE u.role = 'chatter' AND u.agency_id = $1
     GROUP BY u.id, u.display_name
     ORDER BY total_revenue DESC
-  `, isPlatform ? [] : [req.user.agency_id]);
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -1422,17 +1393,16 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const isPlatform = req.user.role === 'platform_admin';
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads' + (isPlatform ? '' : ' WHERE agency_id = $1'), isPlatform ? [] : [req.user.agency_id]);
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads WHERE agency_id = $1', [req.user.agency_id]);
   const total = parseInt(countRows[0].total);
   const { rows } = await pool.query(`
     SELECT ol.*, u.display_name as agent_name
     FROM outreach_leads ol
     JOIN users u ON ol.user_id = u.id
-    ${isPlatform ? '' : 'WHERE ol.agency_id = $3'}
+    WHERE ol.agency_id = $3
     ORDER BY ol.created_at DESC
     LIMIT $1 OFFSET $2
-  `, isPlatform ? [limit, offset] : [limit, offset, req.user.agency_id]);
+  `, [limit, offset, req.user.agency_id]);
   res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
@@ -1498,7 +1468,6 @@ app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
 
 // Stats outreach globales (pour l'admin)
 app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) => {
-  const isPlatform = req.user.role === 'platform_admin';
   const { rows } = await pool.query(`
     SELECT
       u.id as user_id,
@@ -1513,10 +1482,10 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
       COALESCE(SUM(CASE WHEN ol.status = 'signed' THEN 1 ELSE 0 END), 0) as signed
     FROM users u
     LEFT JOIN outreach_leads ol ON ol.user_id = u.id
-    WHERE u.role = 'outreach' ${isPlatform ? '' : 'AND u.agency_id = $1'}
+    WHERE u.role = 'outreach' AND u.agency_id = $1
     GROUP BY u.id, u.display_name
     ORDER BY u.display_name
-  `, isPlatform ? [] : [req.user.agency_id]);
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -1525,10 +1494,6 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
 // Followers evolution par jour
 app.get('/api/charts/followers', authMiddleware, async (req, res) => {
   const days = parseInt(req.query.days) || 30;
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query(`SELECT ds.date, m.name as model_name, a.platform, SUM(ds.new_followers) as new_followers FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text GROUP BY ds.date, m.name, a.platform ORDER BY ds.date ASC`, [days]);
-    return res.json(rows);
-  }
   const { rows } = await pool.query(`
     SELECT ds.date, m.name as model_name, a.platform, SUM(ds.new_followers) as new_followers
     FROM daily_stats ds
@@ -1544,50 +1509,47 @@ app.get('/api/charts/followers', authMiddleware, async (req, res) => {
 // Revenue chatters par jour
 app.get('/api/charts/revenue', authMiddleware, async (req, res) => {
   const days = parseInt(req.query.days) || 30;
-  const isPlatform = req.user.role === 'platform_admin';
   const { rows } = await pool.query(`
     SELECT cs.date,
       SUM(cs.ppv_total) as ppv,
       SUM(cs.tips_total) as tips,
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text ${isPlatform ? '' : 'AND cs.agency_id = $2'}
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND cs.agency_id = $2
     GROUP BY cs.date
     ORDER BY cs.date ASC
-  `, isPlatform ? [days] : [days, req.user.agency_id]);
+  `, [days, req.user.agency_id]);
   res.json(rows);
 });
 
 // Revenue chatters par jour par chatter
 app.get('/api/charts/revenue-by-chatter', authMiddleware, async (req, res) => {
   const days = parseInt(req.query.days) || 30;
-  const isPlatform = req.user.role === 'platform_admin';
   const { rows } = await pool.query(`
     SELECT cs.date, u.display_name as chatter_name,
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
     JOIN users u ON cs.user_id = u.id
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text ${isPlatform ? '' : 'AND cs.agency_id = $2'}
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND cs.agency_id = $2
     GROUP BY cs.date, u.display_name
     ORDER BY cs.date ASC
-  `, isPlatform ? [days] : [days, req.user.agency_id]);
+  `, [days, req.user.agency_id]);
   res.json(rows);
 });
 
 // Leads outreach par jour
 app.get('/api/charts/leads', authMiddleware, async (req, res) => {
   const days = parseInt(req.query.days) || 30;
-  const isPlatform = req.user.role === 'platform_admin';
   const { rows } = await pool.query(`
     SELECT created_at::date::text as date,
       COUNT(*) as total,
       SUM(CASE WHEN status != 'to-send' THEN 1 ELSE 0 END) as dm_sent,
       SUM(CASE WHEN status IN ('talking-cold','talking-warm','call-booked','signed') THEN 1 ELSE 0 END) as replies
     FROM outreach_leads
-    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' ${isPlatform ? '' : 'AND agency_id = $2'}
+    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' AND agency_id = $2
     GROUP BY created_at::date
     ORDER BY date ASC
-  `, isPlatform ? [days] : [days, req.user.agency_id]);
+  `, [days, req.user.agency_id]);
   res.json(rows);
 });
 
@@ -2248,10 +2210,6 @@ app.get('/api/conversations', authMiddleware, async (req, res) => {
 // ============ RESOURCES ============
 app.get('/api/resources', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'student' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources ORDER BY category, created_at DESC');
-    return res.json(rows);
-  }
   const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources WHERE agency_id = $1 ORDER BY category, created_at DESC', [req.user.agency_id]);
   res.json(rows);
 });
@@ -2399,10 +2357,6 @@ app.get('*', (req, res) => {
 // ============ ACTIVITY LOG ============
 // ============ ONLINE PRESENCE ============
 app.get('/api/online-users', authMiddleware, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query(`SELECT a.user_id, u.display_name, u.role, u.avatar_url, a.connected_at, a.last_ping FROM active_sessions a JOIN users u ON a.user_id = u.id WHERE a.last_ping > NOW() - INTERVAL '5 minutes' ORDER BY u.display_name`);
-    return res.json(rows);
-  }
   const { rows } = await pool.query(`
     SELECT a.user_id, u.display_name, u.role, u.avatar_url, a.connected_at, a.last_ping
     FROM active_sessions a JOIN users u ON a.user_id = u.id
@@ -2416,10 +2370,9 @@ app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const isPlatform = req.user.role === 'platform_admin';
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log' + (isPlatform ? '' : ' WHERE agency_id = $1'), isPlatform ? [] : [req.user.agency_id]);
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log WHERE agency_id = $1', [req.user.agency_id]);
   const total = parseInt(countRows[0].total);
-  const { rows } = await pool.query('SELECT * FROM activity_log' + (isPlatform ? '' : ' WHERE agency_id = $3') + ' ORDER BY created_at DESC LIMIT $1 OFFSET $2', isPlatform ? [limit, offset] : [limit, offset, req.user.agency_id]);
+  const { rows } = await pool.query('SELECT * FROM activity_log WHERE agency_id = $3 ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset, req.user.agency_id]);
   res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
@@ -2500,10 +2453,6 @@ app.get('/api/shift-clock/status', authMiddleware, async (req, res) => {
 
 // ============ MODEL REVENUE OBJECTIVES ============
 app.get('/api/model-revenue-objectives', authMiddleware, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id ORDER BY mro.month DESC, m.name');
-    return res.json(rows);
-  }
   const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE mro.agency_id = $1 ORDER BY mro.month DESC, m.name', [req.user.agency_id]);
   res.json(rows);
 });
@@ -2628,10 +2577,6 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
 
 // ============ PAYMENTS ============
 app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
-  if (req.user.role === 'platform_admin') {
-    const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id ORDER BY p.month DESC, m.name');
-    return res.json(rows);
-  }
   const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE p.agency_id = $1 ORDER BY p.month DESC, m.name', [req.user.agency_id]);
   res.json(rows);
 });
@@ -2799,10 +2744,8 @@ app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
     params.push(user_id);
     query += ` AND ps.user_id = $${params.length}`;
   }
-  if (req.user.role !== 'platform_admin') {
-    params.push(req.user.agency_id);
-    query += ` AND ps.agency_id = $${params.length}`;
-  }
+  params.push(req.user.agency_id);
+  query += ` AND ps.agency_id = $${params.length}`;
   if (start) { params.push(start); query += ` AND ps.shift_date >= $${params.length}`; }
   if (end) { params.push(end); query += ` AND ps.shift_date <= $${params.length}`; }
   query += ' ORDER BY ps.shift_date, ps.start_time';
@@ -2854,14 +2797,10 @@ app.delete('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
 // ============ LEAVE REQUESTS (CONGÉS) ============
 app.get('/api/leave-requests', authMiddleware, async (req, res) => {
   let query, params;
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
       FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.agency_id = $1 ORDER BY lr.created_at DESC`;
     params = [req.user.agency_id];
-  } else if (req.user.role === 'platform_admin') {
-    query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
-      FROM leave_requests lr JOIN users u ON lr.user_id = u.id ORDER BY lr.created_at DESC`;
-    params = [];
   } else {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
       FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.user_id = $1 ORDER BY lr.created_at DESC`;
