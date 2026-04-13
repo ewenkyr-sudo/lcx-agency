@@ -630,6 +630,12 @@ async function migrateToMultiAgency() {
       await pool.query('ALTER TABLE settings DROP CONSTRAINT settings_pkey');
       console.log('Dropped settings_pkey constraint');
     }
+    // Promote platform admin from env var (PLATFORM_ADMIN_USER=ewen)
+    const platformUser = process.env.PLATFORM_ADMIN_USER;
+    if (platformUser) {
+      const { rowCount } = await pool.query("UPDATE users SET role = 'platform_admin' WHERE LOWER(username) = LOWER($1) AND role != 'platform_admin'", [platformUser]);
+      if (rowCount > 0) console.log('Promoted ' + platformUser + ' to platform_admin');
+    }
     console.log('Multi-agency migration OK');
   } catch(e) {
     console.log('Migration note:', e.message);
