@@ -701,7 +701,7 @@ async function renderStudentResources() {
 
   c.innerHTML = `
     <div class="page-header"><div><div class="page-title">Formation</div><div class="page-subtitle">Ressources et guides</div></div>
-      ${currentUser.role === 'admin' ? '<div class="header-actions"><button class="btn btn-primary" onclick="showAddResourceForm()">+ Ajouter une ressource</button></div>' : ''}
+      ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? '<div class="header-actions"><button class="btn btn-primary" onclick="showAddResourceForm()">+ Ajouter une ressource</button></div>' : ''}
     </div>
     <div id="resource-form-wrap"></div>
     ${Object.entries(grouped).map(([cat, items]) => `
@@ -716,7 +716,7 @@ async function renderStudentResources() {
             <div style="display:flex;gap:8px;align-items:center">
               ${r.url ? '<a href="' + r.url + '" target="_blank" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">Ouvrir</a>' : ''}
               ${r.file_name ? '<a href="/api/resources/' + r.id + '/download" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">Télécharger</a>' : ''}
-              ${currentUser.role === 'admin' ? '<button class="btn-delete-small" onclick="deleteResource(' + r.id + ')">✕</button>' : ''}
+              ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? '<button class="btn-delete-small" onclick="deleteResource(' + r.id + ')">✕</button>' : ''}
             </div>
           </div>`).join('')}
         </div>
@@ -1029,7 +1029,7 @@ async function deleteStudentTask(id) {
 
 // ========== INIT STUDENT SECTIONS ==========
 async function initStudentSections() {
-  if (currentUser.role !== 'student' && currentUser.role !== 'admin') return;
+  if (currentUser.role !== 'student' && currentUser.role !== 'admin' && currentUser.role !== 'super_admin') return;
   if (currentUser.role === 'student') {
     await renderStudentHome();
     // Make first student section active

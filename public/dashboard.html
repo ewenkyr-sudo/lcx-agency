@@ -1631,6 +1631,7 @@
 
     <!-- Onglets navigation — desktop: menu latéral, mobile: dropdown -->
     <select id="settings-tab-mobile" onchange="switchSettingsTab(this.value)" style="display:none;width:100%;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px;font-family:inherit;margin-bottom:16px;cursor:pointer">
+      <option value="mon-agence">Mon agence</option>
       <option value="general">Général</option>
       <option value="outreach">Outreach</option>
       <option value="equipe">Équipe</option>
@@ -1644,7 +1645,8 @@
       <!-- Sidebar onglets (desktop) -->
       <div id="settings-sidebar" style="width:200px;flex-shrink:0;position:sticky;top:20px">
         <div style="display:grid;gap:4px">
-          <button class="settings-tab active" data-tab="general" onclick="switchSettingsTab('general')">Général</button>
+          <button class="settings-tab active" data-tab="mon-agence" onclick="switchSettingsTab('mon-agence')">Mon agence</button>
+          <button class="settings-tab" data-tab="general" onclick="switchSettingsTab('general')">Général</button>
           <button class="settings-tab" data-tab="outreach" onclick="switchSettingsTab('outreach')">Outreach</button>
           <button class="settings-tab" data-tab="equipe" onclick="switchSettingsTab('equipe')">Équipe</button>
           <button class="settings-tab" data-tab="coaching" onclick="switchSettingsTab('coaching')">Coaching</button>
@@ -1657,8 +1659,53 @@
       <!-- Contenu onglets -->
       <div style="flex:1;min-width:0">
 
+        <!-- TAB: Mon agence -->
+        <div class="settings-pane active" id="settings-pane-mon-agence">
+          <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Mon agence</h3>
+            <div id="agency-info-loading" style="color:var(--text3);font-size:13px">Chargement...</div>
+            <div id="agency-info-content" style="display:none">
+              <div style="display:grid;gap:12px;max-width:500px">
+                <div>
+                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
+                  <input type="text" id="agency-edit-name" class="form-input" placeholder="Mon Agence">
+                </div>
+                <div>
+                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">URL du logo</label>
+                  <input type="text" id="agency-edit-logo" class="form-input" placeholder="https://example.com/logo.png">
+                </div>
+                <div>
+                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Couleur principale</label>
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <input type="color" id="agency-edit-color" value="#8b5cf6" style="width:48px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);cursor:pointer">
+                    <span id="agency-color-label" style="font-size:13px;color:var(--text3)">#8b5cf6</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveAgencyInfo()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Statistiques</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px" id="agency-stats-grid">
+              <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
+                <div style="font-size:24px;font-weight:800" id="agency-stat-members">-</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px">Membres</div>
+              </div>
+              <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
+                <div style="font-size:24px;font-weight:800" id="agency-stat-models">-</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px">Modeles</div>
+              </div>
+              <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
+                <div style="font-size:24px;font-weight:800" id="agency-stat-leads">-</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px">Leads</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- TAB: Général -->
-        <div class="settings-pane active" id="settings-pane-general">
+        <div class="settings-pane" id="settings-pane-general">
           <div class="panel" style="padding:24px;margin-bottom:20px">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Identité de l'agence</h3>
             <div style="display:grid;gap:12px;max-width:500px">
@@ -2158,6 +2205,9 @@
 </div>
 
 <script>
+// ========== HELPERS ==========
+function isAdmin() { return currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'platform_admin'); }
+
 // ========== GLOBAL STATE ==========
 let currentUser = null;
 let allTeam = [];
@@ -2204,12 +2254,17 @@ async function fetchCurrentUser() {
   if (res.status === 401) window.location.href = '/';
   if (!res.ok) throw new Error('Failed to fetch user');
   currentUser = await res.json();
+  // Apply agency color if set
+  if (currentUser.agency_color) {
+    document.documentElement.style.setProperty('--accent', currentUser.agency_color);
+  }
   updateUserUI();
 }
 
 function updateUserUI() {
   document.getElementById('user-name').textContent = currentUser.display_name || 'User';
-  document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Admin' : currentUser.role;
+  const roleNames = { admin: 'Admin', super_admin: 'Super Admin', platform_admin: 'Platform Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: 'Modèle', student: 'Élève' };
+  document.getElementById('user-role').textContent = roleNames[currentUser.role] || currentUser.role;
   const avatarEl = document.getElementById('user-avatar');
   if (currentUser.avatar_url) {
     avatarEl.innerHTML = `<img src="${currentUser.avatar_url}">`;
@@ -2343,7 +2398,7 @@ function switchSection(e) {
     'analytics': renderAnalytics,
     'finance': renderFinance,
     'activity-log': renderActivityLog,
-    'settings': function() { renderSettings(); switchSettingsTab(document.querySelector('.settings-tab.active')?.getAttribute('data-tab') || 'general'); }
+    'settings': function() { renderSettings(); switchSettingsTab(document.querySelector('.settings-tab.active')?.getAttribute('data-tab') || 'mon-agence'); }
   };
   if (loaders[section]) loaders[section]();
 }
@@ -2573,7 +2628,7 @@ function renderDashboard() {
 
   // Admin dashboard
   const dash = window.dashboardData || {};
-  actions.innerHTML = currentUser.role === 'admin' ?
+  actions.innerHTML = isAdmin() ?
     `<button class="btn btn-primary" onclick="openModal('add-member')">+ Ajouter un membre</button>` : '';
 
   container.innerHTML = `
@@ -2634,7 +2689,7 @@ function renderDashboard() {
   `;
 
   // Load stats in dashboard for admin
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     loadDashboardChatterStats();
     loadDashboardOutreachStats();
   }
@@ -2767,7 +2822,7 @@ async function renderPlanning() {
     planSelectedUser = currentUser.id;
   }
   await renderPlanDetail();
-  if (currentUser.role === 'admin') renderPlanLeaves();
+  if (isAdmin()) renderPlanLeaves();
 }
 
 function renderPlanMemberList() {
@@ -2775,7 +2830,7 @@ function renderPlanMemberList() {
   if (!container) return;
 
   var members;
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     // Admin en premier, puis le reste
     members = [allUsers.find(function(u) { return u.id === currentUser.id; })].concat(
       allUsers.filter(function(u) { return u.id !== currentUser.id; })
@@ -2878,7 +2933,7 @@ async function renderPlanDetail() {
       + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">Aujourd\'hui</span>' : '') + '</div>'
       + '<div style="display:flex;gap:6px">'
       + '<button onclick="quickAddShift(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">+ Shift</button>'
-      + (currentUser.role === 'admin' ? '<button onclick="quickAddTask(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:12px;font-weight:600">+ Tâche</button>' : '')
+      + (isAdmin() ? '<button onclick="quickAddTask(' + planSelectedUser + ',\'' + dk + '\')" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:12px;font-weight:600">+ Tâche</button>' : '')
       + '</div></div>';
 
     if (isLeave) {
@@ -3111,7 +3166,7 @@ function renderPlanLeaves() {
         + '<strong style="font-size:13px;min-width:100px">' + l.user_name + '</strong>'
         + '<span style="font-size:12px;color:var(--text2)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'
         + (l.reason ? '<span style="font-size:11px;color:var(--text3);flex:1">' + l.reason + '</span>' : '<span style="flex:1"></span>')
-        + (currentUser.role === 'admin' && l.status === 'pending'
+        + (isAdmin() && l.status === 'pending'
           ? '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'accepted\')">Accepter</button>'
             + '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'refused\')">Refuser</button>'
           : '<span style="font-size:11px;font-weight:600;color:' + stColor + '">' + stLabel + '</span>')
@@ -3301,7 +3356,7 @@ function showTaskForm() {
   var wrap = document.getElementById('task-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   var assignSelect = '';
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     assignSelect = '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Assigner à</label>'
       + '<select id="tf-assign" class="form-input"><option value="">Moi-même</option>'
       + allUsers.map(function(u) { return '<option value="' + u.id + '">' + u.display_name + ' (' + u.role + ')</option>'; }).join('')
@@ -3359,7 +3414,7 @@ function renderModels() {
   const container = document.getElementById('models-content');
   const actions = document.getElementById('models-actions');
 
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">+ Nouveau modèle</button>`;
   }
 
@@ -3392,7 +3447,7 @@ function renderModels() {
               </div>
             </div>
             <button class="btn btn-primary" onclick="event.stopPropagation();openModelCockpit(${m.id})" style="width:100%;margin-top:12px;justify-content:center;font-size:12px">Voir le cockpit</button>
-            ${currentUser.role === 'admin' ? `
+            ${isAdmin() ? `
             <!-- Drive & Contrat -->
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;gap:8px">
               <div style="display:flex;gap:6px;align-items:center">
@@ -3421,7 +3476,7 @@ function renderModels() {
     </div>
   `;
   // Charger les plannings contenu
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     allModels.forEach(m => loadModelPlanning(m.id));
   }
 }
@@ -3712,7 +3767,7 @@ async function renderOutreach() {
   renderLeads();
   await loadOutreachKPIs();
   const importBtn = document.getElementById('btn-import-csv');
-  if (importBtn) importBtn.style.display = currentUser.role === 'admin' ? '' : 'none';
+  if (importBtn) importBtn.style.display = isAdmin() ? '' : 'none';
 }
 
 function renderVA() {
@@ -3739,7 +3794,7 @@ function renderTeamTable(tableId, members) {
       <td data-label="Shift" class="mc-half">${m.shift || 'N/A'}</td>
       <td data-label="Plateformes" class="mc-half">${m.platform || 'N/A'}</td>
       <td data-label="Status" class="mc-half"><span class="badge badge-${online ? 'online' : m.status}">${online ? 'En ligne' : m.status}</span></td>
-      <td data-label="" class="mc-actions">${currentUser.role === 'admin' ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
+      <td data-label="" class="mc-actions">${isAdmin() ? `<button class="btn-delete-small" onclick="deleteTeamMember(${m.id})">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
 }
@@ -3816,7 +3871,7 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  cardsDiv.innerHTML += currentUser.role === 'admin' ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:8px">+ Ajouter un compte</button>` : '';
+  cardsDiv.innerHTML += isAdmin() ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:8px">+ Ajouter un compte</button>` : '';
 
   // Populate model select in add-account modal
   const select = document.getElementById('account-model-select');
@@ -4914,7 +4969,7 @@ async function loadChatterKPIs() {
     } catch (e) {}
   }
 
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     try {
       const res = await fetch('/api/shifts/admin-stats', { credentials: 'include' });
       if (res.ok) {
@@ -4959,10 +5014,10 @@ async function loadChatterKPIs() {
 }
 
 function renderShifts() {
-  if (currentUser.role !== 'chatter' && currentUser.role !== 'admin') return;
-  const isAdmin = currentUser.role === 'admin';
+  if (currentUser.role !== 'chatter' && !isAdmin()) return;
+  const userIsAdmin = isAdmin();
   const chatterCol = document.getElementById('shift-col-chatter');
-  if (chatterCol) chatterCol.style.display = isAdmin ? '' : 'none';
+  if (chatterCol) chatterCol.style.display = userIsAdmin ? '' : 'none';
 
   const table = document.getElementById('shifts-table');
   table.classList.add('mobile-cards');
@@ -4975,7 +5030,7 @@ function renderShifts() {
       <td data-label="PPV" class="mc-half">$${parseFloat(s.ppv_total).toFixed(2)}</td>
       <td data-label="Tips" class="mc-half" style="color:var(--yellow)">$${parseFloat(s.tips_total).toFixed(2)}</td>
       <td data-label="Revenue" class="mc-half" style="color:var(--green)"><strong>$${revenue}</strong></td>
-      ${isAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent2)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
+      ${userIsAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent2)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
       <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${s.shift_notes || '-'}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
     </tr>`;
@@ -5102,13 +5157,13 @@ function connectWebSocket() {
       await loadLeads();
       renderLeads();
       await loadOutreachKPIs();
-      if (currentUser.role === 'admin') loadDashboardOutreachStats();
+      if (isAdmin()) loadDashboardOutreachStats();
     }
     if (msg.event === 'shift-added' || msg.event === 'shift-deleted') {
       await loadShifts();
       renderChatters();
       await loadChatterKPIs();
-      if (currentUser.role === 'admin') loadDashboardChatterStats();
+      if (isAdmin()) loadDashboardChatterStats();
     }
     if (msg.event === 'followers-updated') {
       await reloadAccounts();
@@ -5125,7 +5180,7 @@ function connectWebSocket() {
           const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
           if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }
         }
-        if (adminChatUserId === msg.data.from_user_id && currentUser.role === 'admin') {
+        if (adminChatUserId === msg.data.from_user_id && isAdmin()) {
           openAdminChat(adminChatUserId);
         }
         updateUnreadBadges();
@@ -5286,7 +5341,7 @@ async function loadOutreachKPIs() {
     } catch (e) {}
   }
 
-  if (currentUser.role === 'admin') {
+  if (isAdmin()) {
     try {
       const res = await fetch('/api/leads/admin-stats', { credentials: 'include' });
       if (res.ok) {
@@ -5367,10 +5422,10 @@ const leadStatusColors = {
 };
 
 function renderLeads() {
-  if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
+  if (currentUser.role !== 'outreach' && !isAdmin()) return;
 
-  const isAdmin = currentUser.role === 'admin';
-  const showAgent = isAdmin || currentUser.role === 'outreach';
+  const userIsAdmin = isAdmin();
+  const showAgent = userIsAdmin || currentUser.role === 'outreach';
   const agentCol = document.getElementById('lead-col-agent');
   if (agentCol) agentCol.style.display = showAgent ? '' : 'none';
 
@@ -5633,7 +5688,7 @@ let allUsers = [];
 let agencySettings = {};
 
 async function loadSettings() {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   try {
     const [usersRes, settingsRes] = await Promise.all([
       fetch('/api/users', { credentials: 'include' }),
@@ -5645,7 +5700,7 @@ async function loadSettings() {
 }
 
 function renderSettings() {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
 
   // Agency settings
   const agName = agencySettings.agency_name || 'LCX Agency';
@@ -5661,7 +5716,7 @@ function renderSettings() {
 
   // Users table
   const tbody = document.getElementById('settings-users-table');
-  const roleLabels = { admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: 'Modèle', student: 'Élève' };
+  const roleLabels = { platform_admin: 'Platform', super_admin: 'Super Admin', admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: 'Modèle', student: 'Élève' };
   const roleColors = { admin: 'var(--pink)', chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', model: 'var(--accent)', student: 'var(--text3)' };
 
   tbody.innerHTML = allUsers.map(u => `
@@ -5749,8 +5804,52 @@ function switchSettingsTab(tabName) {
   var mobile = document.getElementById('settings-tab-mobile');
   if (mobile) mobile.value = tabName;
   // Load sub-section data
+  if (tabName === 'mon-agence') loadAgencyInfo();
   if (tabName === 'notifications') loadWhatsAppSettings();
   if (tabName === 'securite') renderAccessControl();
+}
+
+async function loadAgencyInfo() {
+  try {
+    const res = await fetch('/api/agency', { credentials: 'include' });
+    if (!res.ok) return;
+    const agency = await res.json();
+    document.getElementById('agency-info-loading').style.display = 'none';
+    document.getElementById('agency-info-content').style.display = 'block';
+    document.getElementById('agency-edit-name').value = agency.name || '';
+    document.getElementById('agency-edit-logo').value = agency.logo_url || '';
+    document.getElementById('agency-edit-color').value = agency.primary_color || '#8b5cf6';
+    document.getElementById('agency-color-label').textContent = agency.primary_color || '#8b5cf6';
+    document.getElementById('agency-stat-members').textContent = agency.user_count || 0;
+    document.getElementById('agency-stat-models').textContent = agency.model_count || 0;
+    document.getElementById('agency-stat-leads').textContent = agency.lead_count || 0;
+    // Update color label on input change
+    document.getElementById('agency-edit-color').oninput = function() {
+      document.getElementById('agency-color-label').textContent = this.value;
+    };
+  } catch(e) { console.error('Agency load error:', e); }
+}
+
+async function saveAgencyInfo() {
+  const name = document.getElementById('agency-edit-name').value;
+  const logo_url = document.getElementById('agency-edit-logo').value;
+  const primary_color = document.getElementById('agency-edit-color').value;
+  const res = await fetch('/api/agency', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name, logo_url, primary_color })
+  });
+  if (res.ok) {
+    showToast('Agence mise a jour !', 'success');
+    // Apply color override
+    if (primary_color) {
+      document.documentElement.style.setProperty('--accent', primary_color);
+    }
+  } else {
+    const err = await res.json();
+    showToast(err.error || 'Erreur', 'error');
+  }
 }
 
 async function saveAgencySettings() {
