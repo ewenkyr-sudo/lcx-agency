@@ -1386,17 +1386,14 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
   const aid = req.user.agency_id;
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads WHERE (agency_id = $1 OR agency_id IS NULL)', [aid]);
-  const total = parseInt(countRows[0].total);
   const { rows } = await pool.query(`
     SELECT ol.*, u.display_name as agent_name
     FROM outreach_leads ol
     JOIN users u ON ol.user_id = u.id
-    WHERE (ol.agency_id = $3 OR ol.agency_id IS NULL)
+    WHERE (ol.agency_id = $1 OR ol.agency_id IS NULL)
     ORDER BY ol.created_at DESC
-    LIMIT $1 OFFSET $2
-  `, [limit, offset, aid]);
-  res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
+  `, [aid]);
+  res.json(rows);
 });
 
 // Add lead

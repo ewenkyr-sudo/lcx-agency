@@ -2501,7 +2501,7 @@ function confirmDeleteNo() {
 }
 
 // ========== DEBOUNCED SEARCH ==========
-const debouncedRenderLeads = debounce(function() { leadsPage = 1; loadLeadsPage(); }, 300);
+const debouncedRenderLeads = debounce(function() { renderLeads(); }, 300);
 const debouncedRenderCoachingLeadTable = debounce(function() { renderCoachingLeadTable(); }, 300);
 
 // ========== PAGINATION HELPER ==========
@@ -5281,8 +5281,6 @@ connectWebSocket();
 // ========== OUTREACH LEADS ==========
 let allLeads = [];
 let currentLeadFilter = 'all';
-let leadsPage = 1;
-let leadsTotalPages = 1;
 let outreachOptions = { script: [], account: [], type: [] };
 
 async function loadOutreachOptions() {
@@ -5315,19 +5313,9 @@ async function updateLeadField(id, field, value) {
 async function loadLeads() {
   if (currentUser.role !== 'outreach' && !isAdmin()) return;
   try {
-    const res = await fetch('/api/leads?page=' + leadsPage + '&limit=25', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      allLeads = data.data;
-      leadsPage = data.page;
-      leadsTotalPages = data.totalPages;
-    }
+    const res = await fetch('/api/leads', { credentials: 'include' });
+    if (res.ok) allLeads = await res.json();
   } catch (e) { console.error('Leads load error:', e); }
-}
-
-async function loadLeadsPage(p) {
-  leadsPage = Math.max(1, Math.min(p, leadsTotalPages));
-  await loadLeads();
   renderLeads();
 }
 
@@ -5467,14 +5455,6 @@ function renderLeads() {
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
-  // Pagination
-  var paginEl = document.getElementById('leads-pagination');
-  if (!paginEl) {
-    paginEl = document.createElement('div');
-    paginEl.id = 'leads-pagination';
-    document.getElementById('leads-table').parentNode.after(paginEl);
-  }
-  paginEl.innerHTML = paginationHTML(leadsPage, leadsTotalPages, 'loadLeadsPage');
 }
 
 function showToast(message, type = 'info') {
