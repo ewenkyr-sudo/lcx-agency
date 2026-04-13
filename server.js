@@ -433,25 +433,17 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
-    DO $$ BEGIN
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE models ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE students ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE outreach_leads ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE chatter_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE settings ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE resources ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE model_revenue_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE payments ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE weekly_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-    EXCEPTION WHEN others THEN NULL;
-    END $$;
   `);
+
+  // Add agency_id columns individually (each in its own try/catch so one failure doesn't block others)
+  const agencyTables = ['users', 'models', 'team_members', 'students', 'tasks', 'outreach_leads', 'chatter_shifts', 'settings', 'resources', 'planning_shifts', 'leave_requests', 'model_revenue_objectives', 'payments', 'weekly_objectives', 'activity_log'];
+  for (const table of agencyTables) {
+    try {
+      await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS agency_id INTEGER`);
+    } catch(e) {
+      // Column might already exist or table might not exist yet - that's fine
+    }
+  }
 }
 
 // ============ SEED DEFAULT DATA ============
@@ -2699,6 +2691,22 @@ app.get('/api/admin/db-size', authMiddleware, adminOnly, async (req, res) => {
     `);
     res.json({ total_bytes: parseInt(rows[0].size), tables });
   } catch(e) { res.json({ total_bytes: 0, tables: [] }); }
+});
+
+// ============ DB DIAGNOSTIC ============
+app.get('/api/admin/db-check', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const checks = {};
+    const tables = ['users', 'models', 'outreach_leads', 'tasks', 'chatter_shifts', 'students', 'team_members', 'settings', 'resources', 'planning_shifts'];
+    for (const t of tables) {
+      try {
+        const { rows } = await pool.query(`SELECT COUNT(*) as total, COUNT(agency_id) as with_agency, COUNT(*) - COUNT(agency_id) as without_agency FROM ${t}`);
+        checks[t] = rows[0];
+      } catch(e) { checks[t] = { error: e.message }; }
+    }
+    const { rows: agencyList } = await pool.query('SELECT id, name, active FROM agencies ORDER BY id');
+    res.json({ tables: checks, agencies: agencyList, your_agency_id: req.user.agency_id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ============ USER ACCESS MANAGEMENT ============
