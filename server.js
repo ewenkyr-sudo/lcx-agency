@@ -2348,12 +2348,6 @@ app.get('/platform', authMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'platform.html'));
 });
 
-// Catch-all: serve login
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
 // ============ ACTIVITY LOG ============
 // ============ ONLINE PRESENCE ============
 app.get('/api/online-users', authMiddleware, async (req, res) => {
@@ -3341,6 +3335,12 @@ async function setupCronJobs() {
 
   console.log(`Cron jobs configured: daily report at ${dailyHour} (Paris), weekly Monday 9h, inactive check every 30min`);
 }
+
+// ============ CATCH-ALL (must be last route) ============
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
 
 // ============ START ============
 async function start() {
