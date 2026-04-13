@@ -1029,7 +1029,7 @@ async function deleteStudentTask(id) {
 
 // ========== INIT STUDENT SECTIONS ==========
 async function initStudentSections() {
-  if (currentUser.role !== 'student' && currentUser.role !== 'admin' && currentUser.role !== 'super_admin') return;
+  if (currentUser.role !== 'student' && !isAdmin()) return;
   if (currentUser.role === 'student') {
     await renderStudentHome();
     // Make first student section active

@@ -985,7 +985,7 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
   const filterUserId = req.query.student_user_id || req.query.user_id;
   const agencyFilter = ' AND (t.agency_id = ' + parseInt(req.user.agency_id) + ' OR t.agency_id IS NULL)';
-  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
     if (filterUserId) {
       query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
         FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
@@ -1013,7 +1013,7 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
   const { title, description, assigned_to_id, priority, deadline, notes } = req.body;
   if (!title) return res.status(400).json({ error: 'Titre requis' });
   // Non-admin ne peut assigner qu'à soi-même
-  const assignTo = (req.user.role === 'admin' || req.user.role === 'super_admin') ? (assigned_to_id || req.user.id) : req.user.id;
+  const assignTo = (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') ? (assigned_to_id || req.user.id) : req.user.id;
   const { rows } = await pool.query(
     'INSERT INTO tasks (title, description, created_by, assigned_to_id, priority, deadline, notes, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
     [title, description, req.user.id, assignTo, priority || 'normal', deadline, notes, req.user.agency_id]);
@@ -1295,7 +1295,7 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY date DESC, created_at DESC LIMIT $3 OFFSET $4', [req.user.id, req.user.agency_id, limit, offset]);
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
     const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id]);
     const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
@@ -1568,7 +1568,7 @@ app.get('/api/call-requests', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM call_requests WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
     return res.json(rows);
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const { rows } = await pool.query(`SELECT cr.*, u.display_name as student_name FROM call_requests cr JOIN users u ON cr.user_id = u.id ORDER BY CASE cr.status WHEN 'pending' THEN 0 ELSE 1 END, cr.created_at DESC`);
     return res.json(rows);
   }
@@ -1607,7 +1607,7 @@ app.get('/api/student-recruits', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM student_recruits WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
     return res.json(rows);
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const { rows } = await pool.query('SELECT sr.*, u.display_name as student_name FROM student_recruits sr JOIN users u ON sr.user_id = u.id ORDER BY sr.created_at DESC');
     return res.json(rows);
   }
@@ -1644,7 +1644,7 @@ app.delete('/api/student-recruits/:id', authMiddleware, async (req, res) => {
 
 // ============ STUDENT OUTREACH ASSIGNMENTS ============
 app.get('/api/student-outreach-assignments', authMiddleware, async (req, res) => {
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const { rows } = await pool.query(`SELECT soa.*, s.display_name as student_name, o.display_name as outreach_name
       FROM student_outreach_assignments soa
       JOIN users s ON soa.student_user_id = s.id JOIN users o ON soa.outreach_user_id = o.id
@@ -1864,7 +1864,7 @@ app.post('/api/student-leads/import-csv', authMiddleware, async (req, res) => {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     ownerId = student_user_id;
-  } else if ((req.user.role === 'admin' || req.user.role === 'super_admin') && student_user_id) {
+  } else if ((req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') && student_user_id) {
     ownerId = student_user_id;
   } else {
     ownerId = req.user.id;
@@ -1957,7 +1957,7 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1)' + marketFilter + ' ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     if (studentUserId) {
       const { rows } = await pool.query('SELECT sl.*, u.display_name as student_name, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl JOIN users u ON sl.user_id = u.id LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = $1' + marketFilter + ' ORDER BY sl.created_at DESC', [studentUserId]);
       return res.json(rows);
@@ -1983,7 +1983,7 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, student_user_id);
     if (!allowed) return res.status(403).json({ error: 'Pas assignée à cet élève' });
     ownerId = student_user_id;
-  } else if ((req.user.role === 'admin' || req.user.role === 'super_admin') && student_user_id) {
+  } else if ((req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') && student_user_id) {
     ownerId = student_user_id;
   } else {
     return res.status(400).json({ error: 'student_user_id requis' });
@@ -2032,7 +2032,7 @@ app.delete('/api/student-leads/all', authMiddleware, async (req, res) => {
   const mf = market === 'us' ? 'us' : 'fr';
   let uid;
   if (req.user.role === 'student') uid = req.user.id;
-  else if ((req.user.role === 'admin' || req.user.role === 'super_admin') && req.query.student_user_id) uid = req.query.student_user_id;
+  else if ((req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') && req.query.student_user_id) uid = req.query.student_user_id;
   else return res.status(400).json({ error: 'Accès refusé' });
   const sharedIds = await getSharedOutreachIds(uid);
   const result = await pool.query("DELETE FROM student_leads WHERE user_id = ANY($1) AND COALESCE(market, 'fr') = $2", [sharedIds, mf]);
@@ -2091,7 +2091,7 @@ app.get('/api/student-models', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM student_models WHERE user_id = $1 ORDER BY name', [req.user.id]);
     return res.json(rows);
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const userId = req.query.user_id;
     const query = userId
       ? 'SELECT sm.*, u.display_name as student_name FROM student_models sm JOIN users u ON sm.user_id = u.id WHERE sm.user_id = $1 ORDER BY sm.name'
@@ -2135,7 +2135,7 @@ app.delete('/api/student-models/:id', authMiddleware, async (req, res) => {
 // ============ STUDENT REVENUE ============
 app.get('/api/student-revenue', authMiddleware, async (req, res) => {
   const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
-  if (!uid && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+  if (!uid && (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin')) {
     // Admin global: all revenues with student + model names
     const { rows } = await pool.query(`SELECT sr.*, sm.name as model_name, sm.commission_rate, u.display_name as student_name
       FROM student_revenue sr JOIN student_models sm ON sr.student_model_id = sm.id JOIN users u ON sr.user_id = u.id ORDER BY sr.month DESC, u.display_name`);
@@ -2187,7 +2187,7 @@ app.get('/api/messages-unread', authMiddleware, async (req, res) => {
 
 // Conversations list (admin voit tous les étudiants, étudiant voit juste l'admin)
 app.get('/api/conversations', authMiddleware, async (req, res) => {
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const { rows } = await pool.query(`SELECT u.id, u.display_name, u.avatar_url, (SELECT COUNT(*) FROM messages WHERE to_user_id = $1 AND from_user_id = u.id AND read = false) as unread,
       (SELECT content FROM messages WHERE (from_user_id = u.id AND to_user_id = $1) OR (from_user_id = $1 AND to_user_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message
       FROM users u WHERE u.role = 'student' ORDER BY unread DESC, u.display_name`, [req.user.id]);
@@ -2238,7 +2238,7 @@ app.get('/api/user-options', authMiddleware, async (req, res) => {
     const sid = req.query.student_user_id;
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, sid);
     if (allowed) uid = sid;
-  } else if (req.query.user_id && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+  } else if (req.query.user_id && (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin')) {
     uid = req.query.user_id;
   }
   const { rows } = await pool.query('SELECT * FROM user_options WHERE user_id = $1 ORDER BY option_type, value', [uid]);
@@ -2269,7 +2269,7 @@ app.delete('/api/user-options/:id', authMiddleware, async (req, res) => {
   // Vérifier si l'option appartient à l'utilisateur ou à un élève assigné
   const opt = (await pool.query('SELECT user_id FROM user_options WHERE id = $1', [req.params.id])).rows[0];
   if (!opt) return res.status(404).json({ error: 'Option introuvable' });
-  const allowed = opt.user_id === req.user.id || req.user.role === 'admin' || req.user.role === 'super_admin' || await canAccessStudentOutreach(req.user.id, req.user.role, opt.user_id);
+  const allowed = opt.user_id === req.user.id || req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || await canAccessStudentOutreach(req.user.id, req.user.role, opt.user_id);
   if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM user_options WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
@@ -2281,7 +2281,7 @@ app.get('/api/objectives', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM weekly_objectives WHERE user_id = $1 ORDER BY week_start DESC, obj_type', [req.user.id]);
     return res.json(rows);
   }
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     const userId = req.query.user_id;
     const query = userId
       ? 'SELECT wo.*, u.display_name as student_name FROM weekly_objectives wo JOIN users u ON wo.user_id = u.id WHERE wo.user_id = $1 ORDER BY wo.week_start DESC, wo.obj_type'
@@ -2307,7 +2307,7 @@ app.put('/api/objectives/:id', authMiddleware, async (req, res) => {
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
     // Élèves ne peuvent que mettre à jour le current
     await pool.query('UPDATE weekly_objectives SET current = COALESCE($1, current) WHERE id = $2', [current, req.params.id]);
-  } else if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  } else if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     await pool.query('UPDATE weekly_objectives SET current=COALESCE($1,current), target=COALESCE($2,target), description=COALESCE($3,description) WHERE id=$4',
       [current, target, description, req.params.id]);
   } else return res.status(403).json({ error: 'Accès refusé' });
@@ -2762,7 +2762,7 @@ app.post('/api/planning-shifts', authMiddleware, async (req, res) => {
   if (!shift_date) return res.status(400).json({ error: 'Date requise' });
 
   let ownerId = req.user.id;
-  if ((req.user.role === 'admin' || req.user.role === 'super_admin') && user_id) ownerId = user_id;
+  if ((req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') && user_id) ownerId = user_id;
 
   const { rows } = await pool.query(
     'INSERT INTO planning_shifts (user_id, shift_date, shift_type, start_time, end_time, model_ids, notes, entry_type, priority, description, agency_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
@@ -2800,7 +2800,7 @@ app.delete('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
 // ============ LEAVE REQUESTS (CONGÉS) ============
 app.get('/api/leave-requests', authMiddleware, async (req, res) => {
   let query, params;
-  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
       FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE (lr.agency_id = $1 OR lr.agency_id IS NULL) ORDER BY lr.created_at DESC`;
     params = [req.user.agency_id];
