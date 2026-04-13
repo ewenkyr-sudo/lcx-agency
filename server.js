@@ -822,7 +822,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, created_at FROM users WHERE agency_id = $1 ORDER BY role, display_name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -866,7 +866,7 @@ app.get('/api/students', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM students WHERE user_id = $1', [req.user.id]);
     return res.json(rows);
   }
-  const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id WHERE s.agency_id = $1 ORDER BY s.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id WHERE (s.agency_id = $1 OR s.agency_id IS NULL) ORDER BY s.name', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -894,7 +894,7 @@ app.delete('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ TEAM MEMBERS CRUD ============
 app.get('/api/team', authMiddleware, async (req, res) => {
   const role = req.query.role;
-  let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id WHERE tm.agency_id = $1`;
+  let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id WHERE (tm.agency_id = $1 OR tm.agency_id IS NULL)`;
   if (role) {
     query += ` AND tm.role = $2 ORDER BY tm.name`;
     const { rows } = await pool.query(query, [req.user.agency_id, role]);
@@ -930,7 +930,7 @@ app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ MODELS CRUD ============
 app.get('/api/models', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM models WHERE agency_id = $1 ORDER BY name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT * FROM models WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY name', [req.user.agency_id]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
 });
 
@@ -949,7 +949,7 @@ app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/accounts', authMiddleware, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT a.*, m.name as model_name FROM accounts a
-    JOIN models m ON a.model_id = m.id WHERE m.agency_id = $1 ORDER BY m.name, a.platform
+    JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name, a.platform
   `, [req.user.agency_id]);
   res.json(rows);
 });
@@ -973,7 +973,7 @@ app.get('/api/stats', authMiddleware, async (req, res) => {
     FROM daily_stats ds
     JOIN accounts a ON ds.account_id = a.id
     JOIN models m ON a.model_id = m.id
-    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND m.agency_id = $2
+    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (m.agency_id = $2 OR m.agency_id IS NULL)
     ORDER BY ds.date DESC, m.name, a.platform
   `, [days, req.user.agency_id]);
   res.json(rows);
@@ -992,7 +992,7 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
   const filterUserId = req.query.student_user_id || req.query.user_id;
-  const agencyFilter = ' AND t.agency_id = ' + parseInt(req.user.agency_id);
+  const agencyFilter = ' AND (t.agency_id = ' + parseInt(req.user.agency_id) + ' OR t.agency_id IS NULL)';
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     if (filterUserId) {
       query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
@@ -1079,11 +1079,11 @@ app.delete('/api/calls/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ DASHBOARD STATS ============
 app.get('/api/dashboard', authMiddleware, async (req, res) => {
   const aid = req.user.agency_id;
-  const af = ' AND m.agency_id = ' + parseInt(aid);
+  const af = ' AND (m.agency_id = ' + parseInt(aid) + ' OR m.agency_id IS NULL)';
   const totalFollowers = (await pool.query('SELECT COALESCE(SUM(a.current_followers), 0) as total FROM accounts a JOIN models m ON a.model_id = m.id WHERE 1=1' + af)).rows[0].total;
   const modelsCount = (await pool.query("SELECT COUNT(*) as count FROM models m WHERE m.status = 'active'" + af)).rows[0].count;
-  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE agency_id = ' + parseInt(aid))).rows[0].count;
-  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active' AND agency_id = " + parseInt(aid))).rows[0].count;
+  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE (agency_id = ' + parseInt(aid) + ' OR agency_id IS NULL)')).rows[0].count;
+  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active' AND (agency_id = " + parseInt(aid) + " OR agency_id IS NULL)")).rows[0].count;
   const todayStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as today FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date = CURRENT_DATE::text" + af)).rows[0].today;
   const weekStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as week FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text" + af)).rows[0].week;
 
@@ -1298,19 +1298,19 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
   if (req.user.role === 'chatter') {
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE user_id = $1 AND agency_id = $2', [req.user.id, req.user.agency_id]);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [req.user.id, req.user.agency_id]);
     const total = parseInt(countRows[0].total);
-    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND agency_id = $2 ORDER BY date DESC, created_at DESC LIMIT $3 OFFSET $4', [req.user.id, req.user.agency_id, limit, offset]);
+    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY date DESC, created_at DESC LIMIT $3 OFFSET $4', [req.user.id, req.user.agency_id, limit, offset]);
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE agency_id = $1', [req.user.agency_id]);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id]);
     const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
       SELECT cs.*, u.display_name as chatter_name
       FROM chatter_shifts cs
       JOIN users u ON cs.user_id = u.id
-      WHERE cs.agency_id = $3
+      WHERE (cs.agency_id = $3 OR cs.agency_id IS NULL)
       ORDER BY cs.date DESC, cs.created_at DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset, req.user.agency_id]);
@@ -1378,7 +1378,7 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
       COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.tips_total ELSE 0 END), 0) as week_tips
     FROM users u
     LEFT JOIN chatter_shifts cs ON cs.user_id = u.id
-    WHERE u.role = 'chatter' AND u.agency_id = $1
+    WHERE u.role = 'chatter' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     GROUP BY u.id, u.display_name
     ORDER BY total_revenue DESC
   `, [req.user.agency_id]);
@@ -1393,16 +1393,17 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads WHERE agency_id = $1', [req.user.agency_id]);
+  const aid = req.user.agency_id;
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM outreach_leads WHERE (agency_id = $1 OR agency_id IS NULL)', [aid]);
   const total = parseInt(countRows[0].total);
   const { rows } = await pool.query(`
     SELECT ol.*, u.display_name as agent_name
     FROM outreach_leads ol
     JOIN users u ON ol.user_id = u.id
-    WHERE ol.agency_id = $3
+    WHERE (ol.agency_id = $3 OR ol.agency_id IS NULL)
     ORDER BY ol.created_at DESC
     LIMIT $1 OFFSET $2
-  `, [limit, offset, req.user.agency_id]);
+  `, [limit, offset, aid]);
   res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
@@ -1412,7 +1413,7 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
   const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
   const cleanUsername = username.replace(/^@/, '');
-  const exists = await pool.query("SELECT id, status FROM outreach_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND agency_id = $2", [cleanUsername, req.user.agency_id]);
+  const exists = await pool.query("SELECT id, status FROM outreach_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND (agency_id = $2 OR agency_id IS NULL)", [cleanUsername, req.user.agency_id]);
   if (exists.rows.length > 0) return res.status(409).json({ error: `Ce lead existe déjà (statut : ${exists.rows[0].status})` });
   const { rows } = await pool.query(
     'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
@@ -1482,7 +1483,7 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
       COALESCE(SUM(CASE WHEN ol.status = 'signed' THEN 1 ELSE 0 END), 0) as signed
     FROM users u
     LEFT JOIN outreach_leads ol ON ol.user_id = u.id
-    WHERE u.role = 'outreach' AND u.agency_id = $1
+    WHERE u.role = 'outreach' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     GROUP BY u.id, u.display_name
     ORDER BY u.display_name
   `, [req.user.agency_id]);
@@ -1499,7 +1500,7 @@ app.get('/api/charts/followers', authMiddleware, async (req, res) => {
     FROM daily_stats ds
     JOIN accounts a ON ds.account_id = a.id
     JOIN models m ON a.model_id = m.id
-    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND m.agency_id = $2
+    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (m.agency_id = $2 OR m.agency_id IS NULL)
     GROUP BY ds.date, m.name, a.platform
     ORDER BY ds.date ASC
   `, [days, req.user.agency_id]);
@@ -1515,7 +1516,7 @@ app.get('/api/charts/revenue', authMiddleware, async (req, res) => {
       SUM(cs.tips_total) as tips,
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND cs.agency_id = $2
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date
     ORDER BY cs.date ASC
   `, [days, req.user.agency_id]);
@@ -1530,7 +1531,7 @@ app.get('/api/charts/revenue-by-chatter', authMiddleware, async (req, res) => {
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
     JOIN users u ON cs.user_id = u.id
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND cs.agency_id = $2
+    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date, u.display_name
     ORDER BY cs.date ASC
   `, [days, req.user.agency_id]);
@@ -1546,7 +1547,7 @@ app.get('/api/charts/leads', authMiddleware, async (req, res) => {
       SUM(CASE WHEN status != 'to-send' THEN 1 ELSE 0 END) as dm_sent,
       SUM(CASE WHEN status IN ('talking-cold','talking-warm','call-booked','signed') THEN 1 ELSE 0 END) as replies
     FROM outreach_leads
-    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' AND agency_id = $2
+    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' AND (agency_id = $2 OR agency_id IS NULL)
     GROUP BY created_at::date
     ORDER BY date ASC
   `, [days, req.user.agency_id]);
@@ -2210,7 +2211,7 @@ app.get('/api/conversations', authMiddleware, async (req, res) => {
 // ============ RESOURCES ============
 app.get('/api/resources', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'student' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources WHERE agency_id = $1 ORDER BY category, created_at DESC', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY category, created_at DESC', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -2354,7 +2355,7 @@ app.get('/api/online-users', authMiddleware, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT a.user_id, u.display_name, u.role, u.avatar_url, a.connected_at, a.last_ping
     FROM active_sessions a JOIN users u ON a.user_id = u.id
-    WHERE a.last_ping > NOW() - INTERVAL '5 minutes' AND u.agency_id = $1
+    WHERE a.last_ping > NOW() - INTERVAL '5 minutes' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     ORDER BY u.display_name
   `, [req.user.agency_id]);
   res.json(rows);
@@ -2364,9 +2365,9 @@ app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log WHERE agency_id = $1', [req.user.agency_id]);
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id]);
   const total = parseInt(countRows[0].total);
-  const { rows } = await pool.query('SELECT * FROM activity_log WHERE agency_id = $3 ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset, req.user.agency_id]);
+  const { rows } = await pool.query('SELECT * FROM activity_log WHERE (agency_id = $3 OR agency_id IS NULL) ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset, req.user.agency_id]);
   res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
@@ -2447,7 +2448,7 @@ app.get('/api/shift-clock/status', authMiddleware, async (req, res) => {
 
 // ============ MODEL REVENUE OBJECTIVES ============
 app.get('/api/model-revenue-objectives', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE mro.agency_id = $1 ORDER BY mro.month DESC, m.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE (mro.agency_id = $1 OR mro.agency_id IS NULL) ORDER BY mro.month DESC, m.name', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -2571,7 +2572,7 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
 
 // ============ PAYMENTS ============
 app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE p.agency_id = $1 ORDER BY p.month DESC, m.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE (p.agency_id = $1 OR p.agency_id IS NULL) ORDER BY p.month DESC, m.name', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -2739,7 +2740,7 @@ app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
     query += ` AND ps.user_id = $${params.length}`;
   }
   params.push(req.user.agency_id);
-  query += ` AND ps.agency_id = $${params.length}`;
+  query += ` AND (ps.agency_id = $${params.length} OR ps.agency_id IS NULL)`;
   if (start) { params.push(start); query += ` AND ps.shift_date >= $${params.length}`; }
   if (end) { params.push(end); query += ` AND ps.shift_date <= $${params.length}`; }
   query += ' ORDER BY ps.shift_date, ps.start_time';
@@ -2793,7 +2794,7 @@ app.get('/api/leave-requests', authMiddleware, async (req, res) => {
   let query, params;
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
-      FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.agency_id = $1 ORDER BY lr.created_at DESC`;
+      FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE (lr.agency_id = $1 OR lr.agency_id IS NULL) ORDER BY lr.created_at DESC`;
     params = [req.user.agency_id];
   } else {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
@@ -2895,9 +2896,9 @@ app.get('/api/agency', authMiddleware, async (req, res) => {
   if (rows.length === 0) return res.status(404).json({ error: 'Agence introuvable' });
   const agency = rows[0];
   // Get counts
-  const users = (await pool.query('SELECT COUNT(*) as count FROM users WHERE agency_id = $1', [req.user.agency_id])).rows[0].count;
-  const models = (await pool.query('SELECT COUNT(*) as count FROM models WHERE agency_id = $1', [req.user.agency_id])).rows[0].count;
-  const leads = (await pool.query('SELECT COUNT(*) as count FROM outreach_leads WHERE agency_id = $1', [req.user.agency_id])).rows[0].count;
+  const users = (await pool.query('SELECT COUNT(*) as count FROM users WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
+  const models = (await pool.query('SELECT COUNT(*) as count FROM models WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
+  const leads = (await pool.query('SELECT COUNT(*) as count FROM outreach_leads WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
   res.json({ ...agency, user_count: parseInt(users), model_count: parseInt(models), lead_count: parseInt(leads) });
 });
 
