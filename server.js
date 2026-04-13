@@ -431,32 +431,21 @@ async function initDB() {
     );
 
     DO $$ BEGIN
-      -- Drop settings primary key to allow per-agency settings
-      IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'settings_pkey') THEN
-        ALTER TABLE settings DROP CONSTRAINT settings_pkey;
-        ALTER TABLE settings ADD COLUMN IF NOT EXISTS id SERIAL;
-        ALTER TABLE settings ADD PRIMARY KEY (id);
-        CREATE INDEX IF NOT EXISTS idx_settings_key_agency ON settings(key, agency_id);
-      END IF;
-    EXCEPTION WHEN others THEN NULL;
-    END $$;
-
-    DO $$ BEGIN
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE models ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE students ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE outreach_leads ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE chatter_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE students ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE outreach_leads ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE chatter_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER;
       ALTER TABLE settings ADD COLUMN IF NOT EXISTS agency_id INTEGER;
-      ALTER TABLE resources ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE model_revenue_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE payments ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE weekly_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
-      ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS agency_id INTEGER REFERENCES agencies(id) ON DELETE CASCADE;
+      ALTER TABLE resources ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE planning_shifts ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE model_revenue_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE weekly_objectives ADD COLUMN IF NOT EXISTS agency_id INTEGER;
+      ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS agency_id INTEGER;
     EXCEPTION WHEN others THEN NULL;
     END $$;
   `);
@@ -612,23 +601,35 @@ async function seedData() {
 }
 
 async function migrateToMultiAgency() {
-  // Create default agency if none exists
-  const { rows: agencies } = await pool.query('SELECT id FROM agencies LIMIT 1');
-  if (agencies.length === 0) {
-    await pool.query("INSERT INTO agencies (id, name, primary_color) VALUES (1, 'LCX Agency', '#8b5cf6')");
-    // Assign all existing data to agency 1
+  try {
+    // Ensure default agency exists
+    const { rows: agencies } = await pool.query('SELECT id FROM agencies LIMIT 1');
+    if (agencies.length === 0) {
+      await pool.query("INSERT INTO agencies (id, name, primary_color) VALUES (1, 'LCX Agency', '#8b5cf6')");
+    }
+    // ALWAYS fix orphaned data (idempotent) — assign all NULL agency_id rows to agency 1
     const tables = ['users', 'models', 'team_members', 'students', 'tasks', 'outreach_leads', 'chatter_shifts', 'resources', 'planning_shifts', 'leave_requests', 'model_revenue_objectives', 'payments', 'weekly_objectives', 'activity_log'];
     for (const table of tables) {
       await pool.query(`UPDATE ${table} SET agency_id = 1 WHERE agency_id IS NULL`);
     }
-    // Set owner
-    const { rows: firstAdmin } = await pool.query("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
-    if (firstAdmin.length > 0) {
-      await pool.query('UPDATE agencies SET owner_id = $1 WHERE id = 1', [firstAdmin[0].id]);
-    }
-    // Migrate settings to have agency_id
     await pool.query("UPDATE settings SET agency_id = 1 WHERE agency_id IS NULL");
-    console.log('Multi-agency migration complete');
+    // Set owner if not set
+    const { rows: ownerCheck } = await pool.query('SELECT owner_id FROM agencies WHERE id = 1');
+    if (ownerCheck.length > 0 && !ownerCheck[0].owner_id) {
+      const { rows: firstAdmin } = await pool.query("SELECT id FROM users WHERE role IN ('admin', 'super_admin') ORDER BY id LIMIT 1");
+      if (firstAdmin.length > 0) {
+        await pool.query('UPDATE agencies SET owner_id = $1 WHERE id = 1', [firstAdmin[0].id]);
+      }
+    }
+    // Drop old settings PK if it exists (key was PK, now we need composite)
+    const { rows: pkCheck } = await pool.query("SELECT 1 FROM pg_constraint WHERE conname = 'settings_pkey' AND conrelid = 'settings'::regclass");
+    if (pkCheck.length > 0) {
+      await pool.query('ALTER TABLE settings DROP CONSTRAINT settings_pkey');
+      console.log('Dropped settings_pkey constraint');
+    }
+    console.log('Multi-agency migration OK');
+  } catch(e) {
+    console.log('Migration note:', e.message);
   }
 }
 
@@ -649,7 +650,7 @@ function authMiddleware(req, res, next) {
       if (user.read_only && req.method !== 'GET' && decoded.role !== 'admin' && decoded.role !== 'super_admin') {
         return res.status(403).json({ error: 'Compte en lecture seule' });
       }
-      req.user.agency_id = user.agency_id;
+      req.user.agency_id = user.agency_id || 1; // Default to agency 1 for unmigrated users
       req.user.role = user.role; // Always use DB role, not token role
       next();
     }).catch(() => next());
@@ -678,11 +679,12 @@ async function sendWhatsAppToNumber(number, apiKey, message, provider) {
   }
 }
 
-async function sendWhatsApp(message) {
+async function sendWhatsApp(message, agencyId) {
   try {
-    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key IN ('whatsapp_number', 'whatsapp_api_key', 'whatsapp_provider', 'whatsapp_extra_recipients')");
+    const aid = agencyId || 1;
+    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key IN ('whatsapp_number', 'whatsapp_api_key', 'whatsapp_provider', 'whatsapp_extra_recipients') AND (agency_id = $1 OR agency_id IS NULL) ORDER BY agency_id DESC NULLS LAST", [aid]);
     const settings = {};
-    rows.forEach(r => settings[r.key] = r.value);
+    rows.forEach(r => { if (!settings[r.key]) settings[r.key] = r.value; });
     if (!settings.whatsapp_number || !settings.whatsapp_api_key) return;
 
     const provider = settings.whatsapp_provider || 'callmebot';
@@ -702,13 +704,14 @@ async function sendWhatsApp(message) {
   } catch(e) { console.log('WhatsApp send error:', e.message); }
 }
 
-async function getNotifSetting(key) {
-  const { rows } = await pool.query("SELECT value FROM settings WHERE key = $1", [key]);
+async function getNotifSetting(key, agencyId) {
+  const aid = agencyId || 1;
+  const { rows } = await pool.query("SELECT value FROM settings WHERE key = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY agency_id DESC NULLS LAST LIMIT 1", [key, aid]);
   return rows[0]?.value;
 }
 
-async function isNotifEnabled(key) {
-  const val = await getNotifSetting(key);
+async function isNotifEnabled(key, agencyId) {
+  const val = await getNotifSetting(key, agencyId);
   return val !== 'false';
 }
 
@@ -793,7 +796,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       await pool.query('INSERT INTO students (user_id, name, program, start_date, status) VALUES ($1, $2, $3, $4, $5)', [user.id, user.display_name, 'starter', new Date().toISOString().split('T')[0], 'active']);
     }
   }
-  const token = jwt.sign({ id: user.id, username: user.username, display_name: user.display_name, role: user.role, agency_id: user.agency_id }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ id: user.id, username: user.username, display_name: user.display_name, role: user.role, agency_id: user.agency_id || 1 }, JWT_SECRET, { expiresIn: '30d' });
   res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role, agency_id: user.agency_id } });
 });

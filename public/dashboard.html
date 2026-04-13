@@ -2319,8 +2319,10 @@ async function loadAllData() {
 // ========== ROLE-BASED ACCESS ==========
 function applyRoleBasedAccess() {
   const role = currentUser.role;
+  const adminNav = ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'];
+  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'settings'];
   const showNav = {
-    admin: ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'],
+    admin: adminNav, super_admin: adminNav, platform_admin: adminNav,
     model: ['nav-principal'],
     chatter: ['nav-principal', 'nav-teams'],
     outreach: ['nav-principal', 'nav-teams'],
@@ -2329,7 +2331,7 @@ function applyRoleBasedAccess() {
   };
 
   const visibleSections = {
-    admin: ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'settings'],
+    admin: adminSections, super_admin: adminSections, platform_admin: adminSections,
     model: ['planning', 'tasks'],
     chatter: ['planning', 'tasks', 'chatters'],
     outreach: ['planning', 'tasks', 'outreach'],
