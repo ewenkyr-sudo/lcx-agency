@@ -155,6 +155,7 @@
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agency_name: document.getElementById('agency_name').value.trim(),

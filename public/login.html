@@ -128,7 +128,7 @@
 
 <script>
   // Check if already logged in
-  fetch('/api/me').then(r => {
+  fetch('/api/me', { credentials: 'include' }).then(r => {
     if (r.ok) window.location.href = '/dashboard';
   }).catch(() => {});
 
@@ -143,6 +143,7 @@
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: document.getElementById('username').value.toLowerCase().trim(),
@@ -178,7 +179,7 @@
           if (newWorker.state === 'activated') window.location.reload();
         });
       });
-      setInterval(() => reg.update(), 3000);
+      setInterval(() => reg.update(), 60000);
     });
   }
 </script>

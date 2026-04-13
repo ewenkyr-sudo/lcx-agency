@@ -765,7 +765,7 @@ app.post('/api/register', rateLimit({
 
     // Auto-login
     const token = jwt.sign({ id: userId, username: username.trim(), display_name: display_name.trim(), role: 'super_admin', agency_id: agencyId }, JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
     res.json({ ok: true, token });
   } catch(e) {
     console.error('Registration error:', e);
@@ -797,7 +797,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     }
   }
   const token = jwt.sign({ id: user.id, username: user.username, display_name: user.display_name, role: user.role, agency_id: user.agency_id || 1 }, JWT_SECRET, { expiresIn: '30d' });
-  res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+  res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role, agency_id: user.agency_id } });
 });
 
@@ -2364,8 +2364,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get('/dashboard', authMiddleware, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+app.get('/dashboard', (req, res) => {
+  const token = req.cookies.token;
+  if (!token) return res.redirect('/');
+  try {
+    jwt.verify(token, JWT_SECRET);
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+  } catch {
+    res.clearCookie('token');
+    res.redirect('/');
+  }
 });
 
 app.get('/platform', authMiddleware, (req, res) => {
