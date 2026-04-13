@@ -25,7 +25,10 @@ const DAY_START_HOUR = 9;
 const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAMP::date - INTERVAL '1 day' ELSE CURRENT_TIMESTAMP::date END + INTERVAL '${DAY_START_HOUR} hours')`;
 
 // ============ MIDDLEWARE ============
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
