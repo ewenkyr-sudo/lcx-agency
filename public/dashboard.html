@@ -2362,7 +2362,7 @@ function applyRoleBasedAccess() {
   });
 
   // Hide action buttons for non-admin
-  if (role !== 'admin') {
+  if (!isAdmin()) {
     document.querySelectorAll('[id*="-actions"]').forEach(el => {
       el.innerHTML = '';
     });
@@ -3112,7 +3112,7 @@ async function addPlanShift() {
 async function editPlanShift(id) {
   var s = planShifts.find(function(x) { return x.id === id; });
   if (!s) return;
-  if (currentUser.role !== 'admin' && s.user_id !== currentUser.id) return showToast('Tu ne peux modifier que tes propres shifts', 'error');
+  if (!isAdmin() && s.user_id !== currentUser.id) return showToast('Tu ne peux modifier que tes propres shifts', 'error');
 
   var newType = prompt('Type de shift (morning/afternoon/night/off/custom) :', s.shift_type);
   if (newType === null) return;
@@ -3165,7 +3165,7 @@ function renderPlanLeaves() {
   var container = document.getElementById('planning-leaves');
   if (!container) return;
   var pending = planLeaves.filter(function(l) { return l.status === 'pending'; });
-  if (pending.length === 0 && currentUser.role !== 'admin') { container.innerHTML = ''; return; }
+  if (pending.length === 0 && !isAdmin()) { container.innerHTML = ''; return; }
 
   container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">Demandes de congé' + (pending.length > 0 ? ' <span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px">' + pending.length + '</span>' : '') + '</h3>'
@@ -3194,7 +3194,7 @@ async function handleLeave(id, status) {
 
 // ---- Stats recap ----
 async function renderPlanStats(start, end) {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   var container = document.getElementById('planning-stats');
   if (!container) return;
 
@@ -3919,7 +3919,7 @@ async function reloadAccounts() {
 }
 
 async function renderCoaching() {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   const container = document.getElementById('coaching-content');
   if (!container) return;
 
@@ -4941,7 +4941,7 @@ let shiftsPage = 1;
 let shiftsTotalPages = 1;
 
 async function loadShifts() {
-  if (currentUser.role !== 'chatter' && currentUser.role !== 'admin') return;
+  if (currentUser.role !== 'chatter' && !isAdmin()) return;
   try {
     const res = await fetch('/api/shifts?page=' + shiftsPage + '&limit=25', { credentials: 'include' });
     if (res.ok) {
@@ -5313,7 +5313,7 @@ async function updateLeadField(id, field, value) {
 }
 
 async function loadLeads() {
-  if (currentUser.role !== 'outreach' && currentUser.role !== 'admin') return;
+  if (currentUser.role !== 'outreach' && !isAdmin()) return;
   try {
     const res = await fetch('/api/leads?page=' + leadsPage + '&limit=25', { credentials: 'include' });
     if (res.ok) {
@@ -6077,7 +6077,7 @@ async function loadDbSize() {
 let analyticsCharts = {};
 
 async function renderAnalytics() {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   var container = document.getElementById('analytics-content');
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
@@ -6175,7 +6175,7 @@ async function renderAnalytics() {
 
 // ============ FINANCE SECTION ============
 async function renderFinance() {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   var container = document.getElementById('finance-content');
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
@@ -6320,7 +6320,7 @@ let activityLogPage = 1;
 let activityLogTotalPages = 1;
 
 async function renderActivityLog(page) {
-  if (currentUser.role !== 'admin') return;
+  if (!isAdmin()) return;
   var container = document.getElementById('activity-log-content');
   if (!container) return;
   if (page) activityLogPage = page;
@@ -6390,7 +6390,7 @@ async function renderAccessControl() {
   var container = document.getElementById('access-control-content');
   if (!container) return;
   container.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Rôle</th><th>Lecture seule</th><th>Expire le</th><th></th></tr></thead><tbody>'
-    + allUsers.filter(function(u) { return u.role !== 'admin'; }).map(function(u) {
+    + allUsers.filter(function(u) { return u.role !== 'admin' && u.role !== 'super_admin' && u.role !== 'platform_admin'; }).map(function(u) {
       return '<tr><td data-label="" class="mc-title"><strong>' + u.display_name + '</strong></td>'
         + '<td data-label="Rôle" class="mc-half">' + u.role + '</td>'
         + '<td data-label="Lecture seule" class="mc-half"><input type="checkbox" ' + (u.read_only ? 'checked' : '') + ' onchange="updateUserAccess(' + u.id + ',{read_only:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>'
