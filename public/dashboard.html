@@ -1214,6 +1214,12 @@
       <span class="nav-icon">⚙️</span> Paramètres
     </div>
   </div>
+  <div id="nav-platform" class="nav-section" style="display:none">
+    <div class="nav-label">Plateforme</div>
+    <a href="/platform" class="nav-item" style="text-decoration:none;color:var(--text2)">
+      <span class="nav-icon">🌐</span> Toutes les agences
+    </a>
+  </div>
 
   <div class="sidebar-footer" onclick="handleLogout()">
     <div class="user-info">
@@ -2344,6 +2350,9 @@ function applyRoleBasedAccess() {
     const el = document.getElementById(id);
     if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
   });
+  // Platform nav only for platform_admin
+  const navPlatform = document.getElementById('nav-platform');
+  if (navPlatform) navPlatform.style.display = role === 'platform_admin' ? '' : 'none';
 
   // Hide inappropriate nav items (but keep dynamic student outreach sections)
   document.querySelectorAll('[data-section]').forEach(item => {
