@@ -1495,10 +1495,14 @@
       <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderLeads()" style="max-width:350px">
     </div>
 
+    <!-- Barre actions groupées (visible quand leads sélectionnés) -->
+    <div id="leads-bulk-bar" style="display:none"></div>
+
     <!-- Tableau des leads -->
     <div class="panel">
       <table class="table" id="leads-table">
         <thead><tr>
+          <th style="width:30px"><input type="checkbox" id="leads-master-cb" onclick="toggleAllLeads(this.checked)" title="Tout sélectionner"></th>
           <th style="width:40px">#</th>
           <th>Username</th>
           <th>Type</th>
@@ -5282,6 +5286,61 @@ connectWebSocket();
 let allLeads = [];
 let currentLeadFilter = 'all';
 let outreachOptions = { script: [], account: [], type: [] };
+let selectedLeadIds = new Set();
+
+function toggleLeadSelection(id, checked) {
+  if (checked) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
+  renderLeadsBulkBar();
+}
+
+function toggleAllLeads(checked) {
+  document.querySelectorAll('#leads-table .lead-cb').forEach(cb => {
+    cb.checked = checked;
+    const id = parseInt(cb.dataset.id);
+    if (checked) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
+  });
+  renderLeadsBulkBar();
+}
+
+function clearLeadsSelection() {
+  selectedLeadIds.clear();
+  document.querySelectorAll('#leads-table .lead-cb').forEach(cb => cb.checked = false);
+  const master = document.getElementById('leads-master-cb');
+  if (master) master.checked = false;
+  renderLeadsBulkBar();
+}
+
+function renderLeadsBulkBar() {
+  const bar = document.getElementById('leads-bulk-bar');
+  if (!bar) return;
+  const n = selectedLeadIds.size;
+  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const scriptOpts = (outreachOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
+  const accountOpts = (outreachOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
+  bar.style.display = 'block';
+  bar.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">
+    <strong style="color:var(--accent);font-size:13px">${n} lead${n>1?'s':''} sélectionné${n>1?'s':''}</strong>
+    <select id="bulk-script" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer script...</option>${scriptOpts}</select>
+    <select id="bulk-account" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer compte IG...</option>${accountOpts}</select>
+    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyLeadsBulk()">Appliquer</button>
+    <button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearLeadsSelection()">Désélectionner</button>
+  </div>`;
+}
+
+async function applyLeadsBulk() {
+  const script = document.getElementById('bulk-script').value;
+  const account = document.getElementById('bulk-account').value;
+  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  const body = {};
+  if (script) body.script_used = script;
+  if (account) body.ig_account_used = account;
+  const ids = Array.from(selectedLeadIds);
+  await Promise.all(ids.map(id => fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })));
+  ids.forEach(id => { const l = allLeads.find(x => x.id === id); if (l) Object.assign(l, body); });
+  showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
+  clearLeadsSelection();
+  renderLeads();
+}
 
 async function loadOutreachOptions() {
   try {
@@ -5438,7 +5497,9 @@ function renderLeads() {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
+    const checked = selectedLeadIds.has(l.id) ? 'checked' : '';
     return `<tr>
+      <td data-label="" style="width:30px"><input type="checkbox" class="lead-cb" data-id="${l.id}" ${checked} onchange="toggleLeadSelection(${l.id}, this.checked)"></td>
       <td data-label="#" style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
       <td data-label="" class="mc-title"><strong>${igLink}</strong></td>
       <td data-label="Type" class="mc-half">${leadTypeSelect(l.id, l.lead_type, 'updateLeadField(' + l.id + ',\\\'lead_type\\\',this.value)')}</td>
@@ -5454,7 +5515,8 @@ function renderLeads() {
       <td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">${date}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  renderLeadsBulkBar();
 }
 
 function showToast(message, type = 'info') {

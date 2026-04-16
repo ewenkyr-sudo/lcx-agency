@@ -3,7 +3,70 @@
 
 let assignedStudents = [];
 let studentOutreachData = {}; // { studentUserId: { leads: [], options: {}, filter: 'all' } }
+let selectedSOLeadIds = {}; // { studentUserId: Set<leadId> }
 const debouncedRenderSOLeadTable = debounce(function(id) { renderSOLeadTable(id); }, 300);
+
+function toggleSOLeadSelection(studentUserId, leadId, checked) {
+  if (!selectedSOLeadIds[studentUserId]) selectedSOLeadIds[studentUserId] = new Set();
+  if (checked) selectedSOLeadIds[studentUserId].add(leadId); else selectedSOLeadIds[studentUserId].delete(leadId);
+  renderSOBulkBar(studentUserId);
+}
+
+function toggleAllSOLeads(studentUserId, checked) {
+  if (!selectedSOLeadIds[studentUserId]) selectedSOLeadIds[studentUserId] = new Set();
+  var set = selectedSOLeadIds[studentUserId];
+  document.querySelectorAll('#so-table-' + studentUserId + ' .so-lead-cb').forEach(function(cb) {
+    cb.checked = checked;
+    var id = parseInt(cb.dataset.id);
+    if (checked) set.add(id); else set.delete(id);
+  });
+  renderSOBulkBar(studentUserId);
+}
+
+function clearSOSelection(studentUserId) {
+  if (selectedSOLeadIds[studentUserId]) selectedSOLeadIds[studentUserId].clear();
+  document.querySelectorAll('#so-table-' + studentUserId + ' .so-lead-cb').forEach(function(cb) { cb.checked = false; });
+  var master = document.getElementById('so-master-cb-' + studentUserId);
+  if (master) master.checked = false;
+  renderSOBulkBar(studentUserId);
+}
+
+function renderSOBulkBar(studentUserId) {
+  var bar = document.getElementById('so-bulk-bar-' + studentUserId);
+  if (!bar) return;
+  var set = selectedSOLeadIds[studentUserId] || new Set();
+  var n = set.size;
+  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var opts = (studentOutreachData[studentUserId] || {}).options || {};
+  var scriptOpts = (opts.script || []).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
+  var accountOpts = (opts.account || []).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
+  bar.style.display = 'block';
+  bar.innerHTML = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">'
+    + '<strong style="color:var(--accent);font-size:13px">' + n + ' lead' + (n>1?'s':'') + ' sélectionné' + (n>1?'s':'') + '</strong>'
+    + '<select id="so-bulk-script-' + studentUserId + '" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer script...</option>' + scriptOpts + '</select>'
+    + '<select id="so-bulk-account-' + studentUserId + '" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer compte IG...</option>' + accountOpts + '</select>'
+    + '<button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applySOLeadsBulk(' + studentUserId + ')">Appliquer</button>'
+    + '<button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearSOSelection(' + studentUserId + ')">Désélectionner</button>'
+    + '</div>';
+}
+
+async function applySOLeadsBulk(studentUserId) {
+  var script = (document.getElementById('so-bulk-script-' + studentUserId) || {}).value || '';
+  var account = (document.getElementById('so-bulk-account-' + studentUserId) || {}).value || '';
+  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  var body = {};
+  if (script) body.script_used = script;
+  if (account) body.ig_account_used = account;
+  var ids = Array.from(selectedSOLeadIds[studentUserId] || []);
+  await Promise.all(ids.map(function(id) {
+    return fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  }));
+  var leads = (studentOutreachData[studentUserId] || {}).leads || [];
+  ids.forEach(function(id) { var l = leads.find(function(x) { return x.id === id; }); if (l) Object.assign(l, body); });
+  showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
+  clearSOSelection(studentUserId);
+  renderSOLeadTable(studentUserId);
+}
 
 async function loadAssignedStudents() {
   if (currentUser.role !== 'outreach') return;
@@ -81,7 +144,8 @@ async function renderStudentOutreachForAssistant(studentUserId, studentName) {
     }).join('')
     + '</div>'
     + '<div style="margin-bottom:16px"><input type="text" id="so-search-' + studentUserId + '" class="form-input" placeholder="Rechercher..." oninput="debouncedRenderSOLeadTable(' + studentUserId + ')" style="max-width:350px"></div>'
-    + '<div class="panel"><table class="table mobile-cards" id="so-table-' + studentUserId + '"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div>';
+    + '<div id="so-bulk-bar-' + studentUserId + '" style="display:none"></div>'
+    + '<div class="panel"><table class="table mobile-cards" id="so-table-' + studentUserId + '"><thead><tr><th style="width:30px"><input type="checkbox" id="so-master-cb-' + studentUserId + '" onclick="toggleAllSOLeads(' + studentUserId + ', this.checked)" title="Tout sélectionner"></th><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div>';
 
   renderSOLeadTable(studentUserId);
 }
@@ -96,10 +160,13 @@ function renderSOLeadTable(studentUserId) {
 
   var tbody = document.querySelector('#so-table-' + studentUserId + ' tbody');
   if (!tbody) return;
+  var selSet = selectedSOLeadIds[studentUserId] || new Set();
   tbody.innerHTML = filtered.map(function(l, idx) {
     var st = leadStatusColors[l.status] || leadStatusColors['sent'];
     var igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
-    return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
+    var checked = selSet.has(l.id) ? 'checked' : '';
+    return '<tr><td data-label="" style="width:30px"><input type="checkbox" class="so-lead-cb" data-id="' + l.id + '" ' + checked + ' onchange="toggleSOLeadSelection(' + studentUserId + ',' + l.id + ',this.checked)"></td>'
+      + '<td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
       + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateSOLead(' + l.id + ',{lead_type:this.value})') + '</td>'
       + '<td data-label="Script" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'script_used', l.script_used, 'script') + '</td>'
@@ -109,7 +176,8 @@ function renderSOLeadTable(studentUserId) {
       + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteSOLead(' + studentUserId + ',' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="9">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  renderSOBulkBar(studentUserId);
 }
 
 function soInlineSelect(studentUserId, leadId, field, currentValue, optType) {
