@@ -19,6 +19,61 @@ const RECRUIT_STATUSES = {
 let studentData = { leads: [], recruits: [], models: [], revenue: [], callRequests: [], objectives: [], conversations: [], messages: [] };
 let userOptions = { script: [], account: [], type: [] };
 let currentChatUserId = null;
+let selectedStudentLeadIds = new Set();
+
+function toggleStudentLeadSelection(id, checked) {
+  if (checked) selectedStudentLeadIds.add(id); else selectedStudentLeadIds.delete(id);
+  renderStudentBulkBar();
+}
+
+function toggleAllStudentLeads(checked) {
+  document.querySelectorAll('#student-leads-table .student-lead-cb').forEach(cb => {
+    cb.checked = checked;
+    const id = parseInt(cb.dataset.id);
+    if (checked) selectedStudentLeadIds.add(id); else selectedStudentLeadIds.delete(id);
+  });
+  renderStudentBulkBar();
+}
+
+function clearStudentLeadsSelection() {
+  selectedStudentLeadIds.clear();
+  document.querySelectorAll('#student-leads-table .student-lead-cb').forEach(cb => cb.checked = false);
+  const master = document.getElementById('student-leads-master-cb');
+  if (master) master.checked = false;
+  renderStudentBulkBar();
+}
+
+function renderStudentBulkBar() {
+  const bar = document.getElementById('student-leads-bulk-bar');
+  if (!bar) return;
+  const n = selectedStudentLeadIds.size;
+  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const scriptOpts = (userOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
+  const accountOpts = (userOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
+  bar.style.display = 'block';
+  bar.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">
+    <strong style="color:var(--accent);font-size:13px">${n} lead${n>1?'s':''} sélectionné${n>1?'s':''}</strong>
+    <select id="student-bulk-script" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer script...</option>${scriptOpts}</select>
+    <select id="student-bulk-account" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer compte IG...</option>${accountOpts}</select>
+    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyStudentLeadsBulk()">Appliquer</button>
+    <button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearStudentLeadsSelection()">Désélectionner</button>
+  </div>`;
+}
+
+async function applyStudentLeadsBulk() {
+  const script = document.getElementById('student-bulk-script').value;
+  const account = document.getElementById('student-bulk-account').value;
+  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  const body = {};
+  if (script) body.script_used = script;
+  if (account) body.ig_account_used = account;
+  const ids = Array.from(selectedStudentLeadIds);
+  await Promise.all(ids.map(id => fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })));
+  ids.forEach(id => { const l = studentData.leads.find(x => x.id === id); if (l) Object.assign(l, body); });
+  showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
+  clearStudentLeadsSelection();
+  renderStudentLeadTable();
+}
 
 // ========== DEBOUNCED SEARCH ==========
 const debouncedRenderStudentLeadTable = debounce(function() { renderStudentLeadTable(); }, 300);
@@ -179,7 +234,8 @@ async function renderStudentOutreach() {
       ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
     <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderStudentLeadTable()" style="max-width:350px"></div>
-    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div id="student-leads-bulk-bar" style="display:none"></div>
+    <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th style="width:30px"><input type="checkbox" id="student-leads-master-cb" onclick="toggleAllStudentLeads(this.checked)" title="Tout sélectionner"></th><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
   renderStudentLeadTable();
 }
@@ -211,7 +267,9 @@ function renderStudentLeadTable() {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
-    return '<tr><td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
+    const checked = selectedStudentLeadIds.has(l.id) ? 'checked' : '';
+    return '<tr><td data-label="" style="width:30px"><input type="checkbox" class="student-lead-cb" data-id="' + l.id + '" ' + checked + ' onchange="toggleStudentLeadSelection(' + l.id + ',this.checked)"></td>'
+      + '<td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
       + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateStudentLeadField(' + l.id + ',\'lead_type\',this.value)') + '</td>'
       + '<td data-label="Script" class="mc-half">' + inlineSelect(l.id, 'script_used', l.script_used, 'script') + '</td>'
@@ -222,7 +280,8 @@ function renderStudentLeadTable() {
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead', '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
+  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', 'Aucun lead', '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
+  renderStudentBulkBar();
 }
 
 function filterStudentLeads(f, btn) {
