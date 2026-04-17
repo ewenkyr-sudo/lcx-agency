@@ -1,3 +1,6 @@
+console.log('[DEBUG ENV] Toutes les variables d\'env disponibles:', Object.keys(process.env).filter(k => !k.includes('DATABASE') && !k.includes('JWT')));
+console.log('[DEBUG ENV] RESEND_API_KEY value type:', typeof process.env.RESEND_API_KEY, '| length:', process.env.RESEND_API_KEY?.length || 0);
+
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
