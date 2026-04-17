@@ -328,7 +328,7 @@ function showStudentLeadForm() {
 
 async function addNewOption(optType, selectId) {
   const labels = { script: 'script', account: 'compte Instagram', type: 'type de lead' };
-  const value = prompt('Nouveau ' + (labels[optType] || optType) + ' :');
+  const value = await showPromptModal('Nouveau ' + (labels[optType] || optType), 'Ex: ' + (optType === 'script' ? 'Script DM v2' : optType === 'account' ? '@moncompte' : 'Model'));
   if (!value || !value.trim()) return;
   const res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim() }) });
   if (res.ok) {
@@ -388,7 +388,8 @@ async function addStudentLead() {
 function updateStudentLead(id, status) {
   const lead = studentData.leads.find(l => l.id === id);
   if (lead) lead.status = status;
-  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) });
+  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) })
+    .catch(() => showToast('Erreur de connexion', 'error'));
 }
 
 function updateStudentLeadField(id, field, value) {
@@ -396,14 +397,16 @@ function updateStudentLeadField(id, field, value) {
   if (lead) lead[field] = value;
   const body = {};
   body[field] = value;
-  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) })
+    .catch(() => showToast('Erreur de connexion', 'error'));
 }
 
 async function deleteStudentLead(id) {
   if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
   studentData.leads = studentData.leads.filter(l => l.id !== id);
   renderStudentLeadTable();
-  fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' });
+  fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' })
+    .catch(() => showToast('Erreur de suppression', 'error'));
 }
 
 function showOptionsManager() {

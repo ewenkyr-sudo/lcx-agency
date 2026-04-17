@@ -228,7 +228,7 @@ function showSOLeadForm(studentUserId) {
 
 async function addSOOption(studentUserId, optType, selectId) {
   var labels = { script: 'script', account: 'compte Instagram', type: 'type' };
-  var value = prompt('Nouveau ' + (labels[optType] || optType) + ' :');
+  var value = await showPromptModal('Nouveau ' + (labels[optType] || optType), 'Ex: ' + (optType === 'script' ? 'Script DM v2' : optType === 'account' ? '@moncompte' : 'Type'));
   if (!value) return;
   var res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim(), student_user_id: studentUserId }) });
   if (res.ok) {
@@ -264,12 +264,12 @@ async function addSOLead(studentUserId) {
 }
 
 function updateSOLead(leadId, data) {
-  // Mise à jour locale immédiate
   for (var sid in studentOutreachData) {
     var lead = (studentOutreachData[sid].leads || []).find(function(l) { return l.id === leadId; });
     if (lead) { Object.assign(lead, data); break; }
   }
-  fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+  fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) })
+    .catch(function() { showToast('Erreur de connexion', 'error'); });
 }
 
 async function deleteSOLead(studentUserId, leadId) {

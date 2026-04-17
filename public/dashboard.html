@@ -651,7 +651,7 @@
   .panel:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
   select { transition: border-color 0.15s; }
   tr { transition: background 0.15s; }
-  input[type="checkbox"] { cursor: pointer; width: 16px; height: 16px; accent-color: #818cf8; }
+  input[type="checkbox"] { cursor: pointer; width: 18px; height: 18px; accent-color: #818cf8; }
   .task-check { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
   .task-check:hover { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.1); }
   .task-check.done { animation: fadeIn 0.2s ease; }
@@ -4369,7 +4369,8 @@ function renderCoachingLeadTable() {
 function updateCoachingLead(id, data) {
   var lead = coachingOutreachLeads.find(function(l) { return l.id === id; });
   if (lead) Object.assign(lead, data);
-  fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+  fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) })
+    .catch(function() { showToast('Erreur de connexion', 'error'); });
 }
 
 async function deleteCoachingLead(id) {
@@ -5606,7 +5607,8 @@ function updateLeadField(id, field, value) {
   _skipNextLeadReload = true;
   const body = {};
   body[field] = value;
-  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
+    .catch(() => showToast('Erreur de connexion', 'error'));
 }
 
 async function loadLeads() {
@@ -5799,6 +5801,29 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
+// Modale prompt personnalisée (remplace le prompt() natif)
+function showPromptModal(title, placeholder) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease';
+    overlay.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px;width:400px;max-width:90vw;box-shadow:0 24px 80px rgba(0,0,0,0.5)">'
+      + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px">' + title + '</h3>'
+      + '<input type="text" id="prompt-modal-input" class="form-input" placeholder="' + (placeholder || '') + '" style="margin-bottom:16px" autofocus>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+      + '<button id="prompt-modal-cancel" class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Annuler</button>'
+      + '<button id="prompt-modal-ok" class="btn btn-primary">Ajouter</button>'
+      + '</div></div>';
+    document.body.appendChild(overlay);
+    var input = document.getElementById('prompt-modal-input');
+    input.focus();
+    function close(val) { overlay.remove(); resolve(val); }
+    document.getElementById('prompt-modal-cancel').onclick = function() { close(null); };
+    document.getElementById('prompt-modal-ok').onclick = function() { close(input.value.trim() || null); };
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') close(input.value.trim() || null); if (e.key === 'Escape') close(null); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(null); });
+  });
+}
+
 function autoFillUsername(url) {
   const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
   if (match) {
@@ -5824,7 +5849,7 @@ function outreachFormSelect(id, optType, placeholder) {
 
 async function addOutreachFormOption(optType, selectId) {
   var labels = { script: 'script', account: 'compte Instagram', type: 'type de lead' };
-  var value = prompt('Nouveau ' + (labels[optType] || optType) + ' :');
+  var value = await showPromptModal('Nouveau ' + (labels[optType] || optType), 'Ex: ' + (optType === 'script' ? 'Script DM v2' : optType === 'account' ? '@moncompte' : 'Model'));
   if (!value || !value.trim()) return;
   var res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim() }) });
   if (res.ok) {
@@ -5888,7 +5913,8 @@ function updateLeadStatus(id, status) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead.status = status;
   _skipNextLeadReload = true;
-  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) });
+  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) })
+    .catch(() => showToast('Erreur de connexion', 'error'));
 }
 
 async function deleteLead(id) {

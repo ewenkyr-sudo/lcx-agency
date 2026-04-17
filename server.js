@@ -877,6 +877,10 @@ async function migrateToMultiAgency() {
   }
 }
 
+// ============ RATE LIMITERS ============
+const sensitiveRL = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: { error: 'Trop de requêtes, réessayez dans quelques minutes' } });
+const passwordRL = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Trop de tentatives, réessayez dans 15 minutes' } });
+
 // ============ AUTH MIDDLEWARE ============
 function authMiddleware(req, res, next) {
   const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
@@ -1153,7 +1157,7 @@ app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
+app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) => {
   const { username, password, display_name, role } = req.body;
   if (!username || !password || !display_name || !role) return res.status(400).json({ error: 'Champs requis manquants' });
   const hash = bcrypt.hashSync(password, 10);
@@ -1204,16 +1208,16 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-app.put('/api/users/:id/password', authMiddleware, adminOnly, async (req, res) => {
+app.put('/api/users/:id/password', authMiddleware, adminOnly, passwordRL, async (req, res) => {
   const { password } = req.body;
   const hash = bcrypt.hashSync(password, 10);
-  await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, req.params.id]);
+  await pool.query('UPDATE users SET password = $1 WHERE id = $2 AND agency_id = $3', [hash, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
-app.delete('/api/users/:id', authMiddleware, adminOnly, async (req, res) => {
+app.delete('/api/users/:id', authMiddleware, adminOnly, sensitiveRL, async (req, res) => {
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas supprimer ton propre compte' });
-  await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM users WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1238,13 +1242,13 @@ app.put('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query(`UPDATE students SET
     name = COALESCE($1, name), program = COALESCE($2, program), models_signed = COALESCE($3, models_signed),
     active_discussions = COALESCE($4, active_discussions), progression = COALESCE($5, progression),
-    contact = COALESCE($6, contact), status = COALESCE($7, status), drive_folder = COALESCE($8, drive_folder) WHERE id = $9`,
-    [name, program, models_signed, active_discussions, progression, contact, status, drive_folder, req.params.id]);
+    contact = COALESCE($6, contact), status = COALESCE($7, status), drive_folder = COALESCE($8, drive_folder) WHERE id = $9 AND agency_id = $10`,
+    [name, program, models_signed, active_discussions, progression, contact, status, drive_folder, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.delete('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM students WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM students WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1275,13 +1279,13 @@ app.put('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query(`UPDATE team_members SET
     name = COALESCE($1, name), role = COALESCE($2, role), shift = COALESCE($3, shift),
     models_assigned = COALESCE($4, models_assigned), platform = COALESCE($5, platform),
-    contact = COALESCE($6, contact), status = COALESCE($7, status) WHERE id = $8`,
-    [name, role, shift, models_assigned ? JSON.stringify(models_assigned) : null, platform, contact, status, req.params.id]);
+    contact = COALESCE($6, contact), status = COALESCE($7, status) WHERE id = $8 AND agency_id = $9`,
+    [name, role, shift, models_assigned ? JSON.stringify(models_assigned) : null, platform, contact, status, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM team_members WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM team_members WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1298,7 +1302,7 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM models WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM models WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1318,7 +1322,7 @@ app.post('/api/accounts', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM accounts WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM accounts WHERE id = $1 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $2)', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1349,26 +1353,25 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
   const filterUserId = req.query.student_user_id || req.query.user_id;
-  const agencyFilter = ' AND (t.agency_id = ' + parseInt(req.user.agency_id) + ' OR t.agency_id IS NULL)';
-  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
+  const aid = req.user.agency_id;
+  const orderBy = `ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+  if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     if (filterUserId) {
       query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
         FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
-        WHERE (t.assigned_to_id = $1 OR t.created_by = $1)${agencyFilter}
-        ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
-      params = [filterUserId];
+        WHERE (t.assigned_to_id = $1 OR t.created_by = $1) AND (t.agency_id = $2 OR t.agency_id IS NULL) ${orderBy}`;
+      params = [filterUserId, aid];
     } else {
       query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
         FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
-        WHERE 1=1${agencyFilter}
-        ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
+        WHERE (t.agency_id = $1 OR t.agency_id IS NULL) ${orderBy}`;
+      params = [aid];
     }
   } else {
     query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
       FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
-      WHERE (t.assigned_to_id = $1 OR t.created_by = $1)${agencyFilter}
-      ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
-    params = [req.user.id];
+      WHERE (t.assigned_to_id = $1 OR t.created_by = $1) AND (t.agency_id = $2 OR t.agency_id IS NULL) ${orderBy}`;
+    params = [req.user.id, aid];
   }
   const { rows } = await pool.query(query, params);
   res.json(rows);
@@ -1396,8 +1399,8 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
   await pool.query(`UPDATE tasks SET status = COALESCE($1, status), title = COALESCE($2, title),
     description = COALESCE($3, description), priority = COALESCE($4, priority),
     deadline = COALESCE($5, deadline), assigned_to_id = COALESCE($6, assigned_to_id),
-    notes = COALESCE($7, notes) WHERE id = $8`,
-    [status, title, description, priority, deadline, assigned_to_id, notes, req.params.id]);
+    notes = COALESCE($7, notes) WHERE id = $8 AND agency_id = $9`,
+    [status, title, description, priority, deadline, assigned_to_id, notes, req.params.id, req.user.agency_id]);
   broadcast('task-updated', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
@@ -1407,7 +1410,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
     const check = await pool.query('SELECT id FROM tasks WHERE id = $1 AND created_by = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
   }
-  await pool.query('DELETE FROM tasks WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   broadcast('task-deleted', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
@@ -1429,20 +1432,19 @@ app.post('/api/calls', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/calls/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM calls WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM calls WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 // ============ DASHBOARD STATS ============
 app.get('/api/dashboard', authMiddleware, async (req, res) => {
   const aid = req.user.agency_id;
-  const af = ' AND (m.agency_id = ' + parseInt(aid) + ' OR m.agency_id IS NULL)';
-  const totalFollowers = (await pool.query('SELECT COALESCE(SUM(a.current_followers), 0) as total FROM accounts a JOIN models m ON a.model_id = m.id WHERE 1=1' + af)).rows[0].total;
-  const modelsCount = (await pool.query("SELECT COUNT(*) as count FROM models m WHERE m.status = 'active'" + af)).rows[0].count;
-  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE (agency_id = ' + parseInt(aid) + ' OR agency_id IS NULL)')).rows[0].count;
-  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active' AND (agency_id = " + parseInt(aid) + " OR agency_id IS NULL)")).rows[0].count;
-  const todayStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as today FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date = CURRENT_DATE::text" + af)).rows[0].today;
-  const weekStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as week FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text" + af)).rows[0].week;
+  const totalFollowers = (await pool.query('SELECT COALESCE(SUM(a.current_followers), 0) as total FROM accounts a JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL)', [aid])).rows[0].total;
+  const modelsCount = (await pool.query("SELECT COUNT(*) as count FROM models m WHERE m.status = 'active' AND (m.agency_id = $1 OR m.agency_id IS NULL)", [aid])).rows[0].count;
+  const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE (agency_id = $1 OR agency_id IS NULL)', [aid])).rows[0].count;
+  const studentsCount = (await pool.query("SELECT COUNT(*) as count FROM students WHERE status = 'active' AND (agency_id = $1 OR agency_id IS NULL)", [aid])).rows[0].count;
+  const todayStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as today FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date = CURRENT_DATE::text AND (m.agency_id = $1 OR m.agency_id IS NULL)", [aid])).rows[0].today;
+  const weekStats = (await pool.query("SELECT COALESCE(SUM(ds.new_followers), 0) as week FROM daily_stats ds JOIN accounts a ON ds.account_id = a.id JOIN models m ON a.model_id = m.id WHERE ds.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text AND (m.agency_id = $1 OR m.agency_id IS NULL)", [aid])).rows[0].week;
 
   res.json({
     totalFollowers: parseInt(totalFollowers),
@@ -1479,24 +1481,24 @@ app.put('/api/settings', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
   const { role } = req.body;
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas changer ton propre rôle' });
-  await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, req.params.id]);
+  await pool.query('UPDATE users SET role = $1 WHERE id = $2 AND agency_id = $3', [role, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.put('/api/users/:id/display_name', authMiddleware, adminOnly, async (req, res) => {
   const { display_name } = req.body;
-  await pool.query('UPDATE users SET display_name = $1 WHERE id = $2', [display_name, req.params.id]);
+  await pool.query('UPDATE users SET display_name = $1 WHERE id = $2 AND agency_id = $3', [display_name, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.put('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
   const { avatar_url } = req.body;
-  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatar_url, req.params.id]);
+  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2 AND agency_id = $3', [avatar_url, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.delete('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('UPDATE users SET avatar_url = NULL WHERE id = $1', [req.params.id]);
+  await pool.query('UPDATE users SET avatar_url = NULL WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1505,8 +1507,8 @@ app.put('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
   await pool.query(`UPDATE models SET
     name = COALESCE($1, name), platforms = COALESCE($2, platforms), status = COALESCE($3, status),
     drive_folder = COALESCE($4, drive_folder), drive_contract = COALESCE($5, drive_contract),
-    lifecycle_status = COALESCE($7, lifecycle_status) WHERE id = $6`,
-    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id, lifecycle_status]);
+    lifecycle_status = COALESCE($7, lifecycle_status) WHERE id = $6 AND agency_id = $8`,
+    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id, lifecycle_status, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -1531,11 +1533,11 @@ app.delete('/api/model-planning/:id', authMiddleware, adminOnly, async (req, res
 app.put('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
   const { handle, current_followers } = req.body;
   if (current_followers !== undefined) {
-    await pool.query(`UPDATE accounts SET previous_followers = current_followers, current_followers = $1, handle = COALESCE($2, handle) WHERE id = $3`,
-      [current_followers, handle, req.params.id]);
+    await pool.query(`UPDATE accounts SET previous_followers = current_followers, current_followers = $1, handle = COALESCE($2, handle) WHERE id = $3 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $4)`,
+      [current_followers, handle, req.params.id, req.user.agency_id]);
   } else {
-    await pool.query(`UPDATE accounts SET handle = COALESCE($1, handle) WHERE id = $2`,
-      [handle, req.params.id]);
+    await pool.query(`UPDATE accounts SET handle = COALESCE($1, handle) WHERE id = $2 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $3)`,
+      [handle, req.params.id, req.user.agency_id]);
   }
   res.json({ ok: true });
 });
@@ -2623,7 +2625,7 @@ app.post('/api/resources', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT file_data, file_name, file_mime FROM resources WHERE id = $1', [req.params.id]);
+  const { rows } = await pool.query('SELECT file_data, file_name, file_mime FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   if (!rows[0] || !rows[0].file_data) return res.status(404).json({ error: 'Fichier introuvable' });
   res.set('Content-Type', rows[0].file_mime || 'application/octet-stream');
   res.set('Content-Disposition', 'attachment; filename="' + (rows[0].file_name || 'file') + '"');
@@ -2631,7 +2633,7 @@ app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/resources/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM resources WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -2720,7 +2722,7 @@ app.put('/api/objectives/:id', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/objectives/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM weekly_objectives WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM weekly_objectives WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -2981,12 +2983,12 @@ app.post('/api/payments', authMiddleware, adminOnly, async (req, res) => {
 
 app.put('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
   const { amount, status, notes } = req.body;
-  await pool.query('UPDATE payments SET amount = COALESCE($1, amount), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4', [amount, status, notes, req.params.id]);
+  await pool.query('UPDATE payments SET amount = COALESCE($1, amount), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4 AND agency_id = $5', [amount, status, notes, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
 app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM payments WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM payments WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
@@ -3187,8 +3189,8 @@ app.put('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
     shift_type = COALESCE($1, shift_type), start_time = COALESCE($2, start_time),
     end_time = COALESCE($3, end_time), model_ids = COALESCE($4, model_ids),
     notes = COALESCE($5, notes), entry_type = COALESCE($7, entry_type),
-    priority = COALESCE($8, priority), description = COALESCE($9, description) WHERE id = $6`,
-    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id, entry_type, priority, description]);
+    priority = COALESCE($8, priority), description = COALESCE($9, description) WHERE id = $6 AND agency_id = $10`,
+    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id, entry_type, priority, description, req.user.agency_id]);
   broadcast('planning-updated', {});
   res.json({ ok: true });
 });
@@ -3234,8 +3236,8 @@ app.post('/api/leave-requests', authMiddleware, async (req, res) => {
 
 app.put('/api/leave-requests/:id', authMiddleware, adminOnly, async (req, res) => {
   const { status, admin_notes } = req.body;
-  await pool.query('UPDATE leave_requests SET status = COALESCE($1, status), admin_notes = COALESCE($2, admin_notes) WHERE id = $3',
-    [status, admin_notes, req.params.id]);
+  await pool.query('UPDATE leave_requests SET status = COALESCE($1, status), admin_notes = COALESCE($2, admin_notes) WHERE id = $3 AND agency_id = $4',
+    [status, admin_notes, req.params.id, req.user.agency_id]);
   const lr = (await pool.query('SELECT lr.*, u.display_name as user_name FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.id = $1', [req.params.id])).rows[0];
   if (lr) {
     broadcast('leave-request-updated', { id: parseInt(req.params.id), status });
