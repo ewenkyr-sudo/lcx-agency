@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#818cf8">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<title>Fuzion Pilot — Activer votre compte</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #09090b;
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(6,214,160,0.04) 0%, transparent 50%);
+    color: #f0f0f5;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { width: 440px; max-width: 92vw; }
+  .logo {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .logo-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, #7c3aed, #06d6a0);
+    border-radius: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 40px rgba(124,58,237,0.35), 0 0 0 1px rgba(255,255,255,0.1) inset;
+  }
+  .logo h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo p { color: #71717a; font-size: 14px; margin-top: 8px; }
+  .card {
+    background: rgba(17,17,20,0.6);
+    backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+  .form-group { margin-bottom: 20px; }
+  .form-label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: #71717a; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .form-input {
+    width: 100%; padding: 13px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; color: #f0f0f5;
+    font-size: 14px; font-family: inherit; outline: none;
+    transition: all 0.2s ease;
+  }
+  .form-input:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+    background: rgba(255,255,255,0.06);
+  }
+  .form-input::placeholder { color: #52525b; }
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #7c3aed, #06d6a0);
+    color: white; border: none; border-radius: 14px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    margin-top: 8px;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,0.35); }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .error-msg {
+    background: rgba(251,113,133,0.08);
+    border: 1px solid rgba(251,113,133,0.2);
+    color: #fb7185;
+    padding: 12px 16px; border-radius: 12px;
+    font-size: 13px; margin-bottom: 20px;
+    display: none; text-align: center;
+  }
+  .error-msg.show { display: block; }
+  .success-msg {
+    text-align: center;
+    display: none;
+  }
+  .success-msg.show { display: block; }
+  .success-msg h2 { font-size: 22px; margin-bottom: 12px; }
+  .success-msg p { color: #71717a; font-size: 14px; margin-bottom: 24px; }
+  .success-msg a {
+    display: inline-block;
+    background: linear-gradient(135deg, #7c3aed, #06d6a0);
+    color: white; padding: 14px 32px;
+    border-radius: 14px; font-size: 15px; font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+  }
+  .token-invalid {
+    text-align: center;
+    display: none;
+  }
+  .token-invalid.show { display: block; }
+  .token-invalid h2 { font-size: 20px; color: #fb7185; margin-bottom: 12px; }
+  .token-invalid p { color: #71717a; font-size: 14px; line-height: 1.6; }
+  .token-invalid a { color: #818cf8; text-decoration: underline; }
+  .hint { font-size: 11px; color: #52525b; margin-top: 6px; }
+  .footer { text-align: center; margin-top: 24px; color: #52525b; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon">👑</div>
+    <h1>Fuzion Pilot</h1>
+    <p>Activez votre compte</p>
+  </div>
+
+  <div class="card">
+    <!-- Error -->
+    <div class="error-msg" id="error-msg"></div>
+
+    <!-- Token invalid state -->
+    <div class="token-invalid" id="token-invalid">
+      <h2>Lien invalide ou expiré</h2>
+      <p>Ce lien d'activation n'est plus valide.<br>Contactez <a href="mailto:contact@fuzionpilot.com">contact@fuzionpilot.com</a> pour en obtenir un nouveau.</p>
+    </div>
+
+    <!-- Registration form -->
+    <form id="invite-form" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label class="form-label">Nom d'affichage</label>
+        <input type="text" class="form-input" id="display_name" placeholder="Ex: Marie Dupont" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nom d'utilisateur</label>
+        <input type="text" class="form-input" id="username" placeholder="Ex: marie" required autocomplete="username">
+        <div class="hint">Utilisé pour se connecter. Pas d'espaces ni de caractères spéciaux.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input type="password" class="form-input" id="password" placeholder="Minimum 8 caractères" required minlength="8" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn-submit" id="submit-btn">Activer mon compte</button>
+    </form>
+
+    <!-- Success state -->
+    <div class="success-msg" id="success-msg">
+      <h2>Compte activé ! 🎉</h2>
+      <p>Votre dashboard est prêt. Vous allez être redirigé...</p>
+      <a href="/dashboard.html">Accéder au dashboard</a>
+    </div>
+  </div>
+
+  <div class="footer">&copy; 2026 Fuzion Pilot</div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get('token');
+
+if (!token) {
+  document.getElementById('invite-form').style.display = 'none';
+  document.getElementById('token-invalid').classList.add('show');
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const errorEl = document.getElementById('error-msg');
+  errorEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Création en cours...';
+
+  try {
+    const res = await fetch('/api/invite/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        token,
+        display_name: document.getElementById('display_name').value.trim(),
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Erreur lors de la création';
+      errorEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Activer mon compte';
+      if (data.error && (data.error.includes('invalide') || data.error.includes('expiré') || data.error.includes('utilisé'))) {
+        document.getElementById('invite-form').style.display = 'none';
+        document.getElementById('token-invalid').classList.add('show');
+        document.getElementById('token-invalid').querySelector('h2').textContent = data.error.includes('expiré') ? 'Lien expiré' : data.error.includes('utilisé') ? 'Lien déjà utilisé' : 'Lien invalide';
+      }
+      return;
+    }
+
+    // Success
+    document.getElementById('invite-form').style.display = 'none';
+    document.getElementById('success-msg').classList.add('show');
+    setTimeout(() => { window.location.href = '/dashboard.html'; }, 2000);
+  } catch (err) {
+    errorEl.textContent = 'Erreur de connexion au serveur';
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Activer mon compte';
+  }
+}
+</script>
+</body>
+</html>

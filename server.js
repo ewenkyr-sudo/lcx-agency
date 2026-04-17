@@ -6,10 +6,12 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,11 +26,126 @@ const DAY_START_HOUR = 9;
 // Expression SQL pour le début de la journée de travail courante
 const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAMP::date - INTERVAL '1 day' ELSE CURRENT_TIMESTAMP::date END + INTERVAL '${DAY_START_HOUR} hours')`;
 
+// ============ RESEND EMAIL ============
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const EMAIL_FROM = 'Fuzion Pilot <contact@fuzionpilot.com>';
+const APP_URL = process.env.APP_URL || 'https://lcx-agency.onrender.com';
+
+async function sendEmail(to, subject, html) {
+  if (!resend) { console.log('Resend not configured, skipping email to', to); return; }
+  try {
+    await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    console.log('Email sent to', to, ':', subject);
+  } catch (e) {
+    console.error('Email error:', e.message);
+  }
+}
+
 // ============ MIDDLEWARE ============
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
+// Stripe webhook needs raw body — must be before express.json
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event;
+
+  if (endpointSecret && sig) {
+    // Verify signature if we have a secret
+    const crypto = require('crypto');
+    const elements = sig.split(',');
+    const timestamp = elements.find(e => e.startsWith('t=')).slice(2);
+    const signature = elements.find(e => e.startsWith('v1=')).slice(3);
+    const signedPayload = timestamp + '.' + req.body.toString();
+    const expected = crypto.createHmac('sha256', endpointSecret).update(signedPayload).digest('hex');
+    if (signature !== expected) return res.status(400).send('Invalid signature');
+    event = JSON.parse(req.body);
+  } else {
+    event = JSON.parse(req.body);
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const email = session.customer_email || session.customer_details?.email;
+      const planName = session.metadata?.plan || 'pro';
+      const amount = session.amount_total ? (session.amount_total / 100).toFixed(2) : '39.00';
+      const stripeCustomerId = session.customer;
+      const stripeSubscriptionId = session.subscription;
+
+      if (!email) { console.log('Stripe webhook: no email found'); return res.json({ ok: true }); }
+
+      // Generate invitation token
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+      await pool.query(
+        'INSERT INTO invitation_tokens (token, email, role, plan, stripe_customer_id, stripe_subscription_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [token, email, 'super_admin', planName, stripeCustomerId, stripeSubscriptionId, expiresAt]
+      );
+
+      // Send welcome email
+      const inviteUrl = `${APP_URL}/invite.html?token=${token}`;
+      await sendEmail(email, 'Bienvenue sur Fuzion Pilot — Activez votre compte', `
+        <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
+          <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
+            <div style="text-align:center;margin-bottom:32px;">
+              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+              <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
+            </div>
+            <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;text-align:center;">
+              <h2 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Bienvenue ! 🎉</h2>
+              <p style="color:#a0a0c0;font-size:15px;line-height:1.6;margin:0 0 24px;">Votre paiement a été confirmé. Cliquez sur le bouton ci-dessous pour créer votre compte et accéder à votre dashboard.</p>
+              <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#06d6a0);color:white;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(124,58,237,0.3);">Activer mon compte</a>
+              <p style="color:#5a5a7a;font-size:12px;margin-top:24px;">Ce lien expire dans 48 heures.</p>
+            </div>
+            <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
+          </div>
+        </div>
+      `);
+
+      // Send payment confirmation email
+      const renewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR');
+      await sendEmail(email, 'Paiement confirmé — Fuzion Pilot', `
+        <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
+          <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
+            <div style="text-align:center;margin-bottom:32px;">
+              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+              <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
+            </div>
+            <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
+              <h2 style="font-size:18px;margin:0 0 20px;color:#ffffff;text-align:center;">Paiement confirmé ✅</h2>
+              <div style="background:#0a0a1a;border-radius:10px;padding:20px;margin-bottom:16px;">
+                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Plan :</strong> ${planName.charAt(0).toUpperCase() + planName.slice(1)}</p>
+                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Montant :</strong> ${amount}€</p>
+                <p style="margin:0;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Prochain renouvellement :</strong> ${renewDate}</p>
+              </div>
+              <p style="color:#5a5a7a;font-size:13px;text-align:center;">Gérez votre abonnement depuis votre espace client Stripe.</p>
+            </div>
+            <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
+          </div>
+        </div>
+      `);
+
+      console.log('Stripe checkout completed for', email, '- invite token:', token);
+    }
+
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      const status = sub.status; // active, canceled, past_due, etc.
+      const customerId = sub.customer;
+      await pool.query('UPDATE agencies SET subscription_status = $1 WHERE stripe_customer_id = $2', [status, customerId]);
+      console.log('Subscription updated:', customerId, status);
+    }
+  } catch(e) {
+    console.error('Stripe webhook error:', e);
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -430,6 +547,25 @@ async function initDB() {
       primary_color TEXT DEFAULT '#8b5cf6',
       owner_id INTEGER,
       active BOOLEAN DEFAULT true,
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT,
+      subscription_status TEXT DEFAULT 'active',
+      subscription_plan TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Invitation tokens for secure registration
+    CREATE TABLE IF NOT EXISTS invitation_tokens (
+      id SERIAL PRIMARY KEY,
+      token TEXT UNIQUE NOT NULL,
+      email TEXT NOT NULL,
+      agency_id INTEGER,
+      role TEXT DEFAULT 'super_admin',
+      plan TEXT DEFAULT 'pro',
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
@@ -440,9 +576,15 @@ async function initDB() {
   for (const table of agencyTables) {
     try {
       await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS agency_id INTEGER`);
-    } catch(e) {
-      // Column might already exist or table might not exist yet - that's fine
-    }
+    } catch(e) {}
+  }
+
+  // Add Stripe columns to agencies (migration for existing DBs)
+  const stripeCols = ['stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'subscription_status TEXT DEFAULT \'active\'', 'subscription_plan TEXT'];
+  for (const col of stripeCols) {
+    try {
+      await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS ${col}`);
+    } catch(e) {}
   }
 }
 
@@ -642,7 +784,7 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
-    pool.query('SELECT read_only, expires_at, agency_id, role FROM users WHERE id = $1', [decoded.id]).then(result => {
+    pool.query('SELECT u.read_only, u.expires_at, u.agency_id, u.role, a.subscription_status FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [decoded.id]).then(result => {
       const user = result.rows[0];
       if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
       if (user.expires_at && new Date(user.expires_at) < new Date()) {
@@ -651,8 +793,12 @@ function authMiddleware(req, res, next) {
       if (user.read_only && req.method !== 'GET' && decoded.role !== 'admin' && decoded.role !== 'super_admin') {
         return res.status(403).json({ error: 'Compte en lecture seule' });
       }
-      req.user.agency_id = user.agency_id || 1; // Default to agency 1 for unmigrated users
-      req.user.role = user.role; // Always use DB role, not token role
+      // Check subscription status — platform_admin bypasses
+      if (user.role !== 'platform_admin' && user.subscription_status && user.subscription_status !== 'active' && user.subscription_status !== 'trialing') {
+        return res.status(403).json({ error: 'Votre abonnement est expiré. Renouvelez sur fuzionpilot.com' });
+      }
+      req.user.agency_id = user.agency_id || 1;
+      req.user.role = user.role;
       next();
     }).catch(() => next());
   } catch {
@@ -721,7 +867,76 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-app.post('/api/register', rateLimit({
+// Public registration disabled — use invitation tokens via Stripe checkout
+app.post('/api/register', (req, res) => {
+  return res.status(403).json({ error: 'L\'inscription publique est désactivée. Souscrivez un abonnement sur fuzionpilot.com pour recevoir votre lien d\'activation.' });
+});
+
+// ============ INVITATION-BASED REGISTRATION ============
+app.post('/api/invite/register', rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { error: 'Trop de tentatives, réessayez dans 15 minutes' }
+}), async (req, res) => {
+  const { token, display_name, username, password } = req.body;
+  if (!token || !display_name || !username || !password) {
+    return res.status(400).json({ error: 'Tous les champs sont requis' });
+  }
+  if (password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (min 8 caractères)' });
+
+  // Verify token
+  const { rows: tokenRows } = await pool.query('SELECT * FROM invitation_tokens WHERE token = $1', [token]);
+  if (tokenRows.length === 0) return res.status(400).json({ error: 'Lien d\'invitation invalide.' });
+  const invite = tokenRows[0];
+  if (invite.used_at) return res.status(400).json({ error: 'Ce lien a déjà été utilisé.' });
+  if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Ce lien a expiré. Contactez contact@fuzionpilot.com pour en obtenir un nouveau.' });
+
+  // Check username uniqueness
+  const exists = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username]);
+  if (exists.rows.length > 0) return res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
+
+  try {
+    // Create agency
+    const agencyName = display_name.trim() + ' Agency';
+    const { rows: agencyRows } = await pool.query(
+      'INSERT INTO agencies (name, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [agencyName, invite.stripe_customer_id, invite.stripe_subscription_id, 'active', invite.plan]
+    );
+    const agencyId = agencyRows[0].id;
+
+    // Create owner user
+    const hash = bcrypt.hashSync(password, 10);
+    const { rows: userRows } = await pool.query(
+      'INSERT INTO users (username, password, display_name, role, agency_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [username.trim(), hash, display_name.trim(), 'super_admin', agencyId]
+    );
+    const userId = userRows[0].id;
+
+    // Update agency owner + token
+    await pool.query('UPDATE agencies SET owner_id = $1 WHERE id = $2', [userId, agencyId]);
+    await pool.query('UPDATE invitation_tokens SET used_at = NOW(), agency_id = $1 WHERE id = $2', [agencyId, invite.id]);
+
+    // Create default settings
+    const defaultSettings = [
+      ['agency_name', agencyName],
+      ['agency_subtitle', 'Management Suite'],
+      ['agency_logo', '👑']
+    ];
+    for (const [key, value] of defaultSettings) {
+      await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, value, agencyId]);
+    }
+
+    // Auto-login
+    const jwtToken = jwt.sign({ id: userId, username: username.trim(), display_name: display_name.trim(), role: 'super_admin', agency_id: agencyId }, JWT_SECRET, { expiresIn: '30d' });
+    res.cookie('token', jwtToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.json({ ok: true, token: jwtToken });
+  } catch(e) {
+    console.error('Invite registration error:', e);
+    res.status(500).json({ error: 'Erreur lors de la création du compte' });
+  }
+});
+
+// Legacy register route — kept for old form compatibility (now just redirects to invite flow)
+app.post('/api/register-legacy-disabled', rateLimit({
   windowMs: 15 * 60 * 1000, max: 10,
   message: { error: 'Trop de tentatives, réessayez dans 15 minutes' }
 }), async (req, res) => {
@@ -833,6 +1048,36 @@ app.post('/api/users', authMiddleware, adminOnly, async (req, res) => {
     if (['chatter', 'outreach', 'va'].includes(role)) {
       await pool.query('INSERT INTO team_members (user_id, name, role, status, agency_id) VALUES ($1, $2, $3, $4, $5)', [newId, display_name, role, 'offline', req.user.agency_id]);
     }
+    // Send email to new team member if email-like username or if agency has email
+    const agencyInfo = (await pool.query('SELECT name FROM agencies WHERE id = $1', [req.user.agency_id])).rows[0];
+    const agencyName = agencyInfo?.name || 'Votre agence';
+    if (username.includes('@')) {
+      sendEmail(username, `Votre accès Fuzion Pilot — ${agencyName}`, `
+        <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
+          <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
+            <div style="text-align:center;margin-bottom:32px;">
+              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+              <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
+            </div>
+            <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
+              <h2 style="font-size:18px;margin:0 0 16px;color:#ffffff;text-align:center;">Bienvenue dans l'équipe ! 🎉</h2>
+              <p style="color:#a0a0c0;font-size:14px;line-height:1.6;margin:0 0 20px;text-align:center;">Votre compte a été créé sur <strong style="color:#fff;">${agencyName}</strong>.</p>
+              <div style="background:#0a0a1a;border-radius:10px;padding:20px;margin-bottom:20px;">
+                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Identifiant :</strong> ${username}</p>
+                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Mot de passe :</strong> ${password}</p>
+                <p style="margin:0;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Rôle :</strong> ${role}</p>
+              </div>
+              <div style="text-align:center;">
+                <a href="${APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#06d6a0);color:white;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;">Se connecter</a>
+              </div>
+              <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:16px;">Changez votre mot de passe dès votre première connexion.</p>
+            </div>
+            <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot</p>
+          </div>
+        </div>
+      `);
+    }
+
     res.json({ id: newId, username, display_name, role });
   } catch (e) {
     res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
