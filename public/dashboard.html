@@ -568,8 +568,15 @@
     outline: none;
     transition: border-color 0.2s;
   }
-  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
   .form-select option { background: var(--bg3); color: var(--text); }
+
+  /* Fluidité globale */
+  .btn:active { transform: scale(0.97); }
+  .panel { transition: opacity 0.2s; }
+  select { transition: border-color 0.15s; }
+  tr { transition: background 0.15s; }
+  input[type="checkbox"] { cursor: pointer; }
 
   /* Toggle switch */
   .toggle-slider {
@@ -3777,10 +3784,8 @@ async function renderChatters() {
 }
 
 async function renderOutreach() {
-  await loadOutreachOptions();
-  await loadLeads();
+  await Promise.all([loadOutreachOptions(), loadLeads(), loadOutreachKPIs()]);
   renderLeads();
-  await loadOutreachKPIs();
   const importBtn = document.getElementById('btn-import-csv');
   if (importBtn) importBtn.style.display = isAdmin() ? '' : 'none';
 }
@@ -5314,7 +5319,13 @@ function renderLeadsBulkBar() {
   const bar = document.getElementById('leads-bulk-bar');
   if (!bar) return;
   const n = selectedLeadIds.size;
-  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (n === 0) { bar.style.display = 'none'; return; }
+  // Si déjà affiché, ne met à jour que le compteur
+  const existing = bar.querySelector('strong');
+  if (existing && bar.style.display === 'block') {
+    existing.textContent = n + ' lead' + (n>1?'s':'') + ' sélectionné' + (n>1?'s':'');
+    return;
+  }
   const scriptOpts = (outreachOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   const accountOpts = (outreachOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   bar.style.display = 'block';
@@ -5331,13 +5342,14 @@ async function applyLeadsBulk() {
   const script = document.getElementById('bulk-script').value;
   const account = document.getElementById('bulk-account').value;
   if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
-  const body = {};
+  const body = { ids: Array.from(selectedLeadIds) };
   if (script) body.script_used = script;
   if (account) body.ig_account_used = account;
-  const ids = Array.from(selectedLeadIds);
-  await Promise.all(ids.map(id => fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })));
-  ids.forEach(id => { const l = allLeads.find(x => x.id === id); if (l) Object.assign(l, body); });
-  showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
+  const btn = document.querySelector('#leads-bulk-bar .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mise à jour...'; }
+  await fetch('/api/leads/bulk-update', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  body.ids.forEach(id => { const l = allLeads.find(x => x.id === id); if (l) { if (script) l.script_used = script; if (account) l.ig_account_used = account; } });
+  showToast(body.ids.length + ' lead' + (body.ids.length>1?'s':'') + ' mis à jour', 'success');
   clearLeadsSelection();
   renderLeads();
 }
@@ -5361,12 +5373,12 @@ function outreachInlineSelect(leadId, field, currentValue, optType) {
   return html;
 }
 
-async function updateLeadField(id, field, value) {
-  const body = {};
-  body[field] = value;
-  await fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+function updateLeadField(id, field, value) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead[field] = value;
+  const body = {};
+  body[field] = value;
+  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
 }
 
 async function loadLeads() {
@@ -5493,21 +5505,36 @@ function renderLeads() {
   const table = document.getElementById('leads-table');
   table.classList.add('mobile-cards');
   const tbody = table.querySelector('tbody');
+  // Pré-calculer les options des selects (1 fois au lieu de N)
+  const statusEntries = Object.entries(leadStatusColors);
+  const scriptOptsCache = (outreachOptions.script || []).map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('');
+  const accountOptsCache = (outreachOptions.account || []).map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('');
+  const selectStyle = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
   tbody.innerHTML = filtered.map((l, idx) => {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
     const checked = selectedLeadIds.has(l.id) ? 'checked' : '';
+    // Script select inline (options pré-calculées)
+    let scriptSel = '<select onchange="updateLeadField(' + l.id + ',\'script_used\',this.value)" style="' + selectStyle + '"><option value="">-</option>';
+    if (l.script_used && !(outreachOptions.script||[]).some(o=>o.value===l.script_used)) scriptSel += '<option value="' + l.script_used + '" selected>' + l.script_used + '</option>';
+    scriptSel += scriptOptsCache.replace('value="' + l.script_used + '"', 'value="' + l.script_used + '" selected') + '</select>';
+    // Account select inline
+    let acctSel = '<select onchange="updateLeadField(' + l.id + ',\'ig_account_used\',this.value)" style="' + selectStyle + '"><option value="">-</option>';
+    if (l.ig_account_used && !(outreachOptions.account||[]).some(o=>o.value===l.ig_account_used)) acctSel += '<option value="' + l.ig_account_used + '" selected>' + l.ig_account_used + '</option>';
+    acctSel += accountOptsCache.replace('value="' + l.ig_account_used + '"', 'value="' + l.ig_account_used + '" selected') + '</select>';
+    // Status select
+    const statusOpts = statusEntries.map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('');
     return `<tr>
       <td data-label="" style="width:30px"><input type="checkbox" class="lead-cb" data-id="${l.id}" ${checked} onchange="toggleLeadSelection(${l.id}, this.checked)"></td>
       <td data-label="#" style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
       <td data-label="" class="mc-title"><strong>${igLink}</strong></td>
       <td data-label="Type" class="mc-half">${leadTypeSelect(l.id, l.lead_type, 'updateLeadField(' + l.id + ',\\\'lead_type\\\',this.value)')}</td>
-      <td data-label="Script" class="mc-half">${outreachInlineSelect(l.id, 'script_used', l.script_used, 'script')}</td>
-      <td data-label="Compte IG" class="mc-half">${outreachInlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account')}</td>
+      <td data-label="Script" class="mc-half">${scriptSel}</td>
+      <td data-label="Compte IG" class="mc-half">${acctSel}</td>
       <td data-label="Statut" class="mc-half">
         <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">
-          ${Object.entries(leadStatusColors).map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('')}
+          ${statusOpts}
         </select>
       </td>
       <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${l.notes || '-'}</td>

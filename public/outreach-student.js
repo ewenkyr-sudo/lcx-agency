@@ -36,7 +36,12 @@ function renderSOBulkBar(studentUserId) {
   if (!bar) return;
   var set = selectedSOLeadIds[studentUserId] || new Set();
   var n = set.size;
-  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (n === 0) { bar.style.display = 'none'; return; }
+  var existing = bar.querySelector('strong');
+  if (existing && bar.style.display === 'block') {
+    existing.textContent = n + ' lead' + (n>1?'s':'') + ' sélectionné' + (n>1?'s':'');
+    return;
+  }
   var opts = (studentOutreachData[studentUserId] || {}).options || {};
   var scriptOpts = (opts.script || []).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
   var accountOpts = (opts.account || []).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
@@ -54,15 +59,15 @@ async function applySOLeadsBulk(studentUserId) {
   var script = (document.getElementById('so-bulk-script-' + studentUserId) || {}).value || '';
   var account = (document.getElementById('so-bulk-account-' + studentUserId) || {}).value || '';
   if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
-  var body = {};
+  var ids = Array.from(selectedSOLeadIds[studentUserId] || []);
+  var body = { ids: ids };
   if (script) body.script_used = script;
   if (account) body.ig_account_used = account;
-  var ids = Array.from(selectedSOLeadIds[studentUserId] || []);
-  await Promise.all(ids.map(function(id) {
-    return fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
-  }));
+  var btn = document.querySelector('#so-bulk-bar-' + studentUserId + ' .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mise à jour...'; }
+  await fetch('/api/student-leads/bulk-update', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
   var leads = (studentOutreachData[studentUserId] || {}).leads || [];
-  ids.forEach(function(id) { var l = leads.find(function(x) { return x.id === id; }); if (l) Object.assign(l, body); });
+  ids.forEach(function(id) { var l = leads.find(function(x) { return x.id === id; }); if (l) { if (script) l.script_used = script; if (account) l.ig_account_used = account; } });
   showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
   clearSOSelection(studentUserId);
   renderSOLeadTable(studentUserId);
@@ -258,8 +263,8 @@ async function addSOLead(studentUserId) {
   } else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
-async function updateSOLead(leadId, data) {
-  await fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+function updateSOLead(leadId, data) {
+  fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
 }
 
 async function deleteSOLead(studentUserId, leadId) {

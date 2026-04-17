@@ -47,7 +47,12 @@ function renderStudentBulkBar() {
   const bar = document.getElementById('student-leads-bulk-bar');
   if (!bar) return;
   const n = selectedStudentLeadIds.size;
-  if (n === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (n === 0) { bar.style.display = 'none'; return; }
+  const existing = bar.querySelector('strong');
+  if (existing && bar.style.display === 'block') {
+    existing.textContent = n + ' lead' + (n>1?'s':'') + ' sélectionné' + (n>1?'s':'');
+    return;
+  }
   const scriptOpts = (userOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   const accountOpts = (userOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   bar.style.display = 'block';
@@ -64,12 +69,14 @@ async function applyStudentLeadsBulk() {
   const script = document.getElementById('student-bulk-script').value;
   const account = document.getElementById('student-bulk-account').value;
   if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
-  const body = {};
+  const ids = Array.from(selectedStudentLeadIds);
+  const body = { ids };
   if (script) body.script_used = script;
   if (account) body.ig_account_used = account;
-  const ids = Array.from(selectedStudentLeadIds);
-  await Promise.all(ids.map(id => fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })));
-  ids.forEach(id => { const l = studentData.leads.find(x => x.id === id); if (l) Object.assign(l, body); });
+  const btn = document.querySelector('#student-leads-bulk-bar .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mise à jour...'; }
+  await fetch('/api/student-leads/bulk-update', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+  ids.forEach(id => { const l = studentData.leads.find(x => x.id === id); if (l) { if (script) l.script_used = script; if (account) l.ig_account_used = account; } });
   showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
   clearStudentLeadsSelection();
   renderStudentLeadTable();
@@ -378,27 +385,25 @@ async function addStudentLead() {
   else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
-async function updateStudentLead(id, status) {
-  await fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) });
-  // Recharger les leads du market actuel uniquement
-  var leadsRes = await fetch('/api/student-leads?market=' + currentStudentMarket, { credentials: 'include' });
-  if (leadsRes.ok) studentData.leads = await leadsRes.json();
-  renderStudentLeadTable();
+function updateStudentLead(id, status) {
+  const lead = studentData.leads.find(l => l.id === id);
+  if (lead) lead.status = status;
+  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) });
 }
 
-async function updateStudentLeadField(id, field, value) {
-  const body = {};
-  body[field] = value;
-  await fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-  // Mettre à jour localement sans tout recharger
+function updateStudentLeadField(id, field, value) {
   const lead = studentData.leads.find(l => l.id === id);
   if (lead) lead[field] = value;
+  const body = {};
+  body[field] = value;
+  fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
 }
 
 async function deleteStudentLead(id) {
   if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
-  await fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' });
-  await loadStudentData(); renderStudentLeadTable();
+  studentData.leads = studentData.leads.filter(l => l.id !== id);
+  renderStudentLeadTable();
+  fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' });
 }
 
 function showOptionsManager() {

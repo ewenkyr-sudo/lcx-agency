@@ -1412,6 +1412,24 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
   res.json(rows[0]);
 });
 
+// Bulk update leads (MUST be before /:id to avoid Express matching "bulk-update" as an id)
+app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  const { ids, script_used, ig_account_used } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids requis' });
+  const sets = [];
+  const params = [];
+  let pi = 1;
+  if (script_used !== undefined) { sets.push(`script_used = $${pi++}`); params.push(script_used); }
+  if (ig_account_used !== undefined) { sets.push(`ig_account_used = $${pi++}`); params.push(ig_account_used); }
+  if (sets.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+  sets.push('updated_at = NOW()');
+  params.push(ids);
+  await pool.query(`UPDATE outreach_leads SET ${sets.join(', ')} WHERE id = ANY($${pi})`, params);
+  broadcast('leads-bulk-updated', { ids, script_used, ig_account_used });
+  res.json({ ok: true, updated: ids.length });
+});
+
 // Update lead
 app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
@@ -1995,6 +2013,24 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
   res.json(rows[0]);
 });
 
+// Bulk update student leads (MUST be before /:id)
+app.put('/api/student-leads/bulk-update', authMiddleware, async (req, res) => {
+  const { ids, script_used, ig_account_used } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids requis' });
+  const sets = [];
+  const params = [];
+  let pi = 1;
+  if (script_used !== undefined) { sets.push(`script_used = $${pi++}`); params.push(script_used); }
+  if (ig_account_used !== undefined) { sets.push(`ig_account_used = $${pi++}`); params.push(ig_account_used); }
+  if (sets.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+  sets.push(`updated_at = NOW()`);
+  sets.push(`last_modified_by = $${pi++}`);
+  params.push(req.user.id);
+  params.push(ids);
+  await pool.query(`UPDATE student_leads SET ${sets.join(', ')} WHERE id = ANY($${pi})`, params);
+  res.json({ ok: true, updated: ids.length });
+});
+
 app.put('/api/student-leads/:id', authMiddleware, async (req, res) => {
   const { status, notes, lead_type, script_used, ig_account_used } = req.body;
   // Vérifier l'accès
@@ -2035,6 +2071,7 @@ app.delete('/api/student-leads/all', authMiddleware, async (req, res) => {
   const result = await pool.query("DELETE FROM student_leads WHERE user_id = ANY($1) AND COALESCE(market, 'fr') = $2", [sharedIds, mf]);
   res.json({ ok: true, deleted: result.rowCount });
 });
+
 
 app.delete('/api/student-leads/:id', authMiddleware, async (req, res) => {
   const lead = (await pool.query('SELECT user_id FROM student_leads WHERE id = $1', [req.params.id])).rows[0];
