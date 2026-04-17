@@ -5372,10 +5372,18 @@ function connectWebSocket() {
     }
 
     if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted' || msg.event === 'leads-bulk-updated') {
-      await loadLeads();
-      renderLeads();
-      await loadOutreachKPIs();
-      if (isAdmin()) loadDashboardOutreachStats();
+      // Skip le rechargement si c'est notre propre modif (déjà à jour localement)
+      if (msg.event === 'lead-updated' && _skipNextLeadReload) {
+        _skipNextLeadReload = false;
+        // Juste rafraîchir les KPIs sans re-render le tableau
+        loadOutreachKPIs();
+        if (isAdmin()) loadDashboardOutreachStats();
+      } else {
+        await loadLeads();
+        renderLeads();
+        await loadOutreachKPIs();
+        if (isAdmin()) loadDashboardOutreachStats();
+      }
       // Notifications pour événements leads importants
       if (msg.event === 'lead-updated' && msg.data) {
         if (msg.data.status === 'call-booked') {
@@ -5512,6 +5520,7 @@ let allLeads = [];
 let currentLeadFilter = 'all';
 let outreachOptions = { script: [], account: [], type: [] };
 let selectedLeadIds = new Set();
+let _skipNextLeadReload = false;
 
 function toggleLeadSelection(id, checked) {
   if (checked) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
@@ -5596,6 +5605,7 @@ function outreachInlineSelect(leadId, field, currentValue, optType) {
 function updateLeadField(id, field, value) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead[field] = value;
+  _skipNextLeadReload = true;
   const body = {};
   body[field] = value;
   fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
@@ -5876,16 +5886,11 @@ async function addLead() {
   }
 }
 
-async function updateLeadStatus(id, status) {
-  await fetch('/api/leads/' + id, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ status })
-  });
-  await loadLeads();
-  renderLeads();
-  await loadOutreachKPIs();
+function updateLeadStatus(id, status) {
+  const lead = allLeads.find(l => l.id === id);
+  if (lead) lead.status = status;
+  _skipNextLeadReload = true;
+  fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) });
 }
 
 async function deleteLead(id) {
