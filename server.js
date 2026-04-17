@@ -1,6 +1,3 @@
-console.log('[DEBUG ENV] Toutes les variables d\'env disponibles:', Object.keys(process.env).filter(k => !k.includes('DATABASE') && !k.includes('JWT')));
-console.log('[DEBUG ENV] RESEND_API_KEY value type:', typeof process.env.RESEND_API_KEY, '| length:', process.env.RESEND_API_KEY?.length || 0);
-
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -115,11 +112,15 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 
     if (!email) { console.log(`[STRIPE WEBHOOK] ERREUR: pas d'email dans ${source} — abandon`); return; }
 
-    // Vérifier si un token non utilisé existe déjà pour cet email (éviter les doublons checkout+invoice)
-    const existing = await pool.query('SELECT id FROM invitation_tokens WHERE email = $1 AND used_at IS NULL AND expires_at > NOW()', [email]);
+    // Anti-doublon: skip seulement si un token a été créé il y a moins de 5 min (checkout+invoice quasi simultanés)
+    const existing = await pool.query('SELECT id, created_at FROM invitation_tokens WHERE email = $1 AND used_at IS NULL AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1', [email]);
     if (existing.rows.length > 0) {
-      console.log(`[STRIPE WEBHOOK] Token actif déjà existant pour ${email} — skip création (évite doublon)`);
-      return;
+      const ageMinutes = (Date.now() - new Date(existing.rows[0].created_at).getTime()) / 60000;
+      if (ageMinutes < 5) {
+        console.log(`[STRIPE WEBHOOK] Token actif créé il y a ${ageMinutes.toFixed(1)} min pour ${email} — skip (doublon récent)`);
+        return;
+      }
+      console.log(`[STRIPE WEBHOOK] Token existant pour ${email} mais créé il y a ${ageMinutes.toFixed(0)} min — on en crée un nouveau`);
     }
 
     // Generate invitation token
