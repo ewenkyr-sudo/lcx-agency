@@ -100,83 +100,124 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
   console.log('[STRIPE WEBHOOK] Event type:', event.type);
   console.log('[STRIPE WEBHOOK] Event ID:', event.id);
 
-  try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const email = session.customer_email || session.customer_details?.email;
-      const planName = session.metadata?.plan || 'pro';
-      const amount = session.amount_total ? (session.amount_total / 100).toFixed(2) : '39.00';
-      const stripeCustomerId = session.customer;
-      const stripeSubscriptionId = session.subscription;
+  // --- Helper: génère token + envoie emails bienvenue + confirmation ---
+  async function handleNewPayment(source, email, planName, amount, stripeCustomerId, stripeSubscriptionId) {
+    console.log(`[STRIPE WEBHOOK] ${source}:`);
+    console.log('  Email:', email);
+    console.log('  Plan:', planName);
+    console.log('  Montant:', amount, '€');
+    console.log('  Customer ID:', stripeCustomerId);
+    console.log('  Subscription ID:', stripeSubscriptionId);
 
-      console.log('[STRIPE WEBHOOK] checkout.session.completed:');
-      console.log('  Email:', email);
-      console.log('  Plan:', planName);
-      console.log('  Montant:', amount, '€');
-      console.log('  Customer ID:', stripeCustomerId);
-      console.log('  Subscription ID:', stripeSubscriptionId);
+    if (!email) { console.log(`[STRIPE WEBHOOK] ERREUR: pas d'email dans ${source} — abandon`); return; }
 
-      if (!email) { console.log('[STRIPE WEBHOOK] ERREUR: pas d\'email dans la session — abandon'); return res.json({ ok: true }); }
-
-      // Generate invitation token
-      const token = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
-      console.log('[STRIPE WEBHOOK] Token invitation généré:', token, '| Expire:', expiresAt.toISOString());
-
-      await pool.query(
-        'INSERT INTO invitation_tokens (token, email, role, plan, stripe_customer_id, stripe_subscription_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [token, email, 'super_admin', planName, stripeCustomerId, stripeSubscriptionId, expiresAt]
-      );
-      console.log('[STRIPE WEBHOOK] Token inséré en DB OK');
-
-      // Send welcome email
-      const inviteUrl = `${APP_URL}/invite.html?token=${token}`;
-      console.log('[STRIPE WEBHOOK] Envoi email bienvenue vers', email, '| URL:', inviteUrl);
-      await sendEmail(email, 'Bienvenue sur Fuzion Pilot — Activez votre compte', `
-        <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
-          <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
-            <div style="text-align:center;margin-bottom:32px;">
-              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
-              <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
-            </div>
-            <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;text-align:center;">
-              <h2 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Bienvenue ! 🎉</h2>
-              <p style="color:#a0a0c0;font-size:15px;line-height:1.6;margin:0 0 24px;">Votre paiement a été confirmé. Cliquez sur le bouton ci-dessous pour créer votre compte et accéder à votre dashboard.</p>
-              <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#06d6a0);color:white;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(124,58,237,0.3);">Activer mon compte</a>
-              <p style="color:#5a5a7a;font-size:12px;margin-top:24px;">Ce lien expire dans 48 heures.</p>
-            </div>
-            <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
-          </div>
-        </div>
-      `);
-
-      // Send payment confirmation email
-      console.log('[STRIPE WEBHOOK] Envoi email confirmation paiement vers', email);
-      const renewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR');
-      await sendEmail(email, 'Paiement confirmé — Fuzion Pilot', `
-        <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
-          <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
-            <div style="text-align:center;margin-bottom:32px;">
-              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
-              <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
-            </div>
-            <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
-              <h2 style="font-size:18px;margin:0 0 20px;color:#ffffff;text-align:center;">Paiement confirmé ✅</h2>
-              <div style="background:#0a0a1a;border-radius:10px;padding:20px;margin-bottom:16px;">
-                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Plan :</strong> ${planName.charAt(0).toUpperCase() + planName.slice(1)}</p>
-                <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Montant :</strong> ${amount}€</p>
-                <p style="margin:0;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Prochain renouvellement :</strong> ${renewDate}</p>
-              </div>
-              <p style="color:#5a5a7a;font-size:13px;text-align:center;">Gérez votre abonnement depuis votre espace client Stripe.</p>
-            </div>
-            <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
-          </div>
-        </div>
-      `);
-
-      console.log('[STRIPE WEBHOOK] checkout.session.completed traité avec succès pour', email);
+    // Vérifier si un token non utilisé existe déjà pour cet email (éviter les doublons checkout+invoice)
+    const existing = await pool.query('SELECT id FROM invitation_tokens WHERE email = $1 AND used_at IS NULL AND expires_at > NOW()', [email]);
+    if (existing.rows.length > 0) {
+      console.log(`[STRIPE WEBHOOK] Token actif déjà existant pour ${email} — skip création (évite doublon)`);
+      return;
     }
 
+    // Generate invitation token
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+    console.log('[STRIPE WEBHOOK] Token invitation généré:', token, '| Expire:', expiresAt.toISOString());
+
+    await pool.query(
+      'INSERT INTO invitation_tokens (token, email, role, plan, stripe_customer_id, stripe_subscription_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [token, email, 'super_admin', planName, stripeCustomerId, stripeSubscriptionId, expiresAt]
+    );
+    console.log('[STRIPE WEBHOOK] Token inséré en DB OK');
+
+    // Send welcome email
+    const inviteUrl = `${APP_URL}/invite.html?token=${token}`;
+    console.log('[STRIPE WEBHOOK] Envoi email bienvenue vers', email, '| URL:', inviteUrl);
+    await sendEmail(email, 'Bienvenue sur Fuzion Pilot — Activez votre compte', `
+      <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
+        <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
+          <div style="text-align:center;margin-bottom:32px;">
+            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+            <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
+          </div>
+          <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;text-align:center;">
+            <h2 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Bienvenue ! 🎉</h2>
+            <p style="color:#a0a0c0;font-size:15px;line-height:1.6;margin:0 0 24px;">Votre paiement a été confirmé. Cliquez sur le bouton ci-dessous pour créer votre compte et accéder à votre dashboard.</p>
+            <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#06d6a0);color:white;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(124,58,237,0.3);">Activer mon compte</a>
+            <p style="color:#5a5a7a;font-size:12px;margin-top:24px;">Ce lien expire dans 48 heures.</p>
+          </div>
+          <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
+        </div>
+      </div>
+    `);
+
+    // Send payment confirmation email
+    console.log('[STRIPE WEBHOOK] Envoi email confirmation paiement vers', email);
+    const renewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR');
+    await sendEmail(email, 'Paiement confirmé — Fuzion Pilot', `
+      <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
+        <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
+          <div style="text-align:center;margin-bottom:32px;">
+            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+            <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
+          </div>
+          <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
+            <h2 style="font-size:18px;margin:0 0 20px;color:#ffffff;text-align:center;">Paiement confirmé ✅</h2>
+            <div style="background:#0a0a1a;border-radius:10px;padding:20px;margin-bottom:16px;">
+              <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Plan :</strong> ${planName.charAt(0).toUpperCase() + planName.slice(1)}</p>
+              <p style="margin:0 0 8px;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Montant :</strong> ${amount}€</p>
+              <p style="margin:0;color:#a0a0c0;font-size:14px;"><strong style="color:#fff;">Prochain renouvellement :</strong> ${renewDate}</p>
+            </div>
+            <p style="color:#5a5a7a;font-size:13px;text-align:center;">Gérez votre abonnement depuis votre espace client Stripe.</p>
+          </div>
+          <p style="color:#5a5a7a;font-size:12px;text-align:center;margin-top:24px;">© 2026 Fuzion Pilot — contact@fuzionpilot.com</p>
+        </div>
+      </div>
+    `);
+
+    console.log(`[STRIPE WEBHOOK] ${source} traité avec succès pour`, email);
+  }
+
+  try {
+    // --- checkout.session.completed ---
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      await handleNewPayment(
+        'checkout.session.completed',
+        session.customer_email || session.customer_details?.email,
+        session.metadata?.plan || 'pro',
+        session.amount_total ? (session.amount_total / 100).toFixed(2) : '39.00',
+        session.customer,
+        session.subscription
+      );
+    }
+
+    // --- invoice.payment_succeeded ---
+    if (event.type === 'invoice.payment_succeeded') {
+      const invoice = event.data.object;
+      const billingReason = invoice.billing_reason;
+      console.log('[STRIPE WEBHOOK] invoice.payment_succeeded | billing_reason:', billingReason);
+
+      // Seulement sur la première facture (subscription_create), pas les renouvellements
+      if (billingReason === 'subscription_create') {
+        await handleNewPayment(
+          'invoice.payment_succeeded (subscription_create)',
+          invoice.customer_email,
+          invoice.lines?.data?.[0]?.price?.metadata?.plan || invoice.lines?.data?.[0]?.description || 'pro',
+          invoice.amount_paid ? (invoice.amount_paid / 100).toFixed(2) : '39.00',
+          invoice.customer,
+          invoice.subscription
+        );
+      } else {
+        console.log(`[STRIPE WEBHOOK] invoice.payment_succeeded ignoré (billing_reason: ${billingReason}) — pas une première souscription`);
+        // Pour les renouvellements, juste s'assurer que le status est actif
+        if (invoice.customer) {
+          await pool.query('UPDATE agencies SET subscription_status = $1 WHERE stripe_customer_id = $2', ['active', invoice.customer]);
+          console.log('[STRIPE WEBHOOK] subscription_status remis à active pour customer', invoice.customer);
+        }
+      }
+    }
+
+    // --- subscription updated/deleted ---
     if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub = event.data.object;
       const status = sub.status;
@@ -187,7 +228,9 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       console.log('[STRIPE WEBHOOK] Agences mises à jour:', result.rowCount);
     }
 
-    if (event.type !== 'checkout.session.completed' && event.type !== 'customer.subscription.updated' && event.type !== 'customer.subscription.deleted') {
+    // --- Event non géré ---
+    const handledEvents = ['checkout.session.completed', 'invoice.payment_succeeded', 'customer.subscription.updated', 'customer.subscription.deleted'];
+    if (!handledEvents.includes(event.type)) {
       console.log('[STRIPE WEBHOOK] Event type non géré:', event.type, '— ignoré');
     }
   } catch(e) {
