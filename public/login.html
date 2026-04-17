@@ -11,19 +11,21 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
 <title>LCX Agency — Connexion</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0c0c10; --bg2: #151519; --bg3: #1e1e25;
-    --accent: #7c6aef; --accent2: #9d8cf7;
-    --green: #34d399; --red: #f87171; --pink: #f472b6;
-    --text: #eaeaf0; --text2: #8a8a9a; --text3: #55555f;
-    --border: rgba(255,255,255,0.06);
+    --bg: #09090b; --bg2: #111114; --bg3: #1a1a1f;
+    --accent: #818cf8; --accent2: #a5b4fc;
+    --green: #4ade80; --red: #fb7185; --pink: #f9a8d4;
+    --text: #f0f0f5; --text2: #71717a; --text3: #52525b;
+    --border: rgba(255,255,255,0.07);
   }
   body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     background: var(--bg);
-    background-image: radial-gradient(ellipse at 50% 30%, rgba(124,106,239,0.06) 0%, transparent 50%);
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(129,140,248,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(249,168,212,0.04) 0%, transparent 50%);
     color: var(--text);
     min-height: 100vh;
     display: flex;
@@ -40,13 +42,13 @@
     margin-bottom: 40px;
   }
   .login-logo-icon {
-    width: 64px; height: 64px;
-    background: linear-gradient(135deg, #7c6aef, #c084fc, #f472b6);
-    border-radius: 20px;
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f9a8d4);
+    border-radius: 22px;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 32px;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 32px rgba(124,106,239,0.3);
+    font-size: 36px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 40px rgba(129,140,248,0.35), 0 0 0 1px rgba(255,255,255,0.1) inset;
   }
   .login-logo h1 {
     font-size: 28px; font-weight: 800; letter-spacing: -1px;
@@ -55,11 +57,12 @@
     color: var(--text2); font-size: 14px; margin-top: 6px;
   }
   .login-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 36px;
-    box-shadow: 0 16px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03);
+    background: rgba(17,17,20,0.6);
+    backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04) inset;
   }
   .form-group { margin-bottom: 20px; }
   .form-label {
@@ -67,24 +70,24 @@
     color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
   }
   .form-input {
-    width: 100%; padding: 12px 16px;
-    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    width: 100%; padding: 13px 16px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
     border-radius: 12px; color: var(--text);
     font-size: 14px; font-family: inherit; outline: none;
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
   }
-  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,106,239,0.12); }
+  .form-input:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.12); background: rgba(255,255,255,0.06); }
   .form-input::placeholder { color: var(--text3); }
   .btn-login {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #7c6aef, #9d8cf7);
-    color: white; border: none; border-radius: 12px;
+    background: #818cf8;
+    color: white; border: none; border-radius: 14px;
     font-size: 15px; font-weight: 700; cursor: pointer;
-    font-family: inherit; transition: all 0.25s ease;
-    margin-top: 8px;
-    box-shadow: 0 4px 20px rgba(124,106,239,0.3);
+    font-family: inherit; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    margin-top: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(129,140,248,0.2) inset;
   }
-  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,106,239,0.4); }
+  .btn-login:hover { background: #6366f1; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(129,140,248,0.3), 0 0 0 1px rgba(129,140,248,0.2) inset; }
   .btn-login:active { transform: scale(0.98); }
   .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .error-msg {
