@@ -1691,7 +1691,7 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
 
 // Add shift report
 app.post('/api/shifts', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'chatter' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'chatter' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { date, model_name, ppv_total, tips_total, shift_notes } = req.body;
   if (!model_name) return res.status(400).json({ error: 'Modèle requis' });
   const shiftDate = date || new Date().toISOString().split('T')[0];
@@ -1720,7 +1720,7 @@ app.delete('/api/shifts/:id', authMiddleware, async (req, res) => {
 
 // Stats chatter perso
 app.get('/api/shifts/my-stats', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'chatter' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'chatter' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
   const today = (await pool.query("SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE user_id = $1 AND date = CURRENT_DATE::text", [uid])).rows[0];
   const week = (await pool.query("SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE user_id = $1 AND date >= (CURRENT_DATE - INTERVAL '7 days')::date::text", [uid])).rows[0];
@@ -1776,7 +1776,7 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
 
 // Add lead
 app.post('/api/leads', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
   const cleanUsername = username.replace(/^@/, '');
@@ -1792,7 +1792,7 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
 
 // Bulk update leads (MUST be before /:id to avoid Express matching "bulk-update" as an id)
 app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { ids, script_used, ig_account_used } = req.body;
   if (!ids || !Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids requis' });
   const sets = [];
@@ -1810,7 +1810,7 @@ app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
 
 // Update lead
 app.put('/api/leads/:id', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { status, notes, lead_type, script_used, ig_account_used } = req.body;
   await pool.query(`UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
@@ -1829,7 +1829,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
 
 // Delete lead
 app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
   broadcast('lead-deleted', { id: parseInt(req.params.id), by: req.user.id });
   res.json({ ok: true });
@@ -1837,7 +1837,7 @@ app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
 
 // Stats outreach personnelles (pour l'assistante connectée)
 app.get('/api/leads/my-stats', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const uid = req.user.id;
   const today = (await pool.query(`SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND created_at >= ${SQL_TODAY_START}`, [uid])).rows[0].count;
   const dmSentToday = (await pool.query(`SELECT COALESCE(COUNT(*), 0) as count FROM outreach_leads WHERE user_id = $1 AND sent_at >= ${SQL_TODAY_START}`, [uid])).rows[0].count;
@@ -1995,7 +1995,7 @@ app.delete('/api/call-requests/:id', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM call_requests WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM call_requests WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
@@ -2014,7 +2014,7 @@ app.get('/api/student-recruits', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/student-recruits', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { ig_name, ig_link, notes } = req.body;
   if (!ig_name) return res.status(400).json({ error: 'Nom Instagram requis' });
   const uid = req.body.user_id || req.user.id;
@@ -2027,7 +2027,7 @@ app.put('/api/student-recruits/:id', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM student_recruits WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('UPDATE student_recruits SET status = COALESCE($1, status), notes = COALESCE($2, notes) WHERE id = $3', [status, notes, req.params.id]);
   res.json({ ok: true });
 });
@@ -2036,7 +2036,7 @@ app.delete('/api/student-recruits/:id', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM student_recruits WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM student_recruits WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
@@ -2225,7 +2225,7 @@ async function logActivity(userId, userName, action, targetType, targetId, detai
 }
 
 app.get('/api/student-outreach-pairs', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { rows } = await pool.query(`SELECT sop.*, a.display_name as student_a_name, b.display_name as student_b_name
     FROM student_outreach_pairs sop JOIN users a ON sop.student_a_id = a.id JOIN users b ON sop.student_b_id = b.id ORDER BY a.display_name`);
   res.json(rows);
@@ -2521,7 +2521,7 @@ app.get('/api/student-models', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/student-models', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { name, of_handle, fans_count, commission_rate, status } = req.body;
   if (!name) return res.status(400).json({ error: 'Nom requis' });
   const uid = req.body.user_id || req.user.id;
@@ -2535,7 +2535,7 @@ app.put('/api/student-models/:id', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM student_models WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('UPDATE student_models SET name=COALESCE($1,name), of_handle=COALESCE($2,of_handle), fans_count=COALESCE($3,fans_count), commission_rate=COALESCE($4,commission_rate), status=COALESCE($5,status) WHERE id=$6',
     [name, of_handle, fans_count, commission_rate, status, req.params.id]);
   res.json({ ok: true });
@@ -2545,7 +2545,7 @@ app.delete('/api/student-models/:id', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
     const check = await pool.query('SELECT id FROM student_models WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
-  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM student_models WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
@@ -2566,7 +2566,7 @@ app.get('/api/student-revenue', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/student-revenue', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (req.user.role !== 'student' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
   const { student_model_id, month, revenue } = req.body;
   if (!student_model_id || !month) return res.status(400).json({ error: 'Modèle et mois requis' });
   const uid = req.body.user_id || req.user.id;
