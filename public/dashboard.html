@@ -1079,16 +1079,12 @@
     .table.mobile-cards tbody { display: flex; flex-direction: column; gap: 10px; }
     .table.mobile-cards tr {
       display: flex; flex-wrap: wrap; gap: 6px 12px;
-      background: rgba(26,26,31,0.7);
-      backdrop-filter: blur(8px);
-      border-radius: 14px; padding: 16px;
+      background: var(--bg3);
+      border-radius: 12px; padding: 14px;
       position: relative;
-      border-left: 3px solid #818cf8;
       border: 1px solid var(--border);
       border-left: 3px solid #818cf8;
-      transition: all 0.2s;
     }
-    .table.mobile-cards tr:active { transform: scale(0.99); background: rgba(26,26,31,0.9); }
     .table.mobile-cards td {
       display: flex; align-items: center; gap: 6px;
       padding: 2px 0; border: none; font-size: 13px;
@@ -1117,6 +1113,18 @@
     }
     .table.mobile-cards td.mc-half::before {
       font-size: 9px; margin-bottom: 3px; letter-spacing: 0.5px;
+    }
+    /* Selects dans les cartes: bien tactiles */
+    .table.mobile-cards select {
+      min-height: 44px;
+      font-size: 14px;
+      width: 100%;
+      -webkit-appearance: menulist;
+      appearance: menulist;
+    }
+    .table.mobile-cards input[type="checkbox"] {
+      width: 22px; height: 22px;
+      min-width: 22px;
     }
 
     /* Safe area for iPhone notch */
@@ -6721,7 +6729,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script>
   // Force cache clear une seule fois quand la version change
   (function() {
-    var APP_VERSION = '2026-04-18b';
+    var APP_VERSION = '2026-04-18c';
     var lastVersion = localStorage.getItem('app_version');
     if (lastVersion !== APP_VERSION) {
       localStorage.setItem('app_version', APP_VERSION);
