@@ -27,18 +27,19 @@ const DAY_START_HOUR = 9;
 const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAMP::date - INTERVAL '1 day' ELSE CURRENT_TIMESTAMP::date END + INTERVAL '${DAY_START_HOUR} hours')`;
 
 // ============ RESEND EMAIL ============
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = 'Fuzion Pilot <contact@fuzionpilot.com>';
 const APP_URL = process.env.APP_URL || 'https://lcx-agency.onrender.com';
-console.log('[BOOT] RESEND_API_KEY présente:', !!process.env.RESEND_API_KEY);
+console.log('[BOOT] Resend initialisé:', !!resendClient);
+if (!resendClient) console.error('[BOOT] ERREUR: RESEND_API_KEY manquante — les emails ne seront pas envoyés');
 console.log('[BOOT] STRIPE_WEBHOOK_SECRET présente:', !!process.env.STRIPE_WEBHOOK_SECRET);
 console.log('[BOOT] APP_URL:', APP_URL);
 
 async function sendEmail(to, subject, html) {
-  if (!resend) { console.log('[EMAIL] Resend non configuré, email ignoré vers', to); return; }
+  if (!resendClient) { console.log('[EMAIL] Resend non configuré (RESEND_API_KEY manquante), email ignoré vers', to); return; }
   try {
     console.log('[EMAIL] Envoi en cours vers', to, '| Sujet:', subject);
-    const result = await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    const result = await resendClient.emails.send({ from: EMAIL_FROM, to, subject, html });
     console.log('[EMAIL] Envoyé avec succès vers', to, '| ID:', result?.data?.id || 'N/A');
   } catch (e) {
     console.error('[EMAIL] ERREUR envoi vers', to, ':', e.message);
