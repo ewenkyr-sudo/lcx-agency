@@ -4366,12 +4366,10 @@ function renderCoachingLeadTable() {
   }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
 }
 
-async function updateCoachingLead(id, data) {
-  await fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-  // Refresh
-  var leads = await fetch('/api/student-leads?student_user_id=' + coachingOutreachStudentId + '&market=' + coachingOutreachMarket, { credentials: 'include' }).then(function(r) { return r.json(); });
-  coachingOutreachLeads = leads;
-  renderCoachingLeadTable();
+function updateCoachingLead(id, data) {
+  var lead = coachingOutreachLeads.find(function(l) { return l.id === id; });
+  if (lead) Object.assign(lead, data);
+  fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
 }
 
 async function deleteCoachingLead(id) {

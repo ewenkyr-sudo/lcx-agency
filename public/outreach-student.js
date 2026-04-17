@@ -264,6 +264,11 @@ async function addSOLead(studentUserId) {
 }
 
 function updateSOLead(leadId, data) {
+  // Mise à jour locale immédiate
+  for (var sid in studentOutreachData) {
+    var lead = (studentOutreachData[sid].leads || []).find(function(l) { return l.id === leadId; });
+    if (lead) { Object.assign(lead, data); break; }
+  }
   fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
 }
 
