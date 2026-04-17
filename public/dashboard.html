@@ -5371,13 +5371,13 @@ function connectWebSocket() {
     }
 
     if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted' || msg.event === 'leads-bulk-updated') {
-      // Skip le rechargement si c'est notre propre modif (déjà à jour localement)
-      if (msg.event === 'lead-updated' && _skipNextLeadReload) {
-        _skipNextLeadReload = false;
-        // Juste rafraîchir les KPIs sans re-render le tableau
+      // Skip le rechargement si c'est notre propre action (< 3 secondes)
+      if (_skipNextLeadReload && (Date.now() - _skipNextLeadReload) < 3000) {
+        _skipNextLeadReload = 0;
         loadOutreachKPIs();
         if (isAdmin()) loadDashboardOutreachStats();
       } else {
+        _skipNextLeadReload = 0;
         await loadLeads();
         renderLeads();
         await loadOutreachKPIs();
@@ -5519,7 +5519,7 @@ let allLeads = [];
 let currentLeadFilter = 'all';
 let outreachOptions = { script: [], account: [], type: [] };
 let selectedLeadIds = new Set();
-let _skipNextLeadReload = false;
+let _skipNextLeadReload = 0; // timestamp de la dernière action locale
 
 function toggleLeadSelection(id, checked) {
   if (checked) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
@@ -5604,7 +5604,7 @@ function outreachInlineSelect(leadId, field, currentValue, optType) {
 function updateLeadField(id, field, value) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead[field] = value;
-  _skipNextLeadReload = true;
+  _skipNextLeadReload = Date.now();
   const body = {};
   body[field] = value;
   fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
@@ -5617,7 +5617,6 @@ async function loadLeads() {
     const res = await fetch('/api/leads', { credentials: 'include' });
     if (res.ok) allLeads = await res.json();
   } catch (e) { console.error('Leads load error:', e); }
-  renderLeads();
 }
 
 async function loadOutreachKPIs() {
@@ -5735,33 +5734,20 @@ function renderLeads() {
   const table = document.getElementById('leads-table');
   table.classList.add('mobile-cards');
   const tbody = table.querySelector('tbody');
-  // Pré-calculer les options des selects (1 fois au lieu de N)
   const statusEntries = Object.entries(leadStatusColors);
-  const scriptOptsCache = (outreachOptions.script || []).map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('');
-  const accountOptsCache = (outreachOptions.account || []).map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('');
-  const selectStyle = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
   tbody.innerHTML = filtered.map((l, idx) => {
     const st = leadStatusColors[l.status] || leadStatusColors['sent'];
     const date = new Date(l.created_at).toLocaleDateString('fr-FR');
     const igLink = l.ig_link ? `<a href="${l.ig_link}" target="_blank" style="color:var(--accent)">${l.username}</a>` : l.username;
     const checked = selectedLeadIds.has(l.id) ? 'checked' : '';
-    // Script select inline (options pré-calculées)
-    let scriptSel = '<select onchange="updateLeadField(' + l.id + ',\'script_used\',this.value)" style="' + selectStyle + '"><option value="">-</option>';
-    if (l.script_used && !(outreachOptions.script||[]).some(o=>o.value===l.script_used)) scriptSel += '<option value="' + l.script_used + '" selected>' + l.script_used + '</option>';
-    scriptSel += scriptOptsCache.replace('value="' + l.script_used + '"', 'value="' + l.script_used + '" selected') + '</select>';
-    // Account select inline
-    let acctSel = '<select onchange="updateLeadField(' + l.id + ',\'ig_account_used\',this.value)" style="' + selectStyle + '"><option value="">-</option>';
-    if (l.ig_account_used && !(outreachOptions.account||[]).some(o=>o.value===l.ig_account_used)) acctSel += '<option value="' + l.ig_account_used + '" selected>' + l.ig_account_used + '</option>';
-    acctSel += accountOptsCache.replace('value="' + l.ig_account_used + '"', 'value="' + l.ig_account_used + '" selected') + '</select>';
-    // Status select
     const statusOpts = statusEntries.map(([k, v]) => `<option value="${k}" ${l.status === k ? 'selected' : ''} style="background:var(--bg2);color:var(--text)">${v.label}</option>`).join('');
     return `<tr>
       <td data-label="" style="width:30px"><input type="checkbox" class="lead-cb" data-id="${l.id}" ${checked} onchange="toggleLeadSelection(${l.id}, this.checked)"></td>
       <td data-label="#" style="color:var(--text3);font-size:12px">${filtered.length - idx}</td>
       <td data-label="" class="mc-title"><strong>${igLink}</strong></td>
       <td data-label="Type" class="mc-half">${leadTypeSelect(l.id, l.lead_type, 'updateLeadField(' + l.id + ',\\\'lead_type\\\',this.value)')}</td>
-      <td data-label="Script" class="mc-half">${scriptSel}</td>
-      <td data-label="Compte IG" class="mc-half">${acctSel}</td>
+      <td data-label="Script" class="mc-half">${outreachInlineSelect(l.id, 'script_used', l.script_used, 'script')}</td>
+      <td data-label="Compte IG" class="mc-half">${outreachInlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account')}</td>
       <td data-label="Statut" class="mc-half">
         <select onchange="updateLeadStatus(${l.id}, this.value)" style="background:${st.bg};color:${st.color};border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">
           ${statusOpts}
@@ -5903,26 +5889,29 @@ async function addLead() {
     document.getElementById('lead-ig-link').value = '';
     document.getElementById('lead-notes').value = '';
     document.getElementById('add-lead-form').style.display = 'none';
+    _skipNextLeadReload = Date.now();
     await loadLeads();
     renderLeads();
-    await loadOutreachKPIs();
+    loadOutreachKPIs();
   }
 }
 
 function updateLeadStatus(id, status) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead.status = status;
-  _skipNextLeadReload = true;
+  _skipNextLeadReload = Date.now();
   fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status }) })
     .catch(() => showToast('Erreur de connexion', 'error'));
 }
 
 async function deleteLead(id) {
   if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
-  await fetch('/api/leads/' + id, { method: 'DELETE', credentials: 'include' });
-  await loadLeads();
+  allLeads = allLeads.filter(l => l.id !== id);
   renderLeads();
-  await loadOutreachKPIs();
+  _skipNextLeadReload = Date.now();
+  fetch('/api/leads/' + id, { method: 'DELETE', credentials: 'include' })
+    .catch(() => showToast('Erreur de suppression', 'error'));
+  loadOutreachKPIs();
 }
 
 function filterLeads(filter, btn) {
