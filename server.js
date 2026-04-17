@@ -1439,7 +1439,13 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
     ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
     sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
     [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
-  broadcast('lead-updated', { id: parseInt(req.params.id), status, notes });
+  // Inclure le username dans le broadcast pour les notifications
+  let username = '';
+  if (status === 'talking-warm' || status === 'call-booked' || status === 'signed') {
+    const leadRow = (await pool.query('SELECT username FROM outreach_leads WHERE id = $1', [req.params.id])).rows[0];
+    username = leadRow?.username || '';
+  }
+  broadcast('lead-updated', { id: parseInt(req.params.id), status, notes, username });
   res.json({ ok: true });
 });
 

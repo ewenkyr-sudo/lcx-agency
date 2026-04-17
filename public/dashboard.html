@@ -5273,6 +5273,66 @@ async function updateUnreadBadges() {
   } catch(e) {}
 }
 
+// ========== NOTIFICATIONS TEMPS RÉEL ==========
+
+// Demander la permission au chargement
+if ('Notification' in window && Notification.permission === 'default') {
+  setTimeout(() => Notification.requestPermission(), 3000);
+}
+
+// Son de notification via Web Audio API (pas de fichier externe)
+function playNotifSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.08;
+
+    if (type === 'success') {
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+      // Second note
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.frequency.value = 1174;
+      osc2.type = 'sine';
+      gain2.gain.setValueAtTime(0.06, ctx.currentTime + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc2.start(ctx.currentTime + 0.1);
+      osc2.stop(ctx.currentTime + 0.4);
+    } else if (type === 'alert') {
+      osc.frequency.value = 660;
+      osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.07, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    } else {
+      osc.frequency.value = 520;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    }
+  } catch(e) {}
+}
+
+// Envoyer une notification navigateur + son
+function sendNotification(title, body, type) {
+  playNotifSound(type || 'info');
+  if (Notification.permission === 'granted' && document.hidden) {
+    new Notification(title, { body: body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' });
+  }
+}
+
 // ========== WEBSOCKET TEMPS RÉEL ==========
 let onlineUsers = [];
 let wsRef = null;
@@ -5311,11 +5371,25 @@ function connectWebSocket() {
       updateOnlineUI();
     }
 
-    if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted') {
+    if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted' || msg.event === 'leads-bulk-updated') {
       await loadLeads();
       renderLeads();
       await loadOutreachKPIs();
       if (isAdmin()) loadDashboardOutreachStats();
+      // Notifications pour événements leads importants
+      if (msg.event === 'lead-updated' && msg.data) {
+        if (msg.data.status === 'call-booked') {
+          showToast('Call booked ! ' + (msg.data.username || ''), 'success');
+          sendNotification('Call Booked !', (msg.data.username || 'Un lead') + ' a un call de prévu', 'success');
+        }
+        if (msg.data.status === 'signed') {
+          showToast('Lead signé ! ' + (msg.data.username || ''), 'success');
+          sendNotification('Lead Signé !', (msg.data.username || 'Un lead') + ' vient de signer !', 'success');
+        }
+        if (msg.data.status === 'talking-warm') {
+          sendNotification('Lead Warm', (msg.data.username || 'Un lead') + ' est passé en discussion chaude', 'alert');
+        }
+      }
     }
     if (msg.event === 'shift-added' || msg.event === 'shift-deleted') {
       await loadShifts();
@@ -5326,14 +5400,19 @@ function connectWebSocket() {
     if (msg.event === 'followers-updated') {
       await reloadAccounts();
       showToast(`Followers mis à jour (${msg.data.updated} comptes)`, 'success');
+      playNotifSound('info');
     }
     if (msg.event === 'task-new' || msg.event === 'task-updated' || msg.event === 'task-deleted') {
       allTasks = await fetch('/api/tasks', { credentials: 'include' }).then(r => r.json());
       renderTasks();
+      if (msg.event === 'task-new' && msg.data) {
+        sendNotification('Nouvelle tâche', msg.data.title || 'Une tâche a été créée', 'info');
+      }
     }
     if (msg.event === 'new-message') {
       if (msg.data.to_user_id === currentUser.id) {
         showToast('Nouveau message de ' + (msg.data.from_name || 'quelqu\'un'), 'info');
+        sendNotification('Message de ' + (msg.data.from_name || 'quelqu\'un'), (msg.data.content || '').substring(0, 80), 'alert');
         if (currentChatUserId === msg.data.from_user_id) {
           const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
           if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }
@@ -5342,16 +5421,19 @@ function connectWebSocket() {
           openAdminChat(adminChatUserId);
         }
         updateUnreadBadges();
-        if (Notification.permission === 'granted') {
-          new Notification('LCX Agency', { body: (msg.data.from_name || 'Quelqu\'un') + ' : ' + (msg.data.content || '').substring(0, 50), icon: '/icons/icon-192.png' });
-        }
       }
     }
     if (msg.event === 'call-request-new' || msg.event === 'call-request-updated') {
       if (currentUser.role === 'student') renderStudentHome();
+      if (msg.event === 'call-request-new') {
+        sendNotification('Demande de call', 'Un élève demande un call', 'alert');
+      }
     }
     if (msg.event === 'planning-updated' || msg.event === 'leave-request-new' || msg.event === 'leave-request-updated') {
       renderPlanning();
+      if (msg.event === 'leave-request-new') {
+        sendNotification('Demande de congé', 'Nouvelle demande de congé à valider', 'info');
+      }
     }
   });
 
