@@ -1775,7 +1775,7 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
     'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
     [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes, status || 'to-send', req.user.agency_id]
   );
-  broadcast('lead-added', rows[0]);
+  broadcast('lead-added', { ...rows[0], by: req.user.id });
   res.json(rows[0]);
 });
 
@@ -1793,7 +1793,7 @@ app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
   sets.push('updated_at = NOW()');
   params.push(ids);
   await pool.query(`UPDATE outreach_leads SET ${sets.join(', ')} WHERE id = ANY($${pi})`, params);
-  broadcast('leads-bulk-updated', { ids, script_used, ig_account_used });
+  broadcast('leads-bulk-updated', { ids, script_used, ig_account_used, by: req.user.id });
   res.json({ ok: true, updated: ids.length });
 });
 
@@ -1812,7 +1812,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
     const leadRow = (await pool.query('SELECT username FROM outreach_leads WHERE id = $1', [req.params.id])).rows[0];
     username = leadRow?.username || '';
   }
-  broadcast('lead-updated', { id: parseInt(req.params.id), status, notes, username });
+  broadcast('lead-updated', { id: parseInt(req.params.id), status, notes, username, by: req.user.id });
   res.json({ ok: true });
 });
 
@@ -1820,7 +1820,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
 app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Accès refusé' });
   await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
-  broadcast('lead-deleted', { id: parseInt(req.params.id) });
+  broadcast('lead-deleted', { id: parseInt(req.params.id), by: req.user.id });
   res.json({ ok: true });
 });
 
