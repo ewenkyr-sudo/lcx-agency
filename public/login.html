@@ -11,23 +11,25 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
 <title>LCX Agency — Connexion</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0f0f13; --bg2: #1a1a24; --bg3: #22222f;
-    --accent: #8b5cf6; --accent2: #a78bfa;
-    --green: #10b981; --red: #ef4444; --pink: #ec4899;
-    --text: #e4e4eb; --text2: #9898ab; --text3: #6b6b80;
-    --border: #2a2a3a;
+    --bg: #0c0c10; --bg2: #151519; --bg3: #1e1e25;
+    --accent: #7c6aef; --accent2: #9d8cf7;
+    --green: #34d399; --red: #f87171; --pink: #f472b6;
+    --text: #eaeaf0; --text2: #8a8a9a; --text3: #55555f;
+    --border: rgba(255,255,255,0.06);
   }
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     background: var(--bg);
+    background-image: radial-gradient(ellipse at 50% 30%, rgba(124,106,239,0.06) 0%, transparent 50%);
     color: var(--text);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-font-smoothing: antialiased;
   }
   .login-container {
     width: 400px;
@@ -39,11 +41,12 @@
   }
   .login-logo-icon {
     width: 64px; height: 64px;
-    background: linear-gradient(135deg, var(--accent), var(--pink));
+    background: linear-gradient(135deg, #7c6aef, #c084fc, #f472b6);
     border-radius: 20px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 32px;
     margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(124,106,239,0.3);
   }
   .login-logo h1 {
     font-size: 28px; font-weight: 800; letter-spacing: -1px;
@@ -54,38 +57,41 @@
   .login-card {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 32px;
+    border-radius: 20px;
+    padding: 36px;
+    box-shadow: 0 16px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03);
   }
   .form-group { margin-bottom: 20px; }
   .form-label {
-    display: block; font-size: 13px; font-weight: 600;
-    color: var(--text2); margin-bottom: 8px;
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
   }
   .form-input {
     width: 100%; padding: 12px 16px;
-    background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--text);
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text);
     font-size: 14px; font-family: inherit; outline: none;
-    transition: border-color 0.2s;
+    transition: all 0.25s ease;
   }
-  .form-input:focus { border-color: var(--accent); }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,106,239,0.12); }
   .form-input::placeholder { color: var(--text3); }
   .btn-login {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, var(--accent), #7c4ee4);
-    color: white; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #7c6aef, #9d8cf7);
+    color: white; border: none; border-radius: 12px;
     font-size: 15px; font-weight: 700; cursor: pointer;
-    font-family: inherit; transition: all 0.2s;
+    font-family: inherit; transition: all 0.25s ease;
     margin-top: 8px;
+    box-shadow: 0 4px 20px rgba(124,106,239,0.3);
   }
-  .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(139,92,246,0.3); }
-  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,106,239,0.4); }
+  .btn-login:active { transform: scale(0.98); }
+  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .error-msg {
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.3);
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.2);
     color: var(--red);
-    padding: 10px 14px; border-radius: 8px;
+    padding: 10px 14px; border-radius: 10px;
     font-size: 13px; margin-bottom: 16px;
     display: none;
   }
