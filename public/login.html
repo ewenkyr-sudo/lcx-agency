@@ -180,17 +180,37 @@
   });
 </script>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'activated') window.location.reload();
+  (function() {
+    var APP_VERSION = '2026-04-18b';
+    var lastVersion = localStorage.getItem('app_version');
+    if (lastVersion !== APP_VERSION) {
+      localStorage.setItem('app_version', APP_VERSION);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
         });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
+      }
+      setTimeout(function() { location.reload(true); }, 500);
+      return;
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+        reg.addEventListener('updatefound', function() {
+          var nw = reg.installing;
+          nw.addEventListener('statechange', function() {
+            if (nw.state === 'activated') location.reload();
+          });
+        });
+        setInterval(function() { reg.update(); }, 10000);
+        reg.update();
       });
-      setInterval(() => reg.update(), 60000);
-    });
-  }
+    }
+  })();
 </script>
 
 </body>

@@ -6719,20 +6719,41 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/student.js"></script>
 <script src="/outreach-student.js"></script>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'activated') window.location.reload();
+  // Force cache clear une seule fois quand la version change
+  (function() {
+    var APP_VERSION = '2026-04-18b';
+    var lastVersion = localStorage.getItem('app_version');
+    if (lastVersion !== APP_VERSION) {
+      localStorage.setItem('app_version', APP_VERSION);
+      // Supprimer tous les SW + caches
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
         });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
+      }
+      // Reload propre après nettoyage
+      setTimeout(function() { location.reload(true); }, 500);
+      return;
+    }
+    // Enregistrer le SW normalement
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+        reg.addEventListener('updatefound', function() {
+          var nw = reg.installing;
+          nw.addEventListener('statechange', function() {
+            if (nw.state === 'activated') location.reload();
+          });
+        });
+        setInterval(function() { reg.update(); }, 10000);
+        reg.update();
       });
-      // Vérifie les mises à jour toutes les 10 secondes
-      setInterval(() => reg.update(), 10000);
-      // Force un update immédiat
-      reg.update();
-    });
-  }
+    }
+  })();
 </script>
 
 </body>
