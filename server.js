@@ -30,14 +30,19 @@ const SQL_TODAY_START = `(CASE WHEN CURRENT_TIME < '09:00' THEN CURRENT_TIMESTAM
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = 'Fuzion Pilot <contact@fuzionpilot.com>';
 const APP_URL = process.env.APP_URL || 'https://lcx-agency.onrender.com';
+console.log('[BOOT] RESEND_API_KEY présente:', !!process.env.RESEND_API_KEY);
+console.log('[BOOT] STRIPE_WEBHOOK_SECRET présente:', !!process.env.STRIPE_WEBHOOK_SECRET);
+console.log('[BOOT] APP_URL:', APP_URL);
 
 async function sendEmail(to, subject, html) {
-  if (!resend) { console.log('Resend not configured, skipping email to', to); return; }
+  if (!resend) { console.log('[EMAIL] Resend non configuré, email ignoré vers', to); return; }
   try {
-    await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
-    console.log('Email sent to', to, ':', subject);
+    console.log('[EMAIL] Envoi en cours vers', to, '| Sujet:', subject);
+    const result = await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    console.log('[EMAIL] Envoyé avec succès vers', to, '| ID:', result?.data?.id || 'N/A');
   } catch (e) {
-    console.error('Email error:', e.message);
+    console.error('[EMAIL] ERREUR envoi vers', to, ':', e.message);
+    if (e.statusCode) console.error('[EMAIL] Status code:', e.statusCode);
   }
 }
 
@@ -48,23 +53,52 @@ app.use(helmet({
 }));
 // Stripe webhook needs raw body — must be before express.json
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('[STRIPE WEBHOOK] Requête reçue');
+  console.log('[STRIPE WEBHOOK] Content-Type:', req.headers['content-type']);
+  console.log('[STRIPE WEBHOOK] Body size:', req.body?.length || 0, 'bytes');
+
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
   let event;
 
+  console.log('[STRIPE WEBHOOK] Signature présente:', !!sig);
+  console.log('[STRIPE WEBHOOK] Endpoint secret configuré:', !!endpointSecret);
+
   if (endpointSecret && sig) {
-    // Verify signature if we have a secret
-    const crypto = require('crypto');
-    const elements = sig.split(',');
-    const timestamp = elements.find(e => e.startsWith('t=')).slice(2);
-    const signature = elements.find(e => e.startsWith('v1=')).slice(3);
-    const signedPayload = timestamp + '.' + req.body.toString();
-    const expected = crypto.createHmac('sha256', endpointSecret).update(signedPayload).digest('hex');
-    if (signature !== expected) return res.status(400).send('Invalid signature');
-    event = JSON.parse(req.body);
+    try {
+      const elements = sig.split(',');
+      const timestampEl = elements.find(e => e.startsWith('t='));
+      const signatureEl = elements.find(e => e.startsWith('v1='));
+      if (!timestampEl || !signatureEl) {
+        console.error('[STRIPE WEBHOOK] Signature mal formée:', sig);
+        return res.status(400).send('Malformed signature');
+      }
+      const timestamp = timestampEl.slice(2);
+      const signature = signatureEl.slice(3);
+      const signedPayload = timestamp + '.' + req.body.toString();
+      const expected = crypto.createHmac('sha256', endpointSecret).update(signedPayload).digest('hex');
+      if (signature !== expected) {
+        console.error('[STRIPE WEBHOOK] Signature INVALIDE — rejet de la requête');
+        return res.status(400).send('Invalid signature');
+      }
+      console.log('[STRIPE WEBHOOK] Signature vérifiée OK');
+      event = JSON.parse(req.body);
+    } catch (sigErr) {
+      console.error('[STRIPE WEBHOOK] Erreur vérification signature:', sigErr.message);
+      return res.status(400).send('Signature verification failed');
+    }
   } else {
-    event = JSON.parse(req.body);
+    console.log('[STRIPE WEBHOOK] Pas de secret configuré — acceptation sans vérification');
+    try {
+      event = JSON.parse(req.body);
+    } catch (parseErr) {
+      console.error('[STRIPE WEBHOOK] Erreur parsing JSON body:', parseErr.message);
+      return res.status(400).send('Invalid JSON');
+    }
   }
+
+  console.log('[STRIPE WEBHOOK] Event type:', event.type);
+  console.log('[STRIPE WEBHOOK] Event ID:', event.id);
 
   try {
     if (event.type === 'checkout.session.completed') {
@@ -75,19 +109,29 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       const stripeCustomerId = session.customer;
       const stripeSubscriptionId = session.subscription;
 
-      if (!email) { console.log('Stripe webhook: no email found'); return res.json({ ok: true }); }
+      console.log('[STRIPE WEBHOOK] checkout.session.completed:');
+      console.log('  Email:', email);
+      console.log('  Plan:', planName);
+      console.log('  Montant:', amount, '€');
+      console.log('  Customer ID:', stripeCustomerId);
+      console.log('  Subscription ID:', stripeSubscriptionId);
+
+      if (!email) { console.log('[STRIPE WEBHOOK] ERREUR: pas d\'email dans la session — abandon'); return res.json({ ok: true }); }
 
       // Generate invitation token
       const token = crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+      console.log('[STRIPE WEBHOOK] Token invitation généré:', token, '| Expire:', expiresAt.toISOString());
 
       await pool.query(
         'INSERT INTO invitation_tokens (token, email, role, plan, stripe_customer_id, stripe_subscription_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         [token, email, 'super_admin', planName, stripeCustomerId, stripeSubscriptionId, expiresAt]
       );
+      console.log('[STRIPE WEBHOOK] Token inséré en DB OK');
 
       // Send welcome email
       const inviteUrl = `${APP_URL}/invite.html?token=${token}`;
+      console.log('[STRIPE WEBHOOK] Envoi email bienvenue vers', email, '| URL:', inviteUrl);
       await sendEmail(email, 'Bienvenue sur Fuzion Pilot — Activez votre compte', `
         <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
           <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
@@ -107,6 +151,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       `);
 
       // Send payment confirmation email
+      console.log('[STRIPE WEBHOOK] Envoi email confirmation paiement vers', email);
       const renewDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR');
       await sendEmail(email, 'Paiement confirmé — Fuzion Pilot', `
         <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
@@ -129,20 +174,28 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         </div>
       `);
 
-      console.log('Stripe checkout completed for', email, '- invite token:', token);
+      console.log('[STRIPE WEBHOOK] checkout.session.completed traité avec succès pour', email);
     }
 
     if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub = event.data.object;
-      const status = sub.status; // active, canceled, past_due, etc.
+      const status = sub.status;
       const customerId = sub.customer;
-      await pool.query('UPDATE agencies SET subscription_status = $1 WHERE stripe_customer_id = $2', [status, customerId]);
-      console.log('Subscription updated:', customerId, status);
+      console.log('[STRIPE WEBHOOK] Subscription event:', event.type);
+      console.log('  Customer:', customerId, '| Nouveau status:', status);
+      const result = await pool.query('UPDATE agencies SET subscription_status = $1 WHERE stripe_customer_id = $2', [status, customerId]);
+      console.log('[STRIPE WEBHOOK] Agences mises à jour:', result.rowCount);
+    }
+
+    if (event.type !== 'checkout.session.completed' && event.type !== 'customer.subscription.updated' && event.type !== 'customer.subscription.deleted') {
+      console.log('[STRIPE WEBHOOK] Event type non géré:', event.type, '— ignoré');
     }
   } catch(e) {
-    console.error('Stripe webhook error:', e);
+    console.error('[STRIPE WEBHOOK] ERREUR traitement:', e.message);
+    console.error('[STRIPE WEBHOOK] Stack:', e.stack?.split('\n').slice(0,3).join('\n'));
   }
 
+  console.log('[STRIPE WEBHOOK] Réponse envoyée: { received: true }');
   res.json({ received: true });
 });
 
