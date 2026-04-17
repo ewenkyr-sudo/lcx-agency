@@ -885,7 +885,9 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
-    pool.query('SELECT u.read_only, u.expires_at, u.agency_id, u.role, a.subscription_status FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [decoded.id]).then(result => {
+
+    // Requête simple d'abord (sans JOIN) — plus robuste si les colonnes Stripe n'existent pas encore
+    pool.query('SELECT read_only, expires_at, agency_id, role FROM users WHERE id = $1', [decoded.id]).then(async (result) => {
       const user = result.rows[0];
       if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
       if (user.expires_at && new Date(user.expires_at) < new Date()) {
@@ -894,14 +896,31 @@ function authMiddleware(req, res, next) {
       if (user.read_only && req.method !== 'GET' && decoded.role !== 'admin' && decoded.role !== 'super_admin') {
         return res.status(403).json({ error: 'Compte en lecture seule' });
       }
-      // Check subscription status — platform_admin bypasses
-      if (user.role !== 'platform_admin' && user.subscription_status && user.subscription_status !== 'active' && user.subscription_status !== 'trialing') {
-        return res.status(403).json({ error: 'Votre abonnement est expiré. Renouvelez sur fuzionpilot.com' });
-      }
+
       req.user.agency_id = user.agency_id || 1;
       req.user.role = user.role;
+
+      // Check subscription status — platform_admin bypasses, wrapped in try/catch
+      if (user.role !== 'platform_admin' && user.agency_id) {
+        try {
+          const agencyResult = await pool.query('SELECT subscription_status FROM agencies WHERE id = $1', [user.agency_id]);
+          const agency = agencyResult.rows[0];
+          if (agency && agency.subscription_status && agency.subscription_status !== 'active' && agency.subscription_status !== 'trialing') {
+            return res.status(403).json({ error: 'Votre abonnement est expiré. Renouvelez sur fuzionpilot.com' });
+          }
+        } catch (subErr) {
+          // Si la colonne subscription_status n'existe pas encore, on laisse passer
+        }
+      }
+
       next();
-    }).catch(() => next());
+    }).catch((err) => {
+      console.error('[AUTH] Erreur middleware:', err.message);
+      // En cas d'erreur DB, on laisse passer avec les infos du token
+      req.user.agency_id = decoded.agency_id || 1;
+      req.user.role = decoded.role;
+      next();
+    });
   } catch {
     return res.status(401).json({ error: 'Token invalide' });
   }
