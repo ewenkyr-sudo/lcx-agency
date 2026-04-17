@@ -29,15 +29,24 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: toujours réseau d'abord, cache uniquement si hors-ligne
+// Fetch: réseau d'abord, cache uniquement si hors-ligne
 self.addEventListener('fetch', (event) => {
-  // Ne jamais cacher les requêtes API
-  if (event.request.url.includes('/api/')) return;
+  // Ne jamais intercepter les requêtes API ou WebSocket
+  if (event.request.url.includes('/api/') || event.request.url.includes('ws')) return;
 
+  // HTML et JS: TOUJOURS le réseau, jamais le cache (sauf hors-ligne)
+  const url = event.request.url;
+  if (url.endsWith('.html') || url.endsWith('.js') || url.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Autres assets (images, manifest): réseau puis cache
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Mettre à jour le cache avec la version fraîche
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
