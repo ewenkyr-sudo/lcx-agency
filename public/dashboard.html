@@ -5383,19 +5383,13 @@ function connectWebSocket() {
 
     if (msg.event === 'lead-added' || msg.event === 'lead-updated' || msg.event === 'lead-deleted' || msg.event === 'leads-bulk-updated') {
       // Ignorer les events venant de soi-même (déjà traités localement)
-      // == au lieu de === car le type peut différer (string vs number)
       if (msg.data && msg.data.by && msg.data.by == currentUser.id) {
-        // C'est notre propre action — juste rafraîchir les stats
-        try { loadOutreachKPIs(); } catch(e) {}
-        try { if (isAdmin()) loadDashboardOutreachStats(); } catch(e) {}
+        // Notre propre action — rien à faire, déjà à jour
       } else {
-        // C'est l'action de quelqu'un d'autre — recharger le tableau
-        try {
-          await loadLeads();
-          renderLeads();
-          await loadOutreachKPIs();
-          if (isAdmin()) loadDashboardOutreachStats();
-        } catch(e) { console.error('WS lead reload error:', e); }
+        // Action d'un collègue — recharger en arrière-plan sans bloquer
+        loadLeads().then(function() { renderLeads(); }).catch(function() {});
+        loadOutreachKPIs().catch(function() {});
+        if (isAdmin()) try { loadDashboardOutreachStats(); } catch(e) {}
       }
       // Notifications pour événements leads importants
       if (msg.event === 'lead-updated' && msg.data) {
@@ -5877,37 +5871,43 @@ function showAddLeadForm() {
 async function addLead() {
   const igLink = document.getElementById('lead-ig-link').value.trim();
   let username = document.getElementById('lead-username').value.trim();
-  // Auto-extraire le username depuis l'URL si le champ est vide
   if (!username && igLink) username = extractUsernameFromUrl(igLink);
   if (!username) return showToast('Colle un lien Instagram ou entre un username', 'error');
   const cleanName = username.replace(/^@/, '').toLowerCase();
   const duplicate = allLeads.find(l => l.username.replace(/^@/, '').toLowerCase() === cleanName);
   if (duplicate) return showToast(`Ce lead existe déjà : ${duplicate.username} (statut : ${duplicate.status})`, 'error');
-  const res = await fetch('/api/leads', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
-      username,
-      ig_link: document.getElementById('lead-ig-link').value.trim(),
-      lead_type: document.getElementById('lead-type')?.value || '',
-      script_used: document.getElementById('lead-script')?.value || '',
-      ig_account_used: document.getElementById('lead-ig-account')?.value || '',
-      notes: document.getElementById('lead-notes').value.trim(),
-      status: 'to-send'
-    })
-  });
-  if (res.ok) {
-    document.getElementById('lead-username').value = '';
-    document.getElementById('lead-ig-link').value = '';
-    document.getElementById('lead-notes').value = '';
-    document.getElementById('add-lead-form').style.display = 'none';
-    try {
-      await loadLeads();
+
+  // Récupérer les valeurs AVANT de toucher au DOM
+  const leadData = {
+    username,
+    ig_link: igLink,
+    lead_type: document.getElementById('lead-type')?.value || '',
+    script_used: document.getElementById('lead-script')?.value || '',
+    ig_account_used: document.getElementById('lead-ig-account')?.value || '',
+    notes: document.getElementById('lead-notes').value.trim(),
+    status: 'to-send'
+  };
+
+  // Vider le formulaire et le masquer immédiatement
+  document.getElementById('lead-username').value = '';
+  document.getElementById('lead-ig-link').value = '';
+  document.getElementById('lead-notes').value = '';
+  document.getElementById('add-lead-form').style.display = 'none';
+
+  // Envoyer au serveur
+  try {
+    const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(leadData) });
+    if (res.ok) {
+      const newLead = await res.json();
+      allLeads.unshift(newLead);
       renderLeads();
-    } catch(e) { console.error('addLead render error:', e); }
-    try { loadOutreachKPIs(); } catch(e) {}
-    showToast('Lead ajouté !', 'success');
+      showToast('Lead ajouté !', 'success');
+    } else {
+      const err = await res.json().catch(function() { return {}; });
+      showToast(err.error || 'Erreur serveur', 'error');
+    }
+  } catch(e) {
+    showToast('Erreur de connexion', 'error');
   }
 }
 
@@ -6734,7 +6734,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script>
   // Force cache clear une seule fois quand la version change
   (function() {
-    var APP_VERSION = '2026-04-18f';
+    var APP_VERSION = '2026-04-18g';
     var lastVersion = localStorage.getItem('app_version');
     if (lastVersion !== APP_VERSION) {
       localStorage.setItem('app_version', APP_VERSION);

@@ -381,8 +381,15 @@ async function addStudentLead() {
     script_used: document.getElementById('sl-script').value, ig_account_used: document.getElementById('sl-account')?.value || '', notes: document.getElementById('sl-notes').value.trim(),
     market: currentStudentMarket
   })});
-  if (res.ok) { showToast('Lead ajouté !', 'success'); document.getElementById('student-lead-form-wrap').innerHTML = ''; await loadStudentData(); renderStudentLeadTable(); }
-  else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  if (res.ok) {
+    const newLead = await res.json();
+    studentData.leads.unshift(newLead);
+    document.getElementById('student-lead-form-wrap').innerHTML = '';
+    renderStudentLeadTable();
+    showToast('Lead ajouté !', 'success');
+  } else {
+    try { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); } catch(err) { showToast('Erreur serveur', 'error'); }
+  }
 }
 
 function updateStudentLead(id, status) {
