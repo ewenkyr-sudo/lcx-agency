@@ -673,7 +673,7 @@ async function renderStudentRevenue() {
   if (months.length > 0 && typeof Chart !== 'undefined') {
     const revByMonth = months.map(m => studentData.revenue.filter(r => r.month === m).reduce((s, r) => s + parseFloat(r.revenue), 0));
     new Chart(document.getElementById('chart-student-revenue'), {
-      type: 'bar', data: { labels: months, datasets: [{ label: 'Revenue', data: revByMonth, backgroundColor: '#8b5cf6cc', borderRadius: 4 }] },
+      type: 'bar', data: { labels: months, datasets: [{ label: 'Revenue', data: revByMonth, backgroundColor: '#10B981cc', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' }, beginAtZero: true } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
     });
   }
@@ -951,7 +951,7 @@ async function renderStudentPlanning() {
     const dayShiftEntries = dayShifts.filter(s => s.entry_type !== 'task');
     const dayTaskEntries = dayShifts.filter(s => s.entry_type === 'task');
 
-    html += '<div style="background:' + (isToday ? 'rgba(139,92,246,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
+    html += '<div style="background:' + (isToday ? 'rgba(16,185,129,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
       + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + ';margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">Aujourd\'hui</span>' : '') + '</div>';
 
     if (isLeave) {
