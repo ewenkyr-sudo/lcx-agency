@@ -176,7 +176,7 @@ function renderSOLeadTable(studentUserId) {
       + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateSOLead(' + l.id + ',{lead_type:this.value})') + '</td>'
       + '<td data-label="Script" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'script_used', l.script_used, 'script') + '</td>'
       + '<td data-label="Compte" class="mc-half">' + soInlineSelect(studentUserId, l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
-      + '<td data-label="Statut" class="mc-half"><select onchange="updateSOLead(' + l.id + ',{status:this.value})" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
+      + '<td data-label="Statut" class="mc-half"><select onchange="var s=leadStatusColors[this.value]||leadStatusColors[\'sent\'];this.style.background=s.bg;this.style.color=s.color;updateSOLead(' + l.id + ',{status:this.value})" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(leadStatusColors).map(function(e) { return '<option value="' + e[0] + '"' + (l.status===e[0]?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + e[1].label + '</option>'; }).join('') + '</select></td>'
       + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
