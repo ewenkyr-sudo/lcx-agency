@@ -67,7 +67,6 @@
     width: 260px;
     height: 100vh;
     background: rgba(14,14,17,0.85);
-    backdrop-filter: blur(24px) saturate(1.5);
     border-right: 1px solid var(--border);
     padding: 24px 16px;
     display: flex;
@@ -249,7 +248,6 @@
 
   .stat-card {
     background: rgba(17,17,20,0.6);
-    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 22px;
@@ -323,7 +321,6 @@
 
   .panel {
     background: rgba(17,17,20,0.5);
-    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
@@ -536,7 +533,6 @@
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
     z-index: 1000;
     justify-content: center;
     align-items: center;
@@ -551,7 +547,6 @@
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
-    backdrop-filter: blur(40px) saturate(1.5);
   }
 
   .modal-header {
@@ -995,7 +990,6 @@
     position: fixed; top: 0; left: 0; right: 0;
     height: 56px;
     background: rgba(14,14,17,0.85);
-    backdrop-filter: blur(20px) saturate(1.5);
     border-bottom: 1px solid var(--border);
     z-index: 200; padding: 0 16px;
     align-items: center; justify-content: space-between;
@@ -1008,7 +1002,6 @@
   .sidebar-overlay {
     display: none; position: fixed; inset: 0;
     background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
     z-index: 99;
     animation: fadeIn 0.2s ease;
   }
@@ -1042,8 +1035,8 @@
     #add-lead-form > div:first-of-type,
     #add-shift-form > div:first-of-type { grid-template-columns: 1fr !important; }
     #perf-period-btns { flex-wrap: wrap; }
-    #toast-container { left: 10px; right: 10px; bottom: 20px; top: auto; }
-    #toast-container > div { max-width: 100%; }
+    #toast-container { left: 10px; right: 10px; bottom: 20px !important; top: auto !important; pointer-events: none; }
+    #toast-container > div { max-width: 100%; pointer-events: auto; }
 
     /* Disable heavy animations on mobile for perf */
     .section.active .page-header,
@@ -5798,7 +5791,7 @@ function showToast(message, type = 'info') {
 function showPromptModal(title, placeholder) {
   return new Promise(function(resolve) {
     var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease';
     overlay.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px;width:400px;max-width:90vw;box-shadow:0 24px 80px rgba(0,0,0,0.5)">'
       + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px">' + title + '</h3>'
       + '<input type="text" id="prompt-modal-input" class="form-input" placeholder="' + (placeholder || '') + '" style="margin-bottom:16px" autofocus>'
@@ -6734,7 +6727,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script>
   // Force cache clear une seule fois quand la version change
   (function() {
-    var APP_VERSION = '2026-04-18h';
+    var APP_VERSION = '2026-04-18i';
     var lastVersion = localStorage.getItem('app_version');
     if (lastVersion !== APP_VERSION) {
       localStorage.setItem('app_version', APP_VERSION);
