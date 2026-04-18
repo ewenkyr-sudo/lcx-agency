@@ -673,7 +673,7 @@ async function renderStudentRevenue() {
   if (months.length > 0 && typeof Chart !== 'undefined') {
     const revByMonth = months.map(m => studentData.revenue.filter(r => r.month === m).reduce((s, r) => s + parseFloat(r.revenue), 0));
     new Chart(document.getElementById('chart-student-revenue'), {
-      type: 'bar', data: { labels: months, datasets: [{ label: 'Revenue', data: revByMonth, backgroundColor: '#D4A574cc', borderRadius: 4 }] },
+      type: 'bar', data: { labels: months, datasets: [{ label: 'Revenue', data: revByMonth, backgroundColor: '#A855F7cc', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' }, beginAtZero: true } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
     });
   }

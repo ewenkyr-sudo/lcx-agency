@@ -3,20 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#D4A574">
+<meta name="theme-color" content="#7C3AED">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <title>Fuzion Pilot — Activer votre compte</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @keyframes auroraFloat {
-    0%, 100% { opacity: 0.5; transform: translate(0, 0) scale(1); }
-    50% { opacity: 0.7; transform: translate(20px, -15px) scale(1.05); }
+    0%, 100% { opacity: 0.4; transform: translate(0, 0) scale(1); }
+    50% { opacity: 0.6; transform: translate(20px, -15px) scale(1.05); }
+  }
+  @keyframes constellationTwinkle {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  @keyframes mysticPulse {
+    0%, 100% { box-shadow: 0 8px 48px rgba(168,85,247,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset; }
+    50% { box-shadow: 0 8px 48px rgba(168,85,247,0.5), 0 0 60px rgba(168,85,247,0.15), 0 0 0 1px rgba(255,255,255,0.12) inset; }
   }
   body {
-    font-family: 'Outfit', sans-serif;
-    background: #07060B;
-    color: #F0ECF5;
+    font-family: 'Sora', sans-serif;
+    background: #04020A;
+    color: #EDE4FF;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -30,7 +38,7 @@
     position: fixed;
     top: -20%; left: -10%;
     width: 60vw; height: 60vh;
-    background: radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(168,85,247,0.08) 0%, rgba(34,211,238,0.03) 40%, transparent 70%);
     animation: auroraFloat 15s ease-in-out infinite;
     pointer-events: none;
   }
@@ -39,10 +47,25 @@
     position: fixed;
     bottom: -15%; right: -10%;
     width: 50vw; height: 50vh;
-    background: radial-gradient(ellipse, rgba(212,165,116,0.06) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(240,171,252,0.06) 0%, rgba(168,85,247,0.03) 40%, transparent 70%);
     animation: auroraFloat 20s ease-in-out infinite reverse;
     pointer-events: none;
   }
+  .constellation {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .star {
+    position: absolute; width: 2px; height: 2px; background: #C084FC; border-radius: 50%;
+    box-shadow: 0 0 6px rgba(192,132,252,0.4); animation: constellationTwinkle 3s ease-in-out infinite;
+  }
+  .star:nth-child(1) { top: 8%; left: 20%; animation-delay: 0s; }
+  .star:nth-child(2) { top: 30%; left: 78%; animation-delay: 0.8s; width: 3px; height: 3px; }
+  .star:nth-child(3) { top: 65%; left: 15%; animation-delay: 1.5s; }
+  .star:nth-child(4) { top: 42%; left: 55%; animation-delay: 2.2s; background: #22D3EE; box-shadow: 0 0 8px rgba(34,211,238,0.5); }
+  .star:nth-child(5) { top: 82%; left: 42%; animation-delay: 0.4s; }
+  .star:nth-child(6) { top: 20%; left: 60%; animation-delay: 1.9s; }
+  .star:nth-child(7) { top: 72%; left: 88%; animation-delay: 2.6s; background: #F0ABFC; box-shadow: 0 0 6px rgba(240,171,252,0.4); }
+  .star:nth-child(8) { top: 48%; left: 5%; animation-delay: 1.2s; width: 1px; height: 1px; }
   .container { width: 440px; max-width: 92vw; position: relative; z-index: 1; }
   .logo {
     text-align: center;
@@ -50,12 +73,12 @@
   }
   .logo-icon {
     width: 76px; height: 76px;
-    background: linear-gradient(135deg, #D4A574, #A78BFA, #67E8F9);
+    background: linear-gradient(135deg, #7C3AED, #A855F7, #22D3EE);
     border-radius: 24px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 36px;
     margin-bottom: 20px;
-    box-shadow: 0 8px 48px rgba(212,165,116,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset;
+    animation: mysticPulse 4s ease-in-out infinite;
     position: relative;
   }
   .logo-icon::after {
@@ -63,53 +86,53 @@
     position: absolute;
     inset: -3px;
     border-radius: 27px;
-    background: linear-gradient(135deg, rgba(212,165,116,0.3), rgba(167,139,250,0.2));
+    background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(34,211,238,0.2));
     z-index: -1;
     filter: blur(12px);
   }
-  .logo h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, #F0ECF5, #D4A574); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .logo p { color: #8B839B; font-size: 14px; margin-top: 8px; }
+  .logo h1 { font-family: 'Cinzel', serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; background: linear-gradient(135deg, #EDE4FF, #C084FC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo p { color: #9585B0; font-size: 14px; margin-top: 8px; }
   .card {
-    background: rgba(13,12,20,0.6);
+    background: rgba(10,6,21,0.6);
     backdrop-filter: blur(40px) saturate(1.8);
     -webkit-backdrop-filter: blur(40px) saturate(1.8);
-    border: 1px solid rgba(212,165,116,0.1);
+    border: 1px solid rgba(168,85,247,0.12);
     border-radius: 24px;
     padding: 40px;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 80px rgba(212,165,116,0.03), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 80px rgba(168,85,247,0.04), 0 0 0 1px rgba(255,255,255,0.04) inset;
   }
   .form-group { margin-bottom: 20px; }
   .form-label {
     display: block; font-size: 11px; font-weight: 600;
-    color: #8B839B; margin-bottom: 8px;
+    color: #9585B0; margin-bottom: 8px;
     text-transform: uppercase; letter-spacing: 1px;
   }
   .form-input {
     width: 100%; padding: 13px 16px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px; color: #F0ECF5;
+    background: rgba(168,85,247,0.04);
+    border: 1px solid rgba(168,85,247,0.1);
+    border-radius: 12px; color: #EDE4FF;
     font-size: 14px; font-family: inherit; outline: none;
     transition: all 0.25s ease;
   }
   .form-input:focus {
-    border-color: rgba(212,165,116,0.4);
-    box-shadow: 0 0 0 3px rgba(212,165,116,0.08), 0 0 24px rgba(212,165,116,0.04);
-    background: rgba(255,255,255,0.06);
+    border-color: rgba(168,85,247,0.4);
+    box-shadow: 0 0 0 3px rgba(168,85,247,0.1), 0 0 24px rgba(168,85,247,0.06);
+    background: rgba(168,85,247,0.06);
   }
-  .form-input::placeholder { color: #5C5470; }
+  .form-input::placeholder { color: #6B5A84; }
   @keyframes btnShimmer {
     0% { background-position: 200% center; }
     100% { background-position: -200% center; }
   }
   .btn-submit {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #D4A574, #C08B5C);
+    background: linear-gradient(135deg, #A855F7, #7C3AED);
     color: white; border: none; border-radius: 14px;
     font-size: 15px; font-weight: 700; cursor: pointer;
     font-family: inherit; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     margin-top: 8px;
-    box-shadow: 0 4px 20px rgba(212,165,116,0.25);
+    box-shadow: 0 4px 20px rgba(168,85,247,0.3);
     position: relative;
     overflow: hidden;
   }
@@ -121,7 +144,7 @@
     background-size: 200% 100%;
     animation: btnShimmer 3s ease-in-out infinite;
   }
-  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(212,165,116,0.4); }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(168,85,247,0.45), 0 0 40px rgba(168,85,247,0.1); }
   .btn-submit:active { transform: scale(0.98); }
   .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-submit:disabled::before { display: none; }
@@ -140,32 +163,39 @@
     display: none;
   }
   .success-msg.show { display: block; }
-  .success-msg h2 { font-size: 22px; margin-bottom: 12px; background: linear-gradient(135deg, #F0ECF5, #D4A574); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .success-msg p { color: #8B839B; font-size: 14px; margin-bottom: 24px; }
+  .success-msg h2 { font-family: 'Cinzel', serif; font-size: 22px; margin-bottom: 12px; background: linear-gradient(135deg, #EDE4FF, #C084FC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .success-msg p { color: #9585B0; font-size: 14px; margin-bottom: 24px; }
   .success-msg a {
     display: inline-block;
-    background: linear-gradient(135deg, #D4A574, #C08B5C);
+    background: linear-gradient(135deg, #A855F7, #7C3AED);
     color: white; padding: 14px 32px;
     border-radius: 14px; font-size: 15px; font-weight: 700;
     text-decoration: none;
-    box-shadow: 0 4px 20px rgba(212,165,116,0.25);
+    box-shadow: 0 4px 20px rgba(168,85,247,0.3);
   }
   .token-invalid {
     text-align: center;
     display: none;
   }
   .token-invalid.show { display: block; }
-  .token-invalid h2 { font-size: 20px; color: #FB7185; margin-bottom: 12px; }
-  .token-invalid p { color: #8B839B; font-size: 14px; line-height: 1.6; }
-  .token-invalid a { color: #E8C9A0; text-decoration: underline; }
-  .hint { font-size: 11px; color: #5C5470; margin-top: 6px; }
-  .footer { text-align: center; margin-top: 24px; color: #5C5470; font-size: 12px; }
+  .token-invalid h2 { font-family: 'Cinzel', serif; font-size: 20px; color: #FB7185; margin-bottom: 12px; }
+  .token-invalid p { color: #9585B0; font-size: 14px; line-height: 1.6; }
+  .token-invalid a { color: #C084FC; text-decoration: underline; }
+  .hint { font-size: 11px; color: #6B5A84; margin-top: 6px; }
+  .footer { text-align: center; margin-top: 24px; color: #6B5A84; font-size: 12px; }
 </style>
 </head>
 <body>
+
+<div class="constellation">
+  <div class="star"></div><div class="star"></div><div class="star"></div>
+  <div class="star"></div><div class="star"></div><div class="star"></div>
+  <div class="star"></div><div class="star"></div>
+</div>
+
 <div class="container">
   <div class="logo">
-    <div class="logo-icon">👑</div>
+    <div class="logo-icon">&#10022;</div>
     <h1>Fuzion Pilot</h1>
     <p>Activez votre compte</p>
   </div>
@@ -176,7 +206,7 @@
 
     <!-- Token invalid state -->
     <div class="token-invalid" id="token-invalid">
-      <h2>Lien invalide ou expiré</h2>
+      <h2>Lien invalide ou expire</h2>
       <p>Ce lien d'activation n'est plus valide.<br>Contactez <a href="mailto:contact@fuzionpilot.com">contact@fuzionpilot.com</a> pour en obtenir un nouveau.</p>
     </div>
 
@@ -189,20 +219,20 @@
       <div class="form-group">
         <label class="form-label">Nom d'utilisateur</label>
         <input type="text" class="form-input" id="username" placeholder="Ex: marie" required autocomplete="username">
-        <div class="hint">Utilisé pour se connecter. Pas d'espaces ni de caractères spéciaux.</div>
+        <div class="hint">Utilise pour se connecter. Pas d'espaces ni de caracteres speciaux.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Mot de passe</label>
-        <input type="password" class="form-input" id="password" placeholder="Minimum 8 caractères" required minlength="8" autocomplete="new-password">
+        <input type="password" class="form-input" id="password" placeholder="Minimum 8 caracteres" required minlength="8" autocomplete="new-password">
       </div>
       <button type="submit" class="btn-submit" id="submit-btn">Activer mon compte</button>
     </form>
 
     <!-- Success state -->
     <div class="success-msg" id="success-msg">
-      <h2>Compte activé ! 🎉</h2>
-      <p>Votre dashboard est prêt. Vous allez être redirigé...</p>
-      <a href="/dashboard.html">Accéder au dashboard</a>
+      <h2>Compte active !</h2>
+      <p>Votre dashboard est pret. Vous allez etre redirige...</p>
+      <a href="/dashboard.html">Acceder au dashboard</a>
     </div>
   </div>
 
@@ -224,7 +254,7 @@ async function handleRegister(e) {
   const errorEl = document.getElementById('error-msg');
   errorEl.classList.remove('show');
   btn.disabled = true;
-  btn.textContent = 'Création en cours...';
+  btn.textContent = 'Creation en cours...';
 
   try {
     const res = await fetch('/api/invite/register', {
@@ -242,14 +272,14 @@ async function handleRegister(e) {
     const data = await res.json();
 
     if (!res.ok) {
-      errorEl.textContent = data.error || 'Erreur lors de la création';
+      errorEl.textContent = data.error || 'Erreur lors de la creation';
       errorEl.classList.add('show');
       btn.disabled = false;
       btn.textContent = 'Activer mon compte';
-      if (data.error && (data.error.includes('invalide') || data.error.includes('expiré') || data.error.includes('utilisé'))) {
+      if (data.error && (data.error.includes('invalide') || data.error.includes('expire') || data.error.includes('utilise'))) {
         document.getElementById('invite-form').style.display = 'none';
         document.getElementById('token-invalid').classList.add('show');
-        document.getElementById('token-invalid').querySelector('h2').textContent = data.error.includes('expiré') ? 'Lien expiré' : data.error.includes('utilisé') ? 'Lien déjà utilisé' : 'Lien invalide';
+        document.getElementById('token-invalid').querySelector('h2').textContent = data.error.includes('expire') ? 'Lien expire' : data.error.includes('utilise') ? 'Lien deja utilise' : 'Lien invalide';
       }
       return;
     }
