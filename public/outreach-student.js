@@ -257,10 +257,12 @@ async function addSOLead(studentUserId) {
     notes: (document.getElementById('so-notes-' + studentUserId) || {}).value || ''
   })});
   if (res.ok) {
-    showToast('Lead ajouté !', 'success');
+    var newLead = await res.json();
+    studentOutreachData[studentUserId].leads.unshift(newLead);
     document.getElementById('so-form-wrap-' + studentUserId).innerHTML = '';
-    renderStudentOutreachForAssistant(studentUserId, assignedStudents.find(function(a) { return a.student_user_id === studentUserId; })?.student_name || '');
-  } else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+    renderSOLeadTable(studentUserId);
+    showToast('Lead ajouté !', 'success');
+  } else { try { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); } catch(err) { showToast('Erreur serveur', 'error'); } }
 }
 
 function updateSOLead(leadId, data) {
@@ -274,9 +276,10 @@ function updateSOLead(leadId, data) {
 
 async function deleteSOLead(studentUserId, leadId) {
   if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
-  await fetch('/api/student-leads/' + leadId, { method: 'DELETE', credentials: 'include' });
-  var name = (assignedStudents.find(function(a) { return a.student_user_id === studentUserId; }) || {}).student_name || '';
-  renderStudentOutreachForAssistant(studentUserId, name);
+  studentOutreachData[studentUserId].leads = studentOutreachData[studentUserId].leads.filter(function(l) { return l.id !== leadId; });
+  renderSOLeadTable(studentUserId);
+  fetch('/api/student-leads/' + leadId, { method: 'DELETE', credentials: 'include' })
+    .catch(function() { showToast('Erreur de suppression', 'error'); });
 }
 
 function showSOOptionsManager(studentUserId) {

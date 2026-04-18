@@ -4383,9 +4383,10 @@ function updateCoachingLead(id, data) {
 
 async function deleteCoachingLead(id) {
   if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
-  await fetch('/api/student-leads/' + id, { method: 'DELETE', credentials: 'include' });
   coachingOutreachLeads = coachingOutreachLeads.filter(function(l) { return l.id !== id; });
   renderCoachingLeadTable();
+  fetch('/api/student-leads/' + id, { method: 'DELETE', credentials: 'include' })
+    .catch(function() { showToast('Erreur de suppression', 'error'); });
 }
 
 async function deleteAllCoachingLeads() {
@@ -4428,12 +4429,14 @@ async function addCoachingLead() {
     market: coachingOutreachMarket
   })});
   if (res.ok) {
-    showToast('Lead ajouté', 'success');
+    var newLead = await res.json();
+    coachingOutreachLeads.unshift(newLead);
     document.getElementById('coaching-lead-form-wrap').innerHTML = '';
-    renderCoachingOutreach();
+    renderCoachingLeadTable();
+    showToast('Lead ajouté', 'success');
   } else {
-    var e = await res.json();
-    showToast(e.error || 'Erreur', 'error');
+    try { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+    catch(err) { showToast('Erreur serveur', 'error'); }
   }
 }
 
@@ -6731,7 +6734,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script>
   // Force cache clear une seule fois quand la version change
   (function() {
-    var APP_VERSION = '2026-04-18e';
+    var APP_VERSION = '2026-04-18f';
     var lastVersion = localStorage.getItem('app_version');
     if (lastVersion !== APP_VERSION) {
       localStorage.setItem('app_version', APP_VERSION);
