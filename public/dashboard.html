@@ -2568,6 +2568,11 @@ async function fetchCurrentUser() {
   if (res.status === 401) window.location.href = '/';
   if (!res.ok) throw new Error('Failed to fetch user');
   currentUser = await res.json();
+  // Redirect to onboarding if not completed
+  if (currentUser.onboarding_completed === false && currentUser.role === 'super_admin') {
+    window.location.href = '/onboarding.html';
+    return;
+  }
   // Apply agency color if set
   if (currentUser.agency_color) {
     document.documentElement.style.setProperty('--accent', currentUser.agency_color);

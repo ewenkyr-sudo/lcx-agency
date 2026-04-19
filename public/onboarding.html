@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#7C3AED">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<title>Fuzion Pilot — Configuration</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#04020A;--bg2:#0A0615;--bg3:#130D21;--bg4:#1C1333;
+    --accent:#A855F7;--accent2:#C084FC;
+    --green:#34D399;--red:#FB7185;--yellow:#FBBF24;--blue:#22D3EE;--pink:#F0ABFC;
+    --text:#EDE4FF;--text2:#9585B0;--text3:#6B5A84;
+    --border:rgba(168,85,247,0.07);--radius:16px;
+  }
+  @keyframes auroraFloat{0%,100%{opacity:.4;transform:translate(0,0) scale(1)}50%{opacity:.6;transform:translate(20px,-15px) scale(1.05)}}
+  @keyframes constellationTwinkle{0%,100%{opacity:0}50%{opacity:1}}
+  @keyframes btnShimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes mysticPulse{0%,100%{box-shadow:0 4px 32px rgba(168,85,247,0.25)}50%{box-shadow:0 4px 32px rgba(168,85,247,0.45),0 0 48px rgba(168,85,247,0.1)}}
+  body{
+    font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);
+    min-height:100vh;-webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;overflow-x:hidden;padding:20px;
+  }
+  body::before{content:'';position:fixed;top:-20%;left:-10%;width:60vw;height:60vh;background:radial-gradient(ellipse,rgba(168,85,247,0.08) 0%,rgba(34,211,238,0.03) 40%,transparent 70%);animation:auroraFloat 15s ease-in-out infinite;pointer-events:none}
+  body::after{content:'';position:fixed;bottom:-15%;right:-10%;width:50vw;height:50vh;background:radial-gradient(ellipse,rgba(240,171,252,0.06) 0%,rgba(168,85,247,0.03) 40%,transparent 70%);animation:auroraFloat 20s ease-in-out infinite reverse;pointer-events:none}
+  .constellation{position:fixed;inset:0;pointer-events:none;z-index:0}
+  .star{position:absolute;width:2px;height:2px;background:#C084FC;border-radius:50%;box-shadow:0 0 6px rgba(192,132,252,0.4);animation:constellationTwinkle 3s ease-in-out infinite}
+  .star:nth-child(1){top:8%;left:15%;animation-delay:0s}.star:nth-child(2){top:25%;left:82%;animation-delay:.7s;width:3px;height:3px}
+  .star:nth-child(3){top:60%;left:22%;animation-delay:1.4s}.star:nth-child(4){top:42%;left:68%;animation-delay:2.1s;background:#22D3EE;box-shadow:0 0 8px rgba(34,211,238,0.5)}
+  .star:nth-child(5){top:78%;left:48%;animation-delay:.5s}.star:nth-child(6){top:12%;left:55%;animation-delay:1.8s;width:3px;height:3px}
+  .star:nth-child(7){top:68%;left:88%;animation-delay:2.5s;background:#F0ABFC;box-shadow:0 0 6px rgba(240,171,252,0.4)}
+  .star:nth-child(8){top:35%;left:8%;animation-delay:1.1s}
+
+  .onboarding-container{width:580px;max-width:100%;position:relative;z-index:1}
+
+  /* Header */
+  .ob-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+  .ob-logo{display:flex;align-items:center;gap:12px}
+  .ob-logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#7C3AED,#A855F7,#22D3EE);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;animation:mysticPulse 4s ease-in-out infinite}
+  .ob-logo h1{font-family:'Cinzel',serif;font-size:18px;font-weight:700;background:linear-gradient(135deg,#EDE4FF,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .ob-logout{background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.15);color:var(--text2);padding:8px 16px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+  .ob-logout:hover{background:rgba(168,85,247,0.15);color:var(--text)}
+
+  /* Progress */
+  .ob-progress{margin-bottom:28px}
+  .ob-progress-bar{width:100%;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .ob-progress-fill{height:100%;background:linear-gradient(90deg,#7C3AED,#A855F7,#22D3EE);border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+  .ob-steps{display:flex;justify-content:space-between}
+  .ob-step-dot{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-weight:500;transition:color .3s}
+  .ob-step-dot.active{color:var(--accent2)}
+  .ob-step-dot.done{color:var(--green)}
+  .ob-step-num{width:22px;height:22px;border-radius:50%;border:2px solid var(--text3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;transition:all .3s}
+  .ob-step-dot.active .ob-step-num{border-color:var(--accent);color:var(--accent);background:rgba(168,85,247,0.1)}
+  .ob-step-dot.done .ob-step-num{border-color:var(--green);background:var(--green);color:white}
+
+  /* Card */
+  .ob-card{background:rgba(10,6,21,0.7);backdrop-filter:blur(40px) saturate(1.8);-webkit-backdrop-filter:blur(40px) saturate(1.8);border:1px solid rgba(168,85,247,0.12);border-radius:24px;padding:36px;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 80px rgba(168,85,247,0.04),0 0 0 1px rgba(255,255,255,0.04) inset}
+
+  /* Step content */
+  .ob-step-content{display:none;animation:fadeUp .4s ease}
+  .ob-step-content.active{display:block}
+  .ob-step-title{font-family:'Cinzel',serif;font-size:20px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,#EDE4FF,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .ob-step-desc{color:var(--text2);font-size:13px;margin-bottom:24px;line-height:1.5}
+
+  /* Form elements */
+  .ob-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .ob-row.full{grid-template-columns:1fr}
+  .ob-group{margin-bottom:14px}
+  .ob-label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+  .ob-label .req{color:var(--accent)}
+  .ob-input,.ob-select{
+    width:100%;padding:11px 14px;background:rgba(168,85,247,0.04);border:1px solid rgba(168,85,247,0.1);
+    border-radius:12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:all .25s
+  }
+  .ob-input:focus,.ob-select:focus{border-color:rgba(168,85,247,0.4);box-shadow:0 0 0 3px rgba(168,85,247,0.1),0 0 24px rgba(168,85,247,0.06);background:rgba(168,85,247,0.06)}
+  .ob-input::placeholder{color:var(--text3)}
+  .ob-select option{background:var(--bg3);color:var(--text)}
+  .ob-color-row{display:flex;align-items:center;gap:10px}
+  .ob-color-input{width:44px;height:44px;border:none;border-radius:10px;cursor:pointer;background:transparent;padding:0}
+  .ob-color-input::-webkit-color-swatch-wrapper{padding:0}
+  .ob-color-input::-webkit-color-swatch{border-radius:8px;border:2px solid rgba(255,255,255,0.1)}
+  .ob-color-hex{flex:1}
+  .ob-error{color:var(--red);font-size:12px;margin-top:4px;display:none}
+  .ob-error.show{display:block}
+  .ob-input.invalid,.ob-select.invalid{border-color:rgba(251,113,133,0.4);box-shadow:0 0 0 3px rgba(251,113,133,0.08)}
+
+  /* Chips (multi-select) */
+  .ob-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .ob-chip{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;background:rgba(168,85,247,0.06);color:var(--text2);border:1px solid rgba(168,85,247,0.1);cursor:pointer;transition:all .2s;font-family:inherit}
+  .ob-chip:hover{border-color:rgba(168,85,247,0.3);color:var(--text)}
+  .ob-chip.selected{background:rgba(168,85,247,0.15);color:var(--accent2);border-color:rgba(168,85,247,0.3)}
+
+  /* Toggle */
+  .ob-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+  .ob-toggle-label{font-size:13px;font-weight:500}
+  .ob-toggle-sub{font-size:11px;color:var(--text3);margin-top:2px}
+  .ob-toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+  .ob-toggle input{opacity:0;width:0;height:0}
+  .ob-toggle-slider{position:absolute;inset:0;background:var(--bg4);border-radius:12px;cursor:pointer;transition:.3s}
+  .ob-toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.3s}
+  .ob-toggle input:checked+.ob-toggle-slider{background:linear-gradient(135deg,#7C3AED,#A855F7)}
+  .ob-toggle input:checked+.ob-toggle-slider::before{transform:translateX(20px)}
+
+  /* Day selector */
+  .ob-days{display:flex;gap:6px;flex-wrap:wrap}
+  .ob-day{width:40px;height:40px;border-radius:10px;border:1px solid rgba(168,85,247,0.1);background:rgba(168,85,247,0.04);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .ob-day:hover{border-color:rgba(168,85,247,0.3)}
+  .ob-day.selected{background:rgba(168,85,247,0.15);color:var(--accent2);border-color:rgba(168,85,247,0.3)}
+
+  /* Buttons */
+  .ob-actions{display:flex;justify-content:space-between;margin-top:24px;gap:12px}
+  .ob-btn{padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .3s cubic-bezier(.4,0,.2,1)}
+  .ob-btn-back{background:rgba(168,85,247,0.06);color:var(--text2);border:1px solid rgba(168,85,247,0.1)}
+  .ob-btn-back:hover{background:rgba(168,85,247,0.12);color:var(--text)}
+  .ob-btn-next{background:linear-gradient(135deg,#A855F7,#7C3AED);color:white;box-shadow:0 2px 8px rgba(168,85,247,0.35),0 0 0 1px rgba(255,255,255,0.08) inset;position:relative;overflow:hidden;flex:1;max-width:220px}
+  .ob-btn-next::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);background-size:200% 100%;animation:btnShimmer 3s ease-in-out infinite}
+  .ob-btn-next:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(168,85,247,0.45),0 0 40px rgba(168,85,247,0.1)}
+  .ob-btn-next:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  .ob-btn-next:disabled::before{display:none}
+
+  /* Recap */
+  .ob-recap-section{margin-bottom:20px}
+  .ob-recap-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin-bottom:10px}
+  .ob-recap-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .ob-recap-item{background:rgba(168,85,247,0.04);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .ob-recap-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+  .ob-recap-value{font-size:13px;font-weight:600;margin-top:2px}
+  .ob-recap-item.full{grid-column:1/-1}
+
+  @media(max-width:600px){
+    .ob-row{grid-template-columns:1fr}
+    .ob-steps .ob-step-label{display:none}
+    .ob-card{padding:24px 18px}
+    .ob-recap-grid{grid-template-columns:1fr}
+    .ob-actions{flex-direction:column}
+    .ob-btn-next{max-width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div class="constellation">
+  <div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div>
+  <div class="star"></div><div class="star"></div><div class="star"></div><div class="star"></div>
+</div>
+
+<div class="onboarding-container">
+
+  <!-- Header -->
+  <div class="ob-header">
+    <div class="ob-logo">
+      <div class="ob-logo-icon">&#10022;</div>
+      <h1>Fuzion Pilot</h1>
+    </div>
+    <button class="ob-logout" onclick="handleLogout()">Deconnexion</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="ob-progress">
+    <div class="ob-progress-bar"><div class="ob-progress-fill" id="progress-fill" style="width:20%"></div></div>
+    <div class="ob-steps">
+      <div class="ob-step-dot active" data-step="1"><span class="ob-step-num">1</span><span class="ob-step-label">Identite</span></div>
+      <div class="ob-step-dot" data-step="2"><span class="ob-step-num">2</span><span class="ob-step-label">Activite</span></div>
+      <div class="ob-step-dot" data-step="3"><span class="ob-step-num">3</span><span class="ob-step-label">Contact</span></div>
+      <div class="ob-step-dot" data-step="4"><span class="ob-step-num">4</span><span class="ob-step-label">Preferences</span></div>
+      <div class="ob-step-dot" data-step="5"><span class="ob-step-num">5</span><span class="ob-step-label">Recap</span></div>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="ob-card">
+
+    <!-- Step 1: Identity -->
+    <div class="ob-step-content active" id="step-1">
+      <div class="ob-step-title">Identite de l'agence</div>
+      <div class="ob-step-desc">Personnalisez votre espace Fuzion Pilot avec l'identite de votre agence.</div>
+
+      <div class="ob-group">
+        <label class="ob-label">Nom de l'agence <span class="req">*</span></label>
+        <input class="ob-input" id="ob-name" type="text" placeholder="Ex: Elite Models Agency">
+        <div class="ob-error" id="err-name">Ce champ est obligatoire</div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Logo (URL de l'image)</label>
+        <input class="ob-input" id="ob-logo" type="url" placeholder="https://monsite.com/logo.png">
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Couleur principale <span class="req">*</span></label>
+        <div class="ob-color-row">
+          <input type="color" class="ob-color-input" id="ob-color" value="#8b5cf6">
+          <input class="ob-input ob-color-hex" id="ob-color-hex" value="#8b5cf6" placeholder="#8b5cf6">
+        </div>
+      </div>
+      <div class="ob-row">
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Pays <span class="req">*</span></label>
+          <select class="ob-select" id="ob-country">
+            <option value="">Selectionnez...</option>
+            <option value="FR">France</option><option value="US">Etats-Unis</option><option value="UK">Royaume-Uni</option>
+            <option value="CA">Canada</option><option value="BE">Belgique</option><option value="CH">Suisse</option>
+            <option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option>
+            <option value="PT">Portugal</option><option value="NL">Pays-Bas</option><option value="RO">Roumanie</option>
+            <option value="PL">Pologne</option><option value="AU">Australie</option><option value="OTHER">Autre</option>
+          </select>
+          <div class="ob-error" id="err-country">Ce champ est obligatoire</div>
+        </div>
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Fuseau horaire <span class="req">*</span></label>
+          <select class="ob-select" id="ob-timezone">
+            <option value="">Selectionnez...</option>
+            <option value="Europe/Paris">Europe/Paris (CET)</option>
+            <option value="Europe/London">Europe/London (GMT)</option>
+            <option value="America/New_York">America/New_York (EST)</option>
+            <option value="America/Chicago">America/Chicago (CST)</option>
+            <option value="America/Denver">America/Denver (MST)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+            <option value="America/Toronto">America/Toronto (EST)</option>
+            <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+            <option value="Europe/Bucharest">Europe/Bucharest (EET)</option>
+            <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+          </select>
+          <div class="ob-error" id="err-timezone">Ce champ est obligatoire</div>
+        </div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Devise <span class="req">*</span></label>
+        <select class="ob-select" id="ob-currency">
+          <option value="EUR">EUR (Euro)</option>
+          <option value="USD">USD (Dollar US)</option>
+          <option value="GBP">GBP (Livre Sterling)</option>
+          <option value="CAD">CAD (Dollar Canadien)</option>
+          <option value="CHF">CHF (Franc Suisse)</option>
+          <option value="RON">RON (Leu Roumain)</option>
+          <option value="AUD">AUD (Dollar Australien)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Step 2: Activity -->
+    <div class="ob-step-content" id="step-2">
+      <div class="ob-step-title">Votre activite</div>
+      <div class="ob-step-desc">Aidez-nous a personnaliser votre experience en nous parlant de votre agence.</div>
+
+      <div class="ob-group">
+        <label class="ob-label">Type de service <span class="req">*</span></label>
+        <select class="ob-select" id="ob-service-type">
+          <option value="">Selectionnez...</option>
+          <option value="onlyfans-management">OnlyFans Management</option>
+          <option value="coaching">Coaching / Formation</option>
+          <option value="hybrid">Agence Hybride (Management + Coaching)</option>
+          <option value="content-creation">Creation de contenu</option>
+          <option value="other">Autre</option>
+        </select>
+        <div class="ob-error" id="err-service-type">Ce champ est obligatoire</div>
+      </div>
+      <div class="ob-row">
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Nombre de modeles <span class="req">*</span></label>
+          <select class="ob-select" id="ob-models-count">
+            <option value="">Selectionnez...</option>
+            <option value="0">Aucun pour l'instant</option>
+            <option value="1">1</option><option value="2">2-3</option><option value="5">4-5</option>
+            <option value="8">6-10</option><option value="15">11-20</option><option value="25">20+</option>
+          </select>
+          <div class="ob-error" id="err-models-count">Ce champ est obligatoire</div>
+        </div>
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Nombre de chatters <span class="req">*</span></label>
+          <select class="ob-select" id="ob-chatters-count">
+            <option value="">Selectionnez...</option>
+            <option value="0">Aucun pour l'instant</option>
+            <option value="1">1</option><option value="2">2-3</option><option value="5">4-5</option>
+            <option value="8">6-10</option><option value="15">11-20</option><option value="25">20+</option>
+          </select>
+          <div class="ob-error" id="err-chatters-count">Ce champ est obligatoire</div>
+        </div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Marches cibles <span class="req">*</span></label>
+        <div class="ob-chips" id="ob-markets">
+          <button class="ob-chip" data-value="FR">France</button>
+          <button class="ob-chip" data-value="US">USA</button>
+          <button class="ob-chip" data-value="UK">UK</button>
+          <button class="ob-chip" data-value="DE">Allemagne</button>
+          <button class="ob-chip" data-value="ES">Espagne</button>
+          <button class="ob-chip" data-value="IT">Italie</button>
+          <button class="ob-chip" data-value="LATAM">Amerique Latine</button>
+          <button class="ob-chip" data-value="MULTI">Multi-langue</button>
+        </div>
+        <div class="ob-error" id="err-markets">Selectionnez au moins un marche</div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Date de creation de l'agence</label>
+        <input class="ob-input" id="ob-founded" type="month" placeholder="2024-01">
+      </div>
+    </div>
+
+    <!-- Step 3: Contact -->
+    <div class="ob-step-content" id="step-3">
+      <div class="ob-step-title">Contact & facturation</div>
+      <div class="ob-step-desc">Informations de contact et de facturation pour votre agence.</div>
+
+      <div class="ob-row">
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Email de contact <span class="req">*</span></label>
+          <input class="ob-input" id="ob-email" type="email" placeholder="contact@monagence.com">
+          <div class="ob-error" id="err-email">Email valide requis</div>
+        </div>
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Telephone</label>
+          <input class="ob-input" id="ob-phone" type="tel" placeholder="+33 6 12 34 56 78">
+        </div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Nom legal de la societe</label>
+        <input class="ob-input" id="ob-legal-name" type="text" placeholder="Ex: Ma Societe SARL">
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Adresse</label>
+        <input class="ob-input" id="ob-street" type="text" placeholder="Rue" style="margin-bottom:8px">
+        <div class="ob-row" style="margin-bottom:0">
+          <input class="ob-input" id="ob-city" type="text" placeholder="Ville">
+          <input class="ob-input" id="ob-zip" type="text" placeholder="Code postal">
+        </div>
+      </div>
+      <div class="ob-row">
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Pays de facturation</label>
+          <select class="ob-select" id="ob-address-country">
+            <option value="">Identique au pays</option>
+            <option value="FR">France</option><option value="US">Etats-Unis</option><option value="UK">Royaume-Uni</option>
+            <option value="CA">Canada</option><option value="BE">Belgique</option><option value="CH">Suisse</option>
+            <option value="DE">Allemagne</option><option value="RO">Roumanie</option><option value="OTHER">Autre</option>
+          </select>
+        </div>
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Numero TVA / SIRET</label>
+          <input class="ob-input" id="ob-vat" type="text" placeholder="FR 12345678901">
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Preferences -->
+    <div class="ob-step-content" id="step-4">
+      <div class="ob-step-title">Preferences</div>
+      <div class="ob-step-desc">Configurez les parametres par defaut de votre espace de travail.</div>
+
+      <div class="ob-row">
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Heure de debut</label>
+          <input class="ob-input" id="ob-work-start" type="time" value="09:00">
+        </div>
+        <div class="ob-group" style="margin-bottom:0">
+          <label class="ob-label">Heure de fin</label>
+          <input class="ob-input" id="ob-work-end" type="time" value="18:00">
+        </div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Jours travailles</label>
+        <div class="ob-days" id="ob-work-days">
+          <button class="ob-day selected" data-value="lundi">Lun</button>
+          <button class="ob-day selected" data-value="mardi">Mar</button>
+          <button class="ob-day selected" data-value="mercredi">Mer</button>
+          <button class="ob-day selected" data-value="jeudi">Jeu</button>
+          <button class="ob-day selected" data-value="vendredi">Ven</button>
+          <button class="ob-day" data-value="samedi">Sam</button>
+          <button class="ob-day" data-value="dimanche">Dim</button>
+        </div>
+      </div>
+      <div class="ob-group">
+        <label class="ob-label">Langue de l'interface</label>
+        <select class="ob-select" id="ob-language">
+          <option value="fr">Francais</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div class="ob-toggle-row">
+        <div>
+          <div class="ob-toggle-label">Notifications par email</div>
+          <div class="ob-toggle-sub">Recevez des alertes et rapports par email</div>
+        </div>
+        <label class="ob-toggle">
+          <input type="checkbox" id="ob-email-notif" checked>
+          <span class="ob-toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Step 5: Recap -->
+    <div class="ob-step-content" id="step-5">
+      <div class="ob-step-title">Tout est pret !</div>
+      <div class="ob-step-desc">Verifiez vos informations avant de lancer votre dashboard.</div>
+      <div id="recap-content"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="ob-actions">
+      <button class="ob-btn ob-btn-back" id="btn-back" style="display:none" onclick="prevStep()">Precedent</button>
+      <div style="flex:1"></div>
+      <button class="ob-btn ob-btn-next" id="btn-next" onclick="nextStep()">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentStep = 1;
+const totalSteps = 5;
+let agencyData = {};
+
+// ========== AUTH CHECK ==========
+async function init() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (res.status === 401) { window.location.href = '/'; return; }
+    const user = await res.json();
+    // Already completed — go to dashboard
+    if (user.onboarding_completed !== false) { window.location.href = '/dashboard.html'; return; }
+    // Only super_admin can do onboarding
+    if (user.role !== 'super_admin') { window.location.href = '/dashboard.html'; return; }
+
+    // Load existing draft data
+    const statusRes = await fetch('/api/agency/onboarding-status', { credentials: 'include' });
+    if (statusRes.ok) {
+      agencyData = await statusRes.json();
+      prefillForm();
+    }
+
+    // Restore step from localStorage
+    const savedStep = parseInt(localStorage.getItem('onboarding_step') || '1');
+    if (savedStep > 1 && savedStep <= totalSteps) goToStep(savedStep);
+
+    // Auto-detect timezone
+    if (!agencyData.timezone) {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzSelect = document.getElementById('ob-timezone');
+      for (let o of tzSelect.options) {
+        if (o.value === tz) { tzSelect.value = tz; break; }
+      }
+    }
+  } catch(e) {
+    console.error('Init error:', e);
+  }
+}
+
+function prefillForm() {
+  const map = {
+    'ob-name': 'name', 'ob-logo': 'logo_url', 'ob-country': 'country',
+    'ob-timezone': 'timezone', 'ob-currency': 'currency', 'ob-service-type': 'service_type',
+    'ob-founded': 'founded_at', 'ob-email': 'contact_email', 'ob-phone': 'phone',
+    'ob-legal-name': 'legal_name', 'ob-street': 'address_street', 'ob-city': 'address_city',
+    'ob-zip': 'address_zip', 'ob-address-country': 'address_country', 'ob-vat': 'vat_number',
+    'ob-work-start': 'default_work_start', 'ob-work-end': 'default_work_end',
+    'ob-language': 'language'
+  };
+  for (const [elId, key] of Object.entries(map)) {
+    if (agencyData[key]) {
+      const el = document.getElementById(elId);
+      if (el) el.value = agencyData[key];
+    }
+  }
+  // Color
+  if (agencyData.primary_color) {
+    document.getElementById('ob-color').value = agencyData.primary_color;
+    document.getElementById('ob-color-hex').value = agencyData.primary_color;
+  }
+  // Models/chatters count
+  if (agencyData.models_count !== null && agencyData.models_count !== undefined) {
+    document.getElementById('ob-models-count').value = agencyData.models_count;
+  }
+  if (agencyData.chatters_count !== null && agencyData.chatters_count !== undefined) {
+    document.getElementById('ob-chatters-count').value = agencyData.chatters_count;
+  }
+  // Markets (array)
+  if (agencyData.target_markets && agencyData.target_markets.length) {
+    document.querySelectorAll('#ob-markets .ob-chip').forEach(c => {
+      if (agencyData.target_markets.includes(c.dataset.value)) c.classList.add('selected');
+    });
+  }
+  // Work days (array)
+  if (agencyData.work_days && agencyData.work_days.length) {
+    document.querySelectorAll('#ob-work-days .ob-day').forEach(d => {
+      d.classList.toggle('selected', agencyData.work_days.includes(d.dataset.value));
+    });
+  }
+  // Email notifications
+  if (agencyData.email_notifications_enabled === false) {
+    document.getElementById('ob-email-notif').checked = false;
+  }
+}
+
+// ========== COLOR SYNC ==========
+document.getElementById('ob-color').addEventListener('input', function() {
+  document.getElementById('ob-color-hex').value = this.value;
+});
+document.getElementById('ob-color-hex').addEventListener('input', function() {
+  if (/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('ob-color').value = this.value;
+});
+
+// ========== CHIPS TOGGLE ==========
+document.querySelectorAll('.ob-chip').forEach(chip => {
+  chip.addEventListener('click', function(e) {
+    e.preventDefault();
+    this.classList.toggle('selected');
+  });
+});
+
+// ========== DAY TOGGLE ==========
+document.querySelectorAll('.ob-day').forEach(day => {
+  day.addEventListener('click', function(e) {
+    e.preventDefault();
+    this.classList.toggle('selected');
+  });
+});
+
+// ========== VALIDATION ==========
+function validateStep(step) {
+  let valid = true;
+  // Clear all errors in current step
+  document.querySelectorAll(`#step-${step} .ob-error`).forEach(e => e.classList.remove('show'));
+  document.querySelectorAll(`#step-${step} .invalid`).forEach(e => e.classList.remove('invalid'));
+
+  function fail(inputId, errorId) {
+    document.getElementById(inputId).classList.add('invalid');
+    document.getElementById(errorId).classList.add('show');
+    valid = false;
+  }
+
+  if (step === 1) {
+    if (!document.getElementById('ob-name').value.trim()) fail('ob-name', 'err-name');
+    if (!document.getElementById('ob-country').value) fail('ob-country', 'err-country');
+    if (!document.getElementById('ob-timezone').value) fail('ob-timezone', 'err-timezone');
+  } else if (step === 2) {
+    if (!document.getElementById('ob-service-type').value) fail('ob-service-type', 'err-service-type');
+    if (!document.getElementById('ob-models-count').value) fail('ob-models-count', 'err-models-count');
+    if (!document.getElementById('ob-chatters-count').value) fail('ob-chatters-count', 'err-chatters-count');
+    const selected = document.querySelectorAll('#ob-markets .ob-chip.selected');
+    if (selected.length === 0) {
+      document.getElementById('err-markets').classList.add('show');
+      valid = false;
+    }
+  } else if (step === 3) {
+    const email = document.getElementById('ob-email').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail('ob-email', 'err-email');
+  }
+  return valid;
+}
+
+// ========== COLLECT DATA ==========
+function collectStepData() {
+  return {
+    name: document.getElementById('ob-name').value.trim(),
+    logo_url: document.getElementById('ob-logo').value.trim() || null,
+    primary_color: document.getElementById('ob-color').value,
+    country: document.getElementById('ob-country').value,
+    timezone: document.getElementById('ob-timezone').value,
+    currency: document.getElementById('ob-currency').value,
+    service_type: document.getElementById('ob-service-type').value,
+    models_count: parseInt(document.getElementById('ob-models-count').value) || 0,
+    chatters_count: parseInt(document.getElementById('ob-chatters-count').value) || 0,
+    target_markets: Array.from(document.querySelectorAll('#ob-markets .ob-chip.selected')).map(c => c.dataset.value),
+    founded_at: document.getElementById('ob-founded').value || null,
+    contact_email: document.getElementById('ob-email').value.trim(),
+    phone: document.getElementById('ob-phone').value.trim() || null,
+    legal_name: document.getElementById('ob-legal-name').value.trim() || null,
+    address_street: document.getElementById('ob-street').value.trim() || null,
+    address_city: document.getElementById('ob-city').value.trim() || null,
+    address_zip: document.getElementById('ob-zip').value.trim() || null,
+    address_country: document.getElementById('ob-address-country').value || null,
+    vat_number: document.getElementById('ob-vat').value.trim() || null,
+    default_work_start: document.getElementById('ob-work-start').value,
+    default_work_end: document.getElementById('ob-work-end').value,
+    work_days: Array.from(document.querySelectorAll('#ob-work-days .ob-day.selected')).map(d => d.dataset.value),
+    language: document.getElementById('ob-language').value,
+    email_notifications_enabled: document.getElementById('ob-email-notif').checked
+  };
+}
+
+// ========== SAVE DRAFT ==========
+async function saveDraft() {
+  const data = collectStepData();
+  try {
+    await fetch('/api/agency/onboarding/draft', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+  } catch(e) { console.error('Draft save error:', e); }
+}
+
+// ========== NAVIGATION ==========
+function goToStep(step) {
+  currentStep = step;
+  document.querySelectorAll('.ob-step-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('step-' + step).classList.add('active');
+
+  // Progress bar
+  document.getElementById('progress-fill').style.width = (step / totalSteps * 100) + '%';
+
+  // Step dots
+  document.querySelectorAll('.ob-step-dot').forEach(dot => {
+    const s = parseInt(dot.dataset.step);
+    dot.classList.remove('active', 'done');
+    if (s === step) dot.classList.add('active');
+    else if (s < step) dot.classList.add('done');
+  });
+
+  // Buttons
+  document.getElementById('btn-back').style.display = step === 1 ? 'none' : '';
+  document.getElementById('btn-next').textContent = step === totalSteps ? 'Acceder a mon dashboard' : 'Continuer';
+
+  // Build recap on step 5
+  if (step === 5) buildRecap();
+
+  localStorage.setItem('onboarding_step', step);
+}
+
+async function nextStep() {
+  if (currentStep < totalSteps) {
+    if (!validateStep(currentStep)) return;
+    await saveDraft();
+    goToStep(currentStep + 1);
+  } else {
+    // Complete onboarding
+    const btn = document.getElementById('btn-next');
+    btn.disabled = true;
+    btn.textContent = 'Finalisation...';
+    try {
+      const data = collectStepData();
+      const res = await fetch('/api/agency/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (res.ok) {
+        localStorage.removeItem('onboarding_step');
+        window.location.href = '/dashboard.html';
+      } else {
+        alert(result.error || 'Erreur lors de la finalisation');
+        btn.disabled = false;
+        btn.textContent = 'Acceder a mon dashboard';
+      }
+    } catch(e) {
+      alert('Erreur reseau');
+      btn.disabled = false;
+      btn.textContent = 'Acceder a mon dashboard';
+    }
+  }
+}
+
+function prevStep() {
+  if (currentStep > 1) goToStep(currentStep - 1);
+}
+
+// ========== RECAP ==========
+function buildRecap() {
+  const d = collectStepData();
+  const serviceLabels = {'onlyfans-management':'OnlyFans Management','coaching':'Coaching','hybrid':'Agence Hybride','content-creation':'Creation de contenu','other':'Autre'};
+  const countryLabels = {'FR':'France','US':'Etats-Unis','UK':'Royaume-Uni','CA':'Canada','BE':'Belgique','CH':'Suisse','DE':'Allemagne','ES':'Espagne','IT':'Italie','PT':'Portugal','NL':'Pays-Bas','RO':'Roumanie','PL':'Pologne','AU':'Australie','OTHER':'Autre'};
+  const dayLabels = {'lundi':'Lun','mardi':'Mar','mercredi':'Mer','jeudi':'Jeu','vendredi':'Ven','samedi':'Sam','dimanche':'Dim'};
+
+  let html = '';
+
+  html += `<div class="ob-recap-section">
+    <div class="ob-recap-title">Identite</div>
+    <div class="ob-recap-grid">
+      <div class="ob-recap-item"><div class="ob-recap-label">Nom</div><div class="ob-recap-value">${d.name || '-'}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Pays</div><div class="ob-recap-value">${countryLabels[d.country] || d.country || '-'}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Devise</div><div class="ob-recap-value">${d.currency}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Fuseau</div><div class="ob-recap-value">${d.timezone || '-'}</div></div>
+    </div>
+  </div>`;
+
+  html += `<div class="ob-recap-section">
+    <div class="ob-recap-title">Activite</div>
+    <div class="ob-recap-grid">
+      <div class="ob-recap-item"><div class="ob-recap-label">Service</div><div class="ob-recap-value">${serviceLabels[d.service_type] || d.service_type || '-'}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Modeles</div><div class="ob-recap-value">${d.models_count}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Chatters</div><div class="ob-recap-value">${d.chatters_count}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Marches</div><div class="ob-recap-value">${d.target_markets.join(', ') || '-'}</div></div>
+    </div>
+  </div>`;
+
+  html += `<div class="ob-recap-section">
+    <div class="ob-recap-title">Contact</div>
+    <div class="ob-recap-grid">
+      <div class="ob-recap-item"><div class="ob-recap-label">Email</div><div class="ob-recap-value">${d.contact_email || '-'}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Telephone</div><div class="ob-recap-value">${d.phone || '-'}</div></div>
+      ${d.legal_name ? `<div class="ob-recap-item full"><div class="ob-recap-label">Societe</div><div class="ob-recap-value">${d.legal_name}</div></div>` : ''}
+    </div>
+  </div>`;
+
+  html += `<div class="ob-recap-section">
+    <div class="ob-recap-title">Preferences</div>
+    <div class="ob-recap-grid">
+      <div class="ob-recap-item"><div class="ob-recap-label">Horaires</div><div class="ob-recap-value">${d.default_work_start} - ${d.default_work_end}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Jours</div><div class="ob-recap-value">${d.work_days.map(w => dayLabels[w] || w).join(', ')}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Langue</div><div class="ob-recap-value">${d.language === 'fr' ? 'Francais' : 'English'}</div></div>
+      <div class="ob-recap-item"><div class="ob-recap-label">Notifications</div><div class="ob-recap-value">${d.email_notifications_enabled ? 'Activees' : 'Desactivees'}</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('recap-content').innerHTML = html;
+}
+
+// ========== LOGOUT ==========
+async function handleLogout() {
+  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  localStorage.removeItem('onboarding_step');
+  window.location.href = '/';
+}
+
+// ========== INIT ==========
+init();
+</script>
+</body>
+</html>
