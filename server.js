@@ -730,6 +730,44 @@ async function initDB() {
       await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS ${col}`);
     } catch(e) {}
   }
+
+  // Recruitment module tables
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recruitment_settings (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        enabled BOOLEAN DEFAULT false,
+        coaching_price DECIMAL(10,2) DEFAULT 1500.00,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(agency_id)
+      );
+      CREATE TABLE IF NOT EXISTS recruiters (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER,
+        user_id INTEGER REFERENCES users(id),
+        commission_percentage DECIMAL(5,2) DEFAULT 10.00,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS recruitment_leads (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER,
+        recruiter_id INTEGER REFERENCES recruiters(id) ON DELETE CASCADE,
+        prospect_name VARCHAR(255),
+        prospect_pseudo VARCHAR(255),
+        platform VARCHAR(50) DEFAULT 'instagram',
+        status VARCHAR(50) DEFAULT 'prospect_chaud',
+        call_recruiter BOOLEAN DEFAULT false,
+        call_owner BOOLEAN DEFAULT false,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+  } catch(e) {}
 }
 
 // ============ SEED DEFAULT DATA ============
@@ -3399,6 +3437,176 @@ app.put('/api/agency', authMiddleware, async (req, res) => {
   await pool.query('UPDATE agencies SET name = COALESCE($1, name), logo_url = COALESCE($2, logo_url), primary_color = COALESCE($3, primary_color) WHERE id = $4',
     [name, logo_url, primary_color, req.user.agency_id]);
   res.json({ ok: true });
+});
+
+// ============ RECRUITMENT MODULE ============
+
+// Settings
+app.get('/api/recruitment/settings', authMiddleware, async (req, res) => {
+  try {
+    let { rows } = await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id]);
+    if (rows.length === 0) {
+      await pool.query('INSERT INTO recruitment_settings (agency_id) VALUES ($1) ON CONFLICT (agency_id) DO NOTHING', [req.user.agency_id]);
+      rows = (await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id])).rows;
+    }
+    res.json(rows[0] || { enabled: false, coaching_price: 1500 });
+  } catch(e) { res.json({ enabled: false, coaching_price: 1500 }); }
+});
+
+app.patch('/api/recruitment/settings', authMiddleware, adminOnly, async (req, res) => {
+  const { enabled, coaching_price } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO recruitment_settings (agency_id, enabled, coaching_price) VALUES ($1, $2, $3)
+       ON CONFLICT (agency_id) DO UPDATE SET enabled = COALESCE($2, recruitment_settings.enabled), coaching_price = COALESCE($3, recruitment_settings.coaching_price), updated_at = NOW()`,
+      [req.user.agency_id, enabled, coaching_price]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// Recruiters
+app.get('/api/recruitment/recruiters', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT r.*, u.display_name, u.username,
+        (SELECT COUNT(*) FROM recruitment_leads WHERE recruiter_id = r.id) as lead_count,
+        (SELECT COUNT(*) FROM recruitment_leads WHERE recruiter_id = r.id AND status = 'paye') as paid_count
+      FROM recruiters r JOIN users u ON r.user_id = u.id
+      WHERE r.agency_id = $1 ORDER BY r.created_at DESC
+    `, [req.user.agency_id]);
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/recruitment/recruiters', authMiddleware, adminOnly, async (req, res) => {
+  const { user_id, commission_percentage } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO recruiters (agency_id, user_id, commission_percentage) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.agency_id, user_id, commission_percentage || 10]
+    );
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.patch('/api/recruitment/recruiters/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { commission_percentage, is_active } = req.body;
+  try {
+    await pool.query(
+      'UPDATE recruiters SET commission_percentage = COALESCE($1, commission_percentage), is_active = COALESCE($2, is_active), updated_at = NOW() WHERE id = $3 AND agency_id = $4',
+      [commission_percentage, is_active, req.params.id, req.user.agency_id]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.delete('/api/recruitment/recruiters/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM recruiters WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+// Leads
+app.get('/api/recruitment/leads', authMiddleware, async (req, res) => {
+  try {
+    // If user is a recruiter, only show their leads; if admin, show all
+    const recruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2', [req.user.id, req.user.agency_id])).rows[0];
+    const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
+    let query = `SELECT rl.*, r.commission_percentage, u.display_name as recruiter_name
+      FROM recruitment_leads rl
+      JOIN recruiters r ON rl.recruiter_id = r.id
+      JOIN users u ON r.user_id = u.id
+      WHERE rl.agency_id = $1`;
+    const params = [req.user.agency_id];
+    if (!isOwner && recruiter) {
+      query += ' AND rl.recruiter_id = $2';
+      params.push(recruiter.id);
+    } else if (!isOwner) {
+      return res.json([]);
+    }
+    query += ' ORDER BY rl.created_at DESC';
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/recruitment/leads', authMiddleware, async (req, res) => {
+  const { prospect_name, prospect_pseudo, platform, notes } = req.body;
+  if (!prospect_pseudo) return res.status(400).json({ error: 'Pseudo requis' });
+  try {
+    // Find recruiter_id for this user
+    const recruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.user.agency_id])).rows[0];
+    // If admin, allow specifying recruiter_id
+    let recruiterId = recruiter?.id;
+    if (!recruiterId && (req.user.role === 'admin' || req.user.role === 'super_admin') && req.body.recruiter_id) {
+      recruiterId = req.body.recruiter_id;
+    }
+    if (!recruiterId) return res.status(403).json({ error: 'Not a recruiter' });
+    const { rows } = await pool.query(
+      'INSERT INTO recruitment_leads (agency_id, recruiter_id, prospect_name, prospect_pseudo, platform, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.agency_id, recruiterId, prospect_name || '', prospect_pseudo, platform || 'instagram', notes || '']
+    );
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.patch('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
+  const { status, call_recruiter, call_owner, notes } = req.body;
+  const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
+  try {
+    // Verify ownership
+    const lead = (await pool.query('SELECT rl.*, r.user_id as recruiter_user_id FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.id = $1 AND rl.agency_id = $2', [req.params.id, req.user.agency_id])).rows[0];
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (!isOwner && lead.recruiter_user_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+    // Recruiters cannot set call_owner
+    const updates = ['updated_at = NOW()'];
+    const vals = [];
+    let idx = 1;
+    if (status !== undefined) { updates.push('status = $' + idx); vals.push(status); idx++; }
+    if (call_recruiter !== undefined) { updates.push('call_recruiter = $' + idx); vals.push(call_recruiter); idx++; }
+    if (isOwner && call_owner !== undefined) { updates.push('call_owner = $' + idx); vals.push(call_owner); idx++; }
+    if (notes !== undefined) { updates.push('notes = $' + idx); vals.push(notes); idx++; }
+    vals.push(req.params.id);
+    await pool.query('UPDATE recruitment_leads SET ' + updates.join(', ') + ' WHERE id = $' + idx, vals);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.delete('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
+  const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
+  if (isOwner) {
+    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  } else {
+    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2 AND recruiter_id IN (SELECT id FROM recruiters WHERE user_id = $3)', [req.params.id, req.user.agency_id, req.user.id]);
+  }
+  res.json({ ok: true });
+});
+
+// Stats
+app.get('/api/recruitment/stats', authMiddleware, async (req, res) => {
+  try {
+    const settings = (await pool.query('SELECT coaching_price FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id])).rows[0];
+    const price = parseFloat(settings?.coaching_price || 1500);
+    const { rows } = await pool.query(`
+      SELECT status, COUNT(*) as count FROM recruitment_leads WHERE agency_id = $1 GROUP BY status
+    `, [req.user.agency_id]);
+    const byStatus = {};
+    let total = 0;
+    rows.forEach(r => { byStatus[r.status] = parseInt(r.count); total += parseInt(r.count); });
+    const paid = byStatus['paye'] || 0;
+    const revenue = paid * price;
+    // Commission totals
+    const commResult = await pool.query(`
+      SELECT SUM(r.commission_percentage) as total_comm_pct, COUNT(*) as paid_count
+      FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id
+      WHERE rl.agency_id = $1 AND rl.status = 'paye'
+    `, [req.user.agency_id]);
+    const commissions = commResult.rows[0]?.paid_count > 0
+      ? (await pool.query(`SELECT SUM(r.commission_percentage * $2 / 100) as total FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.agency_id = $1 AND rl.status = 'paye'`, [req.user.agency_id, price])).rows[0]?.total || 0
+      : 0;
+    res.json({ total, byStatus, paid, revenue, commissions: parseFloat(commissions), coaching_price: price });
+  } catch(e) { res.json({ total: 0, byStatus: {}, paid: 0, revenue: 0, commissions: 0, coaching_price: 1500 }); }
 });
 
 // ============ AGENCY ONBOARDING ============
