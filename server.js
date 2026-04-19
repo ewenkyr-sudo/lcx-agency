@@ -3006,12 +3006,13 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ ANALYTICS ============
 app.get('/api/analytics/reply-rate-weekly', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT date_trunc('week', created_at)::date as week,
-      COUNT(*) FILTER (WHERE status != 'to-send') as dm_sent,
-      COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies
-    FROM student_leads WHERE created_at > NOW() - INTERVAL '12 weeks'
+    SELECT date_trunc('week', sl.created_at)::date as week,
+      COUNT(*) FILTER (WHERE sl.status != 'to-send') as dm_sent,
+      COUNT(*) FILTER (WHERE sl.status IN ('talking-cold','talking-warm','call-booked','signed')) as replies
+    FROM student_leads sl JOIN users u ON sl.user_id = u.id
+    WHERE u.agency_id = $1 AND sl.created_at > NOW() - INTERVAL '12 weeks'
     GROUP BY week ORDER BY week
-  `);
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -3023,30 +3024,33 @@ app.get('/api/analytics/assistant-ranking', authMiddleware, adminOnly, async (re
       COUNT(*) FILTER (WHERE sl.status IN ('talking-cold','talking-warm','call-booked','signed')) as replies,
       COUNT(*) FILTER (WHERE sl.status = 'signed') as signed
     FROM student_leads sl JOIN users u ON sl.added_by = u.id
-    WHERE u.role = 'outreach'
+    WHERE u.role = 'outreach' AND u.agency_id = $1
     GROUP BY u.id, u.display_name ORDER BY signed DESC, replies DESC
-  `);
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
 app.get('/api/analytics/hourly', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT EXTRACT(HOUR FROM sent_at) as hour, COUNT(*) as count
-    FROM student_leads WHERE sent_at IS NOT NULL AND sent_at > NOW() - INTERVAL '30 days'
+    SELECT EXTRACT(HOUR FROM sl.sent_at) as hour, COUNT(*) as count
+    FROM student_leads sl JOIN users u ON sl.user_id = u.id
+    WHERE sl.sent_at IS NOT NULL AND sl.sent_at > NOW() - INTERVAL '30 days' AND u.agency_id = $1
     GROUP BY hour ORDER BY hour
-  `);
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
 app.get('/api/analytics/fr-vs-us', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT COALESCE(market, 'fr') as market,
+    SELECT COALESCE(sl.market, 'fr') as market,
       COUNT(*) as total,
-      COUNT(*) FILTER (WHERE status != 'to-send') as dm_sent,
-      COUNT(*) FILTER (WHERE status IN ('talking-cold','talking-warm','call-booked','signed')) as replies,
-      COUNT(*) FILTER (WHERE status = 'signed') as signed
-    FROM student_leads GROUP BY market
-  `);
+      COUNT(*) FILTER (WHERE sl.status != 'to-send') as dm_sent,
+      COUNT(*) FILTER (WHERE sl.status IN ('talking-cold','talking-warm','call-booked','signed')) as replies,
+      COUNT(*) FILTER (WHERE sl.status = 'signed') as signed
+    FROM student_leads sl JOIN users u ON sl.user_id = u.id
+    WHERE u.agency_id = $1
+    GROUP BY sl.market
+  `, [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -3057,8 +3061,10 @@ app.get('/api/export/leads', authMiddleware, adminOnly, async (req, res) => {
       sl.notes, sl.market, sl.created_at, sl.sent_at, u.display_name as student_name,
       ab.display_name as added_by_name
     FROM student_leads sl JOIN users u ON sl.user_id = u.id
-    LEFT JOIN users ab ON sl.added_by = ab.id ORDER BY sl.created_at DESC
-  `);
+    LEFT JOIN users ab ON sl.added_by = ab.id
+    WHERE u.agency_id = $1
+    ORDER BY sl.created_at DESC
+  `, [req.user.agency_id]);
   let csv = 'Username,Lien IG,Type,Statut,Script,Compte,Notes,Marché,Date,Envoyé,Élève,Ajouté par\n';
   rows.forEach(r => {
     csv += [r.username, r.ig_link||'', r.lead_type||'', r.status, r.script_used||'', r.ig_account_used||'',
