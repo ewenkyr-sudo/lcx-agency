@@ -3535,12 +3535,16 @@ app.post('/api/recruitment/leads', authMiddleware, async (req, res) => {
   const { prospect_name, prospect_pseudo, platform, notes } = req.body;
   if (!prospect_pseudo) return res.status(400).json({ error: 'Pseudo requis' });
   try {
+    const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
     // Find recruiter_id for this user
     const recruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.user.agency_id])).rows[0];
-    // If admin, allow specifying recruiter_id
     let recruiterId = recruiter?.id;
-    if (!recruiterId && (req.user.role === 'admin' || req.user.role === 'super_admin') && req.body.recruiter_id) {
+    // If admin/owner, allow specifying recruiter_id or use first available recruiter
+    if (isOwner && req.body.recruiter_id) {
       recruiterId = req.body.recruiter_id;
+    } else if (isOwner && !recruiterId) {
+      const firstRecruiter = (await pool.query('SELECT id FROM recruiters WHERE agency_id = $1 AND is_active = true LIMIT 1', [req.user.agency_id])).rows[0];
+      recruiterId = firstRecruiter?.id;
     }
     if (!recruiterId) return res.status(403).json({ error: 'Not a recruiter' });
     const { rows } = await pool.query(

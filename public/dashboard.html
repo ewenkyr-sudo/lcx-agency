@@ -1929,7 +1929,7 @@
         <div class="page-subtitle" data-i18n="section.coaching_sub">Suivi complet des élèves</div>
       </div>
     </div>
-    <div id="coaching-main-tabs" style="display:none;margin-bottom:20px">
+    <div id="coaching-main-tabs" style="margin-bottom:20px">
       <div class="tabs">
         <button class="tab active" onclick="switchCoachingMainTab('coaching',this)" data-i18n="nav.coaching">Coaching</button>
         <button class="tab" onclick="switchCoachingMainTab('recruitment',this)" data-i18n="recruit.tab">Recrutement</button>
@@ -5183,7 +5183,8 @@ async function renderRecruitment() {
       + '</tbody></table></div>'
       // All leads panel
       + '<div class="panel" style="padding:20px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('recruit.all_leads') + '</h3></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('recruit.all_leads') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruitLeadForm()">' + t('recruit.add_lead') + '</button></div>'
+      + '<div id="add-recruit-lead-form-wrap"></div>'
       + '<div id="recruit-leads-table">' + renderRecruitLeadsTable(true) + '</div>'
       + '</div>';
   } else {
@@ -5255,7 +5256,13 @@ async function addRecruiter() {
 function showAddRecruitLeadForm() {
   var wrap = document.getElementById('add-recruit-lead-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
+  var isOwner = currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'platform_admin';
+  var recruiterSelect = '';
+  if (isOwner && _recruiters.length > 0) {
+    recruiterSelect = '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.recruiter') + '</label><select id="recruit-lead-recruiter" class="form-input" style="font-size:12px;padding:6px 8px">' + _recruiters.filter(function(r) { return r.is_active; }).map(function(r) { return '<option value="' + r.id + '">' + r.display_name + '</option>'; }).join('') + '</select></div>';
+  }
   wrap.innerHTML = '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">'
+    + recruiterSelect
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.platform') + '</label><select id="recruit-lead-platform" class="form-input" style="font-size:12px;padding:6px 8px"><option value="instagram">Instagram</option><option value="whop">Whop</option><option value="discord">Discord</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option></select></div>'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.prospect_pseudo') + '</label><input type="text" id="recruit-lead-pseudo" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="@pseudo"></div>'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.prospect_name') + '</label><input type="text" id="recruit-lead-name" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="Nom"></div>'
@@ -5267,12 +5274,15 @@ function showAddRecruitLeadForm() {
 async function addRecruitLead() {
   var pseudo = document.getElementById('recruit-lead-pseudo').value.trim();
   if (!pseudo) return showToast(t('recruit.pseudo_required'), 'error');
-  await fetch('/api/recruitment/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({
+  var body = {
     prospect_pseudo: pseudo,
     prospect_name: document.getElementById('recruit-lead-name').value.trim(),
     platform: document.getElementById('recruit-lead-platform').value,
     notes: document.getElementById('recruit-lead-notes').value.trim()
-  })});
+  };
+  var recruiterSel = document.getElementById('recruit-lead-recruiter');
+  if (recruiterSel && recruiterSel.value) body.recruiter_id = parseInt(recruiterSel.value);
+  await fetch('/api/recruitment/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
   showToast(t('recruit.lead_added'), 'success');
   renderRecruitment();
 }
