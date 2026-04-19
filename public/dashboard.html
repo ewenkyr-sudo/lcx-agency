@@ -3017,17 +3017,17 @@ function renderDashboard() {
           <div class="panel-title">${t('dash.urgent_tasks')}</div>
         </div>
         <div class="task-list">
-          ${allTasks.filter(t => t.priority === 'high').slice(0, 4).map(t => `
+          ${allTasks.filter(tk => tk.priority === 'high').slice(0, 4).map(tk => `
             <div class="task-item">
               <div class="priority-dot priority-high"></div>
               <div class="task-content">
-                <div class="task-title">${t.title}</div>
-                <div class="task-meta">${window.t('dash.deadline')}: ${t.deadline || window.t('dash.no_deadline')}</div>
+                <div class="task-title">${tk.title}</div>
+                <div class="task-meta">${t('dash.deadline')}: ${tk.deadline || t('dash.no_deadline')}</div>
               </div>
-              <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
+              <span class="task-assignee">${tk.assigned_to || 'N/A'}</span>
             </div>
           `).join('')}
-          ${allTasks.filter(t => t.priority === 'high').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">' + t('dash.no_urgent_tasks') + '</div>' : ''}
+          ${allTasks.filter(tk => tk.priority === 'high').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">' + t('dash.no_urgent_tasks') + '</div>' : ''}
         </div>
       </div>
     </div>
@@ -5682,7 +5682,7 @@ function updateOnlineUI() {
         + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + u.display_name + '</div><div style="font-size:11px;color:var(--text3)">' + u.role + '</div></div>'
         + '<span style="font-size:11px;color:var(--green)">' + timeSince(u.connected_at) + '</span>'
         + '</div>';
-    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">${t('dash.nobody_online')}</div>';
+    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">' + t('dash.nobody_online') + '</div>';
   }
 
   // Points verts sur les noms dans les tables équipe (chatters, outreach, va)
