@@ -346,7 +346,7 @@
   "coaching.select_student_planning": "Select a student to view their schedule",
   "coaching.student_tasks": "Student Tasks",
   "coaching.select_student_tasks": "Select a student to view their tasks",
-  "coaching.recruit_models": "Model Recruitment — All students",
+  "coaching.recruit_models": "Model recruitment",
   "coaching.student_col": "Student",
   "coaching.instagram": "Instagram",
   "coaching.no_recruit": "No models in recruitment",
@@ -600,5 +600,18 @@
   "student.signed_models": "Signed models",
   "student.active_discussions": "Active discussions",
   "student.progression": "Progression",
-  "student.no_data": "No student data"
+  "student.no_data": "No student data",
+  "coaching.students_active": "Active students",
+  "coaching.revenue_month": "Revenue this month",
+  "coaching.calls_pending": "Pending calls",
+  "coaching.objectives_week": "Weekly objectives",
+  "coaching.no_students": "No students",
+  "coaching.tab_overview": "Overview",
+  "coaching.tab_outreach": "Outreach",
+  "coaching.tab_planning": "Schedule",
+  "coaching.tab_tasks": "Tasks",
+  "coaching.tab_revenue": "Models & Revenue",
+  "coaching.tab_messages": "Messages",
+  "coaching.models_managed": "Models managed",
+  "coaching.call_pending": "Pending call request"
 }

@@ -1372,6 +1372,53 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+  /* ===== COACHING MASTER-DETAIL ===== */
+  .coaching-kpi-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .coaching-kpi { background: rgba(12,7,24,0.5); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .coaching-kpi-value { font-family: 'Cinzel', serif; font-size: 24px; font-weight: 800; }
+  .coaching-kpi-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .coaching-layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+  .coaching-sidebar { background: rgba(12,7,24,0.5); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: sticky; top: 80px; max-height: calc(100vh - 100px); display: flex; flex-direction: column; }
+  .coaching-sidebar-header { padding: 14px; border-bottom: 1px solid var(--border); }
+  .coaching-sidebar-header input { width: 100%; padding: 8px 12px; background: rgba(168,85,247,0.04); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; font-family: inherit; outline: none; }
+  .coaching-sidebar-header input:focus { border-color: rgba(168,85,247,0.3); }
+  .coaching-sidebar-filters { display: flex; gap: 4px; padding: 8px 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .coaching-filter-chip { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: rgba(168,85,247,0.06); color: var(--text3); border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .coaching-filter-chip:hover, .coaching-filter-chip.active { background: rgba(168,85,247,0.15); color: var(--accent2); border-color: rgba(168,85,247,0.2); }
+  .coaching-student-list { overflow-y: auto; flex: 1; }
+  .coaching-student-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .coaching-student-card:hover { background: rgba(168,85,247,0.04); }
+  .coaching-student-card.selected { background: rgba(168,85,247,0.1); border-left: 3px solid var(--accent); }
+  .coaching-student-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--pink)); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0; }
+  .coaching-student-info { flex: 1; min-width: 0; }
+  .coaching-student-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .coaching-student-meta { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .coaching-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 8px; letter-spacing: 0.3px; }
+  .coaching-badge-starter { background: rgba(168,85,247,0.12); color: var(--accent2); }
+  .coaching-badge-pro { background: rgba(34,211,238,0.12); color: var(--blue); }
+  .coaching-badge-vip { background: rgba(251,191,36,0.12); color: var(--yellow); }
+  .coaching-badge-elite { background: rgba(240,171,252,0.12); color: var(--pink); }
+  .coaching-detail { background: rgba(12,7,24,0.5); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-height: 500px; }
+  .coaching-tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .coaching-tab { padding: 10px 18px; font-size: 12px; font-weight: 600; color: var(--text3); cursor: pointer; border: none; background: none; font-family: inherit; white-space: nowrap; transition: all 0.2s; position: relative; }
+  .coaching-tab:hover { color: var(--text); }
+  .coaching-tab.active { color: var(--accent2); }
+  .coaching-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+  .coaching-tab-body { padding: 20px; }
+  .coaching-stepper { display: flex; align-items: center; gap: 0; margin: 16px 0; }
+  .coaching-step { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text3); padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .coaching-step.done { color: var(--green); background: var(--green-bg); }
+  .coaching-step.current { color: var(--accent2); background: rgba(168,85,247,0.12); }
+  .coaching-step-line { width: 20px; height: 2px; background: var(--border); flex-shrink: 0; }
+  .coaching-step-line.done { background: var(--green); }
+  .coaching-detail-placeholder { display: flex; align-items: center; justify-content: center; height: 400px; color: var(--text3); font-size: 14px; }
+  @media (max-width: 900px) {
+    .coaching-layout { grid-template-columns: 1fr; }
+    .coaching-sidebar { position: static; max-height: 300px; }
+    .coaching-kpi-bar { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 500px) { .coaching-kpi-bar { grid-template-columns: 1fr; } }
+
   /* Constellation particles */
   .constellation {
     position: fixed;
@@ -4256,203 +4303,216 @@ async function reloadAccounts() {
   } catch (e) {}
 }
 
+var _coachingData = {};
+var _selectedStudentId = null;
+var _coachingTab = 'overview';
+var _coachingFilter = '';
+var _coachingProgFilter = '';
+
 async function renderCoaching() {
   if (!isAdmin()) return;
   const container = document.getElementById('coaching-content');
   if (!container) return;
 
   const f = (url) => fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
-  const [callRequests, recruits, allStudentModels, allRevenue, objectives] = await Promise.all([
-    f('/api/call-requests'), f('/api/student-recruits'), f('/api/student-models'), f('/api/student-revenue'), f('/api/objectives')
+  const [callRequests, recruits, allStudentModels, allRevenue, objectives, assignments, pairs, convos] = await Promise.all([
+    f('/api/call-requests'), f('/api/student-recruits'), f('/api/student-models'), f('/api/student-revenue'),
+    f('/api/objectives'), f('/api/student-outreach-assignments'), f('/api/student-outreach-pairs'), f('/api/conversations')
   ]);
 
   const students = allStudents.filter(s => s.user_id);
   const pendingCalls = callRequests.filter(c => c.status === 'pending');
   const thisWeek = getWeekStart();
-  const assignments = await f('/api/student-outreach-assignments');
-  const pairs = await f('/api/student-outreach-pairs');
   const outreachUsers = allUsers.filter(u => u.role === 'outreach');
+  const totalRevMonth = allRevenue.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
 
+  _coachingData = { students, callRequests, pendingCalls, recruits, allStudentModels, allRevenue, objectives, assignments, pairs, outreachUsers, convos, thisWeek };
+
+  // KPI bar
   container.innerHTML = `
-    <!-- Élèves + Progression + Assignation outreach -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Suivi des élèves</h3>
-      <div style="display:grid;gap:12px">
-        ${students.map(s => {
-          const step = s.progression_step || 'onboarding';
-          const stepIdx = STEPS.findIndex(st => st.key === step);
-          const pct = Math.round(((stepIdx + 1) / STEPS.length) * 100);
-          return `<div style="background:var(--bg3);padding:14px;border-radius:10px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <strong>${s.name}</strong>
-              <select onchange="updateStudentProgression(${s.id},this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer">
-                ${STEPS.map(st => '<option value="' + st.key + '"' + (step===st.key?' selected':'') + '>' + st.icon + ' ' + st.label + '</option>').join('')}
-              </select>
-            </div>
-            <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px"></div></div>
-            <div style="display:flex;gap:4px;margin-top:8px">${STEPS.map((st, i) => '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + (i<=stepIdx?'var(--green-bg)':'var(--bg)') + ';color:' + (i<=stepIdx?'var(--green)':'var(--text3)') + '">' + st.icon + '</span>').join('')}</div>
-            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-size:11px;color:var(--text3)">Outreach assigné :</span>
-              ${assignments.filter(a => a.student_user_id === s.user_id).map(a => '<span style="font-size:11px;padding:2px 8px;background:var(--green-bg);color:var(--green);border-radius:10px">' + a.outreach_name + ' <button onclick="removeOutreachAssignment(' + a.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 2px">✕</button></span>').join('') || '<span style="font-size:11px;color:var(--text3)">Personne</span>'}
-              <select onchange="assignOutreach(${s.user_id}, this.value); this.value=''" style="font-size:11px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer">
-                <option value="">+ Assigner</option>
-                ${outreachUsers.filter(u => !assignments.some(a => a.student_user_id === s.user_id && a.outreach_user_id === u.id)).map(u => '<option value="' + u.id + '">' + u.display_name + '</option>').join('')}
-              </select>
-            </div>
-            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-size:11px;color:var(--text3)">Outreach partagé avec :</span>
-              ${pairs.filter(p => p.student_a_id === s.user_id || p.student_b_id === s.user_id).map(p => { const partnerName = p.student_a_id === s.user_id ? p.student_b_name : p.student_a_name; return '<span style="font-size:11px;padding:2px 8px;background:var(--blue-bg);color:var(--blue);border-radius:10px">' + partnerName + ' <button onclick="removeOutreachPair(' + p.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;padding:0 2px">✕</button></span>'; }).join('') || '<span style="font-size:11px;color:var(--text3)">Personne</span>'}
-              <select onchange="addOutreachPair(${s.user_id}, this.value); this.value=''" style="font-size:11px;padding:2px 6px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer">
-                <option value="">+ Pairer</option>
-                ${students.filter(st => st.user_id !== s.user_id && !pairs.some(p => (p.student_a_id === s.user_id && p.student_b_id === st.user_id) || (p.student_b_id === s.user_id && p.student_a_id === st.user_id))).map(st => '<option value="' + st.user_id + '">' + st.name + '</option>').join('')}
-              </select>
-            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:11px;color:var(--text3)">Outreach US :</span>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                <input type="checkbox" ${s.outreach_us_enabled ? 'checked' : ''} onchange="toggleOutreachUS(${s.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
-                <span style="font-size:11px;color:${s.outreach_us_enabled ? 'var(--green)' : 'var(--text3)'}">${s.outreach_us_enabled ? 'Activé' : 'Désactivé'}</span>
-              </label>
-            </div>
-            <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
-              <span style="font-size:11px;color:var(--text3)">Dossier Drive :</span>
-              <input type="text" placeholder="Coller le lien Drive..." value="${s.drive_folder||''}" onchange="updateStudentDrive(${s.id},this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
-              ${s.drive_folder ? '<a href="' + s.drive_folder + '" target="_blank" style="padding:4px 10px;background:var(--green-bg);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Ouvrir</a>' : ''}
-            </div>
-          </div>`;
-        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun élève</div>'}
-      </div>
+    <div class="coaching-kpi-bar">
+      <div class="coaching-kpi"><div class="coaching-kpi-value" style="color:var(--accent2)">${students.length}</div><div class="coaching-kpi-label">${t('coaching.students_active')}</div></div>
+      <div class="coaching-kpi"><div class="coaching-kpi-value" style="color:var(--green)">$${totalRevMonth.toFixed(0)}</div><div class="coaching-kpi-label">${t('coaching.revenue_month')}</div></div>
+      <div class="coaching-kpi"><div class="coaching-kpi-value" style="color:${pendingCalls.length > 0 ? 'var(--red)' : 'var(--text3)'}">${pendingCalls.length}</div><div class="coaching-kpi-label">${t('coaching.calls_pending')}</div></div>
+      <div class="coaching-kpi"><div class="coaching-kpi-value" style="color:var(--yellow)">${objectives.filter(o => o.week_start === thisWeek).length}</div><div class="coaching-kpi-label">${t('coaching.objectives_week')}</div></div>
     </div>
 
-    <!-- Demandes de call -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Demandes de call ${pendingCalls.length > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px">' + pendingCalls.length + ' en attente</span>' : ''}</h3>
-      <div style="display:grid;gap:10px">
-        ${callRequests.map(c => {
-          const stColor = c.status === 'pending' ? 'var(--yellow)' : c.status === 'accepted' ? 'var(--green)' : 'var(--red)';
-          return `<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:3px solid ${stColor}">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-              <strong>${c.student_name}</strong>
-              <div style="display:flex;gap:6px">
-                ${c.status === 'pending' ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="handleCallRequest(' + c.id + ',\'accepted\')">Accepter</button><button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="handleCallRequest(' + c.id + ',\'refused\')">Refuser</button>' : '<span style="font-size:11px;font-weight:600;color:' + stColor + '">' + (c.status === 'accepted' ? 'Accepté' : 'Refusé') + '</span>'}
-              </div>
-            </div>
-            <div style="font-size:13px;color:var(--text2)">${c.message || '-'}</div>
-            ${c.availabilities ? '<div style="font-size:12px;color:var(--text3);margin-top:4px">Dispo: ' + c.availabilities + '</div>' : ''}
-            ${c.status === 'accepted' && c.scheduled_at ? '<div style="font-size:12px;color:var(--green);margin-top:4px">Programmé: ' + c.scheduled_at + '</div>' : ''}
-          </div>`;
-        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucune demande</div>'}
-      </div>
-    </div>
-
-    <!-- Outreach Élèves — Interface complète -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Outreach Élèves</h3>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${students.map(s => '<button class="btn coaching-student-btn" data-uid="' + s.user_id + '" onclick="loadCoachingStudentOutreach(' + s.user_id + ',this)" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;background:var(--bg3);color:var(--text2)">' + s.name + '</button>').join('')}
-      </div>
-      <div id="coaching-outreach-content" style="color:var(--text3);text-align:center;padding:16px">Sélectionne un élève pour voir son outreach</div>
-    </div>
-
-    <!-- Planning Élèves -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Planning Élèves</h3>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${students.map(s => '<button class="btn coaching-planning-btn" data-uid="' + s.user_id + '" onclick="loadCoachingStudentPlanning(' + s.user_id + ',this)" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;background:var(--bg3);color:var(--text2)">' + s.name + '</button>').join('')}
-      </div>
-      <div id="coaching-planning-content" style="color:var(--text3);text-align:center;padding:16px">Sélectionne un élève pour voir son planning</div>
-    </div>
-
-    <!-- Tâches Élèves -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Tâches Élèves</h3>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${students.map(s => '<button class="btn coaching-tasks-btn" data-uid="' + s.user_id + '" onclick="loadCoachingStudentTasks(' + s.user_id + ',this)" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;background:var(--bg3);color:var(--text2)">' + s.name + '</button>').join('')}
-      </div>
-      <div id="coaching-tasks-content" style="color:var(--text3);text-align:center;padding:16px">Sélectionne un élève pour voir ses tâches</div>
-    </div>
-
-    <!-- Recrutement modèles -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Recrutement modèles — Tous les élèves</h3>
-      <table class="table mobile-cards"><thead><tr><th>Élève</th><th>Instagram</th><th>Statut</th><th>Notes</th></tr></thead><tbody>
-        ${recruits.map(r => {
-          const st = RECRUIT_STATUSES[r.status] || RECRUIT_STATUSES['interested'];
-          return '<tr><td data-label="Élève" class="mc-half"><strong>' + r.student_name + '</strong></td>'
-            + '<td data-label="" class="mc-title">' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</td>'
-            + '<td data-label="Statut" class="mc-half"><select onchange="adminUpdateRecruit(' + r.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
-            + Object.entries(RECRUIT_STATUSES).map(([k,v]) => '<option value="' + k + '"' + (r.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
-            + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (r.notes||'-') + '</td></tr>';
-        }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Aucune modèle en recrutement</td></tr>'}
-      </tbody></table>
-    </div>
-
-    <!-- Revenus élèves -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Revenus élèves</h3>
-      <table class="table mobile-cards"><thead><tr><th>Élève</th><th>Modèle</th><th>Mois</th><th>Revenue</th><th>Commission</th></tr></thead><tbody>
-        ${allRevenue.map(r => {
-          const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
-          return '<tr><td data-label="Élève" class="mc-half"><strong>' + r.student_name + '</strong></td>'
-            + '<td data-label="Modèle" class="mc-half">' + r.model_name + '</td>'
-            + '<td data-label="Mois" class="mc-half">' + r.month + '</td>'
-            + '<td data-label="Revenue" class="mc-half" style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td>'
-            + '<td data-label="Commission" class="mc-half" style="color:var(--accent)">$' + comm + ' (' + r.commission_rate + '%)</td></tr>';
-        }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Aucun revenu</td></tr>'}
-      </tbody></table>
-    </div>
-
-    <!-- Objectifs -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Objectifs hebdo — ${thisWeek}</h3>
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="showAddObjectiveForm()">+ Ajouter</button>
-      </div>
-      <div id="admin-obj-form-wrap"></div>
-      <div style="display:grid;gap:10px">
-        ${objectives.filter(o => o.week_start === thisWeek).map(o => {
-          const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
-          const done = pct >= 100;
-          return `<div style="background:var(--bg3);padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-            <div><strong>${o.student_name}</strong> — ${o.description || o.obj_type}</div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${done?'var(--green)':'var(--accent)'};border-radius:3px"></div></div>
-              <span style="font-size:13px;font-weight:700;color:${done?'var(--green)':'var(--text)'}">${o.current}/${o.target}</span>
-              <button class="btn-delete-small" onclick="deleteAdminObjective(${o.id})">✕</button>
-            </div>
-          </div>`;
-        }).join('') || '<div style="color:var(--text3);text-align:center;padding:16px">Aucun objectif cette semaine</div>'}
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div class="panel" style="padding:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Messagerie</h3>
-      <div style="display:flex;gap:0;height:400px;border-radius:12px;overflow:hidden;border:1px solid var(--border)">
-        <div id="admin-chat-contacts" style="width:220px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0"></div>
-        <div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
-          <div id="admin-chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px">Sélectionne un élève</div>
-          <div id="admin-chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px"></div>
-          <div id="admin-chat-input-wrap" style="padding:10px;border-top:1px solid var(--border);display:none">
-            <div style="display:flex;gap:8px"><input type="text" id="admin-chat-input" class="form-input" placeholder="Répondre..." style="flex:1" onkeydown="if(event.key==='Enter')sendAdminMessage()"><button class="btn btn-primary" onclick="sendAdminMessage()" style="padding:8px 14px">Envoyer</button></div>
-          </div>
+    <div class="coaching-layout">
+      <!-- LEFT: Student list -->
+      <div class="coaching-sidebar">
+        <div class="coaching-sidebar-header">
+          <input type="text" id="coaching-search" placeholder="${t('common.search')}" oninput="filterCoachingStudents()">
         </div>
+        <div class="coaching-sidebar-filters">
+          <button class="coaching-filter-chip active" onclick="setCoachingProgFilter('',this)">${t('common.all')}</button>
+          <button class="coaching-filter-chip" onclick="setCoachingProgFilter('starter',this)">Starter</button>
+          <button class="coaching-filter-chip" onclick="setCoachingProgFilter('pro',this)">Pro</button>
+          <button class="coaching-filter-chip" onclick="setCoachingProgFilter('vip',this)">VIP</button>
+          <button class="coaching-filter-chip" onclick="setCoachingProgFilter('elite',this)">Elite</button>
+        </div>
+        <div class="coaching-student-list" id="coaching-student-list"></div>
+      </div>
+
+      <!-- RIGHT: Detail -->
+      <div class="coaching-detail" id="coaching-detail">
+        <div class="coaching-detail-placeholder">${t('coaching.select_student')}</div>
       </div>
     </div>
   `;
 
-  // Load admin chat contacts
-  const convos = await f('/api/conversations');
-  const adminContacts = document.getElementById('admin-chat-contacts');
-  adminContacts.innerHTML = convos.map(c => `
-    <div onclick="openAdminChat(${c.id})" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:${currentChatUserId===c.id?'var(--bg3)':'transparent'}">
-      ${avatarHTML(c, 30)}
-      <div style="flex:1;overflow:hidden"><div style="font-size:12px;font-weight:600">${c.display_name}</div></div>
-      ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:9px;padding:1px 5px;border-radius:10px">' + c.unread + '</span>' : ''}
-    </div>
-  `).join('');
+  renderCoachingStudentList();
+  if (_selectedStudentId && students.some(s => s.user_id === _selectedStudentId)) {
+    selectCoachingStudent(_selectedStudentId);
+  }
+}
 
-  // Stats outreach élèves
-  loadCoachingOutreachStats();
+function renderCoachingStudentList() {
+  var list = document.getElementById('coaching-student-list');
+  if (!list) return;
+  var students = _coachingData.students || [];
+  var search = (document.getElementById('coaching-search')?.value || '').toLowerCase();
+  var filtered = students.filter(function(s) {
+    if (search && !s.name.toLowerCase().includes(search)) return false;
+    if (_coachingProgFilter && (s.program || 'starter').toLowerCase() !== _coachingProgFilter) return false;
+    return true;
+  });
+  var pendingCallIds = new Set((_coachingData.pendingCalls || []).map(function(c) { return c.student_user_id; }));
+  list.innerHTML = filtered.map(function(s) {
+    var step = s.progression_step || 'onboarding';
+    var stepObj = STEPS.find(function(st) { return st.key === step; }) || STEPS[0];
+    var prog = (s.program || 'starter').toLowerCase();
+    var rev = (_coachingData.allRevenue || []).filter(function(r) { return r.student_user_id === s.user_id; }).reduce(function(sum, r) { return sum + parseFloat(r.revenue || 0); }, 0);
+    var hasCall = pendingCallIds.has(s.user_id);
+    return '<div class="coaching-student-card' + (_selectedStudentId === s.user_id ? ' selected' : '') + '" onclick="selectCoachingStudent(' + s.user_id + ')">'
+      + '<div class="coaching-student-avatar">' + (s.name || 'U').charAt(0) + '</div>'
+      + '<div class="coaching-student-info">'
+      + '<div class="coaching-student-name">' + s.name + (hasCall ? ' <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);vertical-align:middle;margin-left:4px"></span>' : '') + '</div>'
+      + '<div class="coaching-student-meta"><span class="coaching-badge coaching-badge-' + prog + '">' + prog.toUpperCase() + '</span> <span style="color:' + (stepObj.key === 'traffic' ? 'var(--green)' : 'var(--accent2)') + '">' + stepObj.icon + ' ' + stepObj.label + '</span></div>'
+      + '</div>'
+      + (rev > 0 ? '<span style="font-size:11px;font-weight:700;color:var(--green)">$' + rev.toFixed(0) + '</span>' : '')
+      + '</div>';
+  }).join('') || '<div style="color:var(--text3);text-align:center;padding:24px">' + t('coaching.no_students') + '</div>';
+}
+
+function setCoachingProgFilter(val, btn) {
+  _coachingProgFilter = val;
+  document.querySelectorAll('.coaching-filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderCoachingStudentList();
+}
+
+function filterCoachingStudents() { renderCoachingStudentList(); }
+
+function selectCoachingStudent(userId) {
+  _selectedStudentId = userId;
+  renderCoachingStudentList();
+  var detail = document.getElementById('coaching-detail');
+  if (!detail) return;
+  var s = (_coachingData.students || []).find(function(st) { return st.user_id === userId; });
+  if (!s) return;
+
+  detail.innerHTML = '<div class="coaching-tabs" id="coaching-tabs">'
+    + '<button class="coaching-tab active" onclick="switchCoachingTab(\'overview\',this)">' + t('coaching.tab_overview') + '</button>'
+    + '<button class="coaching-tab" onclick="switchCoachingTab(\'outreach\',this)">' + t('coaching.tab_outreach') + '</button>'
+    + '<button class="coaching-tab" onclick="switchCoachingTab(\'planning\',this)">' + t('coaching.tab_planning') + '</button>'
+    + '<button class="coaching-tab" onclick="switchCoachingTab(\'tasks\',this)">' + t('coaching.tab_tasks') + '</button>'
+    + '<button class="coaching-tab" onclick="switchCoachingTab(\'revenue\',this)">' + t('coaching.tab_revenue') + '</button>'
+    + '<button class="coaching-tab" onclick="switchCoachingTab(\'messages\',this)">' + t('coaching.tab_messages') + '</button>'
+    + '</div>'
+    + '<div class="coaching-tab-body" id="coaching-tab-body"></div>';
+
+  _coachingTab = 'overview';
+  renderCoachingTabContent();
+}
+
+function switchCoachingTab(tab, btn) {
+  _coachingTab = tab;
+  document.querySelectorAll('.coaching-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderCoachingTabContent();
+}
+
+function renderCoachingTabContent() {
+  var body = document.getElementById('coaching-tab-body');
+  if (!body || !_selectedStudentId) return;
+  var s = (_coachingData.students || []).find(function(st) { return st.user_id === _selectedStudentId; });
+  if (!s) return;
+
+  if (_coachingTab === 'overview') {
+    var step = s.progression_step || 'onboarding';
+    var stepIdx = STEPS.findIndex(function(st) { return st.key === step; });
+    var asgn = (_coachingData.assignments || []).filter(function(a) { return a.student_user_id === s.user_id; });
+    var revs = (_coachingData.allRevenue || []).filter(function(r) { return r.student_user_id === s.user_id; });
+    var totalRev = revs.reduce(function(sum, r) { return sum + parseFloat(r.revenue || 0); }, 0);
+    var models = (_coachingData.allStudentModels || []).filter(function(m) { return m.user_id === s.user_id; });
+    var calls = (_coachingData.callRequests || []).filter(function(c) { return c.student_user_id === s.user_id; });
+    var pendingCall = calls.find(function(c) { return c.status === 'pending'; });
+    var prog = (s.program || 'starter').toLowerCase();
+
+    body.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px">'
+      + '<div><h3 style="font-size:18px;font-weight:700;margin-bottom:4px">' + s.name + '</h3>'
+      + '<span class="coaching-badge coaching-badge-' + prog + '" style="font-size:11px">' + prog.toUpperCase() + '</span></div>'
+      + '<select onchange="updateStudentProgression(' + s.id + ',this.value)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer">'
+      + STEPS.map(function(st) { return '<option value="' + st.key + '"' + (step === st.key ? ' selected' : '') + '>' + st.icon + ' ' + st.label + '</option>'; }).join('') + '</select></div>'
+      // Stepper
+      + '<div class="coaching-stepper">'
+      + STEPS.map(function(st, i) {
+          var cls = i < stepIdx ? 'done' : i === stepIdx ? 'current' : '';
+          return (i > 0 ? '<div class="coaching-step-line' + (i <= stepIdx ? ' done' : '') + '"></div>' : '')
+            + '<div class="coaching-step ' + cls + '" onclick="updateStudentProgression(' + s.id + ',\'' + st.key + '\')">' + st.icon + ' ' + st.label + '</div>';
+        }).join('') + '</div>'
+      // KPIs
+      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0">'
+      + '<div style="background:var(--bg3);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(0) + '</div><div style="font-size:10px;color:var(--text3)">Revenue total</div></div>'
+      + '<div style="background:var(--bg3);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent2)">' + models.length + '</div><div style="font-size:10px;color:var(--text3)">' + t('coaching.models_managed') + '</div></div>'
+      + '<div style="background:var(--bg3);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800">' + asgn.length + '</div><div style="font-size:10px;color:var(--text3)">' + t('coaching.outreach_assigned') + '</div></div>'
+      + '<div style="background:var(--bg3);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:' + (pendingCall ? 'var(--red)' : 'var(--text3)') + '">' + calls.length + '</div><div style="font-size:10px;color:var(--text3)">' + t('coaching.call_requests') + '</div></div>'
+      + '</div>'
+      // Call requests
+      + (pendingCall ? '<div style="background:var(--red-bg);border:1px solid rgba(251,113,133,0.2);border-radius:10px;padding:12px;margin-bottom:16px"><strong style="color:var(--red)">' + t('coaching.call_pending') + '</strong><div style="font-size:13px;color:var(--text2);margin-top:4px">' + (pendingCall.message || '-') + '</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-primary" style="font-size:11px;padding:4px 12px" onclick="handleCallRequest(' + pendingCall.id + ',\'accepted\')">' + t('planning.accept') + '</button><button class="btn" style="font-size:11px;padding:4px 12px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="handleCallRequest(' + pendingCall.id + ',\'refused\')">' + t('planning.refuse') + '</button></div></div>' : '')
+      // Outreach assignments
+      + '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:12px">'
+      + '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">' + t('coaching.outreach_assigned') + '</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+      + asgn.map(function(a) { return '<span style="font-size:11px;padding:3px 10px;background:var(--green-bg);color:var(--green);border-radius:10px">' + a.outreach_name + ' <button onclick="removeOutreachAssignment(' + a.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px">✕</button></span>'; }).join('')
+      + '<select onchange="assignOutreach(' + s.user_id + ',this.value);this.value=\'\'" style="font-size:11px;padding:3px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer"><option value="">+ ' + t('common.add') + '</option>'
+      + (_coachingData.outreachUsers || []).filter(function(u) { return !asgn.some(function(a) { return a.outreach_user_id === u.id; }); }).map(function(u) { return '<option value="' + u.id + '">' + u.display_name + '</option>'; }).join('') + '</select>'
+      + '</div></div>';
+  } else if (_coachingTab === 'outreach') {
+    body.innerHTML = '<div id="coaching-outreach-content" style="color:var(--text3);text-align:center;padding:16px">' + t('common.loading') + '</div>';
+    loadCoachingStudentOutreach(_selectedStudentId);
+  } else if (_coachingTab === 'planning') {
+    body.innerHTML = '<div id="coaching-planning-content" style="color:var(--text3);text-align:center;padding:16px">' + t('common.loading') + '</div>';
+    loadCoachingStudentPlanning(_selectedStudentId);
+  } else if (_coachingTab === 'tasks') {
+    body.innerHTML = '<div id="coaching-tasks-content" style="color:var(--text3);text-align:center;padding:16px">' + t('common.loading') + '</div>';
+    loadCoachingStudentTasks(_selectedStudentId);
+  } else if (_coachingTab === 'revenue') {
+    var revs = (_coachingData.allRevenue || []).filter(function(r) { return r.student_user_id === _selectedStudentId; });
+    var recruits = (_coachingData.recruits || []).filter(function(r) { return r.student_user_id === _selectedStudentId; });
+    body.innerHTML = '<h4 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('coaching.student_revenue') + '</h4>'
+      + '<table class="table mobile-cards"><thead><tr><th>' + t('coaching.model_col') + '</th><th>' + t('coaching.month_col') + '</th><th>Revenue</th><th>' + t('coaching.commission') + '</th></tr></thead><tbody>'
+      + (revs.length > 0 ? revs.map(function(r) {
+          var comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
+          return '<tr><td>' + r.model_name + '</td><td>' + r.month + '</td><td style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td><td style="color:var(--accent)">$' + comm + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">' + t('coaching.no_revenue') + '</td></tr>')
+      + '</tbody></table>'
+      + '<h4 style="font-size:14px;font-weight:700;margin:20px 0 12px;color:var(--accent2)">' + t('coaching.recruit_models') + '</h4>'
+      + '<table class="table mobile-cards"><thead><tr><th>Instagram</th><th>' + t('common.status') + '</th><th>' + t('common.notes') + '</th></tr></thead><tbody>'
+      + (recruits.length > 0 ? recruits.map(function(r) {
+          var st = RECRUIT_STATUSES[r.status] || RECRUIT_STATUSES['interested'];
+          return '<tr><td>' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</td><td><span style="background:' + st.bg + ';color:' + st.color + ';padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600">' + st.label + '</span></td><td style="color:var(--text2);font-size:12px">' + (r.notes || '-') + '</td></tr>';
+        }).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:20px">' + t('coaching.no_recruit') + '</td></tr>')
+      + '</tbody></table>';
+  } else if (_coachingTab === 'messages') {
+    body.innerHTML = '<div style="display:flex;gap:0;height:350px;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
+      + '<div style="flex:1;display:flex;flex-direction:column;background:var(--bg)">'
+      + '<div id="admin-chat-header" style="padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px">' + ((_coachingData.students || []).find(function(st) { return st.user_id === _selectedStudentId; }) || {}).name + '</div>'
+      + '<div id="admin-chat-messages" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px"></div>'
+      + '<div id="admin-chat-input-wrap" style="padding:8px;border-top:1px solid var(--border)">'
+      + '<div style="display:flex;gap:6px"><input type="text" id="admin-chat-input" class="form-input" placeholder="' + t('coaching.reply_placeholder') + '" style="flex:1" onkeydown="if(event.key===\'Enter\')sendAdminMessage()"><button class="btn btn-primary" onclick="sendAdminMessage()" style="padding:6px 12px;font-size:12px">Envoyer</button></div></div></div></div>';
+    openAdminChat(_selectedStudentId);
+  }
 }
 
 let coachingOutreachStudentId = null;
