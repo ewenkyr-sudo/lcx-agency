@@ -594,5 +594,11 @@
   "section.log": "Journal d'activité",
   "section.log_sub": "Historique de toutes les actions",
   "section.settings": "Paramètres",
-  "section.settings_sub": "Configuration de l'application"
+  "section.settings_sub": "Configuration de l'application",
+  "settings.statistics": "Statistiques",
+  "settings.members": "Membres",
+  "student.signed_models": "Modèles signés",
+  "student.active_discussions": "Discussions actives",
+  "student.progression": "Progression",
+  "student.no_data": "Pas de données étudiant"
 }

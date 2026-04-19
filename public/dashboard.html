@@ -1599,7 +1599,7 @@
         <div class="page-subtitle" data-i18n="section.tasks_sub">Gestion des tâches et deadlines</div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-primary" onclick="showTaskForm()">+ Nouvelle tâche</button>
+        <button class="btn btn-primary" onclick="showTaskForm()" data-i18n="common.new_task">+ Nouvelle tâche</button>
       </div>
     </div>
 
@@ -1729,7 +1729,7 @@
         <div class="page-subtitle" data-i18n="section.outreach_sub">Gestion des leads et prospection</div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-primary" onclick="showAddLeadForm()">+ Nouveau Lead</button>
+        <button class="btn btn-primary" onclick="showAddLeadForm()" data-i18n="common.new_lead">+ Nouveau Lead</button>
         <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOutreachOptionsManager()">Mes options</button>
         <button class="btn" id="btn-import-csv" style="background:var(--bg3);color:var(--text2);display:none" onclick="importCSV()">Importer CSV</button>
       </div>
@@ -1978,35 +1978,35 @@
         <!-- TAB: Mon agence -->
         <div class="settings-pane active" id="settings-pane-mon-agence">
           <div class="panel" style="padding:24px;margin-bottom:20px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Mon agence</h3>
-            <div id="agency-info-loading" style="color:var(--text3);font-size:13px">Chargement...</div>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="settings.my_agency">Mon agence</h3>
+            <div id="agency-info-loading" style="color:var(--text3);font-size:13px" data-i18n="common.loading">Chargement...</div>
             <div id="agency-info-content" style="display:none">
               <div style="display:grid;gap:12px;max-width:500px">
                 <div>
-                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
-                  <input type="text" id="agency-edit-name" class="form-input" placeholder="Mon Agence">
+                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px" data-i18n="settings.agency_name">Nom de l'agence</label>
+                  <input type="text" id="agency-edit-name" class="form-input" data-i18n-placeholder="settings.agency_name_placeholder" placeholder="Mon Agence">
                 </div>
                 <div>
-                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Couleur principale</label>
+                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px" data-i18n="settings.color">Couleur principale</label>
                   <div style="display:flex;gap:10px;align-items:center">
                     <input type="color" id="agency-edit-color" value="#A855F7" style="width:48px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);cursor:pointer">
                     <span id="agency-color-label" style="font-size:13px;color:var(--text3)">#A855F7</span>
                   </div>
                 </div>
-                <button class="btn btn-primary" onclick="saveAgencyInfo()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
+                <button class="btn btn-primary" onclick="saveAgencyInfo()" style="width:fit-content;margin-top:4px" data-i18n="common.save">Sauvegarder</button>
               </div>
             </div>
           </div>
           <div class="panel" style="padding:24px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Statistiques</h3>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="settings.statistics">Statistiques</h3>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px" id="agency-stats-grid">
               <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
                 <div style="font-size:24px;font-weight:800" id="agency-stat-members">-</div>
-                <div style="font-size:12px;color:var(--text3);margin-top:4px">Membres</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px" data-i18n="settings.members">Membres</div>
               </div>
               <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
                 <div style="font-size:24px;font-weight:800" id="agency-stat-models">-</div>
-                <div style="font-size:12px;color:var(--text3);margin-top:4px">Modeles</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px" data-i18n="nav.models">Modeles</div>
               </div>
               <div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">
                 <div style="font-size:24px;font-weight:800" id="agency-stat-leads">-</div>
@@ -2025,14 +2025,14 @@
                 <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" style="width:42px;height:42px;border-radius:10px">
                 <div>
                   <div style="font-size:13px;font-weight:600">Fuzion Pilot</div>
-                  <div style="font-size:11px;color:var(--text3)">Logo et branding de la plateforme</div>
+                  <div style="font-size:11px;color:var(--text3)" data-i18n="settings.brand_label">Logo et branding de la plateforme</div>
                 </div>
               </div>
               <div>
-                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
-                <input type="text" id="setting-agency-name" class="form-input" placeholder="Mon Agence">
+                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px" data-i18n="settings.agency_name">Nom de l'agence</label>
+                <input type="text" id="setting-agency-name" class="form-input" data-i18n-placeholder="settings.agency_name_placeholder" placeholder="Mon Agence">
               </div>
-              <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
+              <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px" data-i18n="common.save">Sauvegarder</button>
             </div>
           </div>
           <div class="panel" style="padding:24px">
@@ -2950,18 +2950,18 @@ function renderDashboard() {
     // Student dashboard
     const student = allStudents[0];
     if (!student) {
-      container.innerHTML = '<div class="loading">Pas de données étudiant</div>';
+      container.innerHTML = '<div class="loading">' + t('student.no_data') + '</div>';
       return;
     }
 
     container.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card purple">
-          <div class="stat-label">Modèles signés</div>
+          <div class="stat-label">${t('student.signed_models')}</div>
           <div class="stat-value">${student.models_signed}</div>
         </div>
         <div class="stat-card green">
-          <div class="stat-label">Discussions actives</div>
+          <div class="stat-label">${t('student.active_discussions')}</div>
           <div class="stat-value">${student.active_discussions}</div>
         </div>
         <div class="stat-card pink">
@@ -2980,7 +2980,7 @@ function renderDashboard() {
   // Admin dashboard
   const dash = window.dashboardData || {};
   actions.innerHTML = isAdmin() ?
-    `<button class="btn btn-primary" onclick="openModal('add-member')">+ Ajouter un membre</button>` : '';
+    `<button class="btn btn-primary" onclick="openModal('add-member')">${t('common.add_member')}</button>` : '';
 
   container.innerHTML = `
     <div class="stats-grid">
@@ -2989,15 +2989,15 @@ function renderDashboard() {
         <div class="stat-value">${(dash.totalFollowers || 0).toLocaleString()}</div>
       </div>
       <div class="stat-card green">
-        <div class="stat-label">Modèles actives</div>
+        <div class="stat-label">${t('dash.models_active')}</div>
         <div class="stat-value">${dash.modelsCount || 0}</div>
       </div>
       <div class="stat-card pink">
-        <div class="stat-label">Équipe totale</div>
+        <div class="stat-label">${t('dash.team_total')}</div>
         <div class="stat-value">${dash.teamCount || 0}</div>
       </div>
       <div class="stat-card blue">
-        <div class="stat-label">Étudiants</div>
+        <div class="stat-label">${t('dash.students_count')}</div>
         <div class="stat-value">${dash.studentsCount || 0}</div>
       </div>
     </div>
@@ -3005,16 +3005,16 @@ function renderDashboard() {
     <div class="two-col">
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">En ligne <span id="online-count-badge" style="background:var(--green);color:white;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;display:none"></span></div>
+          <div class="panel-title">${t('dash.online')} <span id="online-count-badge" style="background:var(--green);color:white;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;display:none"></span></div>
         </div>
         <div class="dash-team-list" id="online-team-widget">
-          <div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Chargement...</div>
+          <div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">${t('common.loading')}</div>
         </div>
       </div>
 
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Tâches urgentes</div>
+          <div class="panel-title">${t('dash.urgent_tasks')}</div>
         </div>
         <div class="task-list">
           ${allTasks.filter(t => t.priority === 'high').slice(0, 4).map(t => `
@@ -3022,12 +3022,12 @@ function renderDashboard() {
               <div class="priority-dot priority-high"></div>
               <div class="task-content">
                 <div class="task-title">${t.title}</div>
-                <div class="task-meta">Deadline: ${t.deadline || 'Non définie'}</div>
+                <div class="task-meta">${window.t('dash.deadline')}: ${t.deadline || window.t('dash.no_deadline')}</div>
               </div>
               <span class="task-assignee">${t.assigned_to || 'N/A'}</span>
             </div>
           `).join('')}
-          ${allTasks.filter(t => t.priority === 'high').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Aucune tâche urgente</div>' : ''}
+          ${allTasks.filter(t => t.priority === 'high').length === 0 ? '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">' + t('dash.no_urgent_tasks') + '</div>' : ''}
         </div>
       </div>
     </div>
@@ -3068,30 +3068,30 @@ async function loadDashboardOutreachStats() {
     if (!div) return;
     div.innerHTML = `
       <div class="panel" style="margin-top:20px;padding:20px">
-        <div class="panel-header"><div class="panel-title">Outreach — Temps réel</div></div>
+        <div class="panel-header"><div class="panel-title">${t('dash.outreach_realtime')}</div></div>
         <div class="stats-grid" style="margin-bottom:16px">
-          <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">Leads aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${totals.dm_sent_today}</div><div class="stat-label">DMs aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">${totals.dm_sent}</div><div class="stat-label">DMs total</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">Talking Warm</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">Call Booked</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">Signés</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRateDash}%</div><div class="stat-label">Taux de réponse</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.leads_today}</div><div class="stat-label">${t('dash.leads_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${totals.dm_sent_today}</div><div class="stat-label">${t('dash.dms_today')}</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.dm_sent}</div><div class="stat-label">${t('dash.dms_total')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${totals.talking_warm}</div><div class="stat-label">${t('dash.talking_warm')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">${totals.call_booked}</div><div class="stat-label">${t('dash.call_booked')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--pink)">${totals.signed}</div><div class="stat-label">${t('dash.signed')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${replyRateDash}%</div><div class="stat-label">${t('dash.reply_rate')}</div></div>
         </div>
         <table class="table mobile-cards">
-          <thead><tr><th>Assistante</th><th>Leads aujourd'hui</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>Signés</th><th>Taux</th></tr></thead>
+          <thead><tr><th>${t('dash.assistant')}</th><th>${t('dash.leads_today')}</th><th>DMs</th><th>Warm</th><th>Call Booked</th><th>${t('dash.signed')}</th><th>${t('dash.rate')}</th></tr></thead>
           <tbody>
             ${agents.map(a => {
               const aReplies = parseInt(a.talking_cold) + parseInt(a.talking_warm) + parseInt(a.call_booked) + parseInt(a.signed);
               const aRate = parseInt(a.dm_sent) > 0 ? ((aReplies / parseInt(a.dm_sent)) * 100).toFixed(1) : '0';
               return `<tr>
               <td data-label="" class="mc-title"><strong>${a.agent_name}</strong></td>
-              <td data-label="Leads auj." class="mc-half">${a.leads_today}</td>
+              <td data-label="${t('dash.leads_short')}" class="mc-half">${a.leads_today}</td>
               <td data-label="DMs" class="mc-half">${a.dm_sent}</td>
               <td data-label="Warm" class="mc-half" style="color:var(--yellow)">${a.talking_warm}</td>
               <td data-label="Booked" class="mc-half" style="color:var(--green)">${a.call_booked}</td>
-              <td data-label="Signés" class="mc-half" style="color:var(--pink)">${a.signed}</td>
-              <td data-label="Taux" class="mc-half" style="color:var(--accent2)">${aRate}%</td>
+              <td data-label="${t('dash.signed')}" class="mc-half" style="color:var(--pink)">${a.signed}</td>
+              <td data-label="${t('dash.rate')}" class="mc-half" style="color:var(--accent2)">${aRate}%</td>
             </tr>`;
             }).join('')}
           </tbody>
@@ -3117,21 +3117,21 @@ async function loadDashboardChatterStats() {
     if (!div) return;
     div.innerHTML = `
       <div class="panel" style="margin-top:20px;padding:20px">
-        <div class="panel-header"><div class="panel-title">Chatters — Temps réel</div></div>
+        <div class="panel-header"><div class="panel-title">${t('dash.chatters_realtime')}</div></div>
         <div class="stats-grid" style="margin-bottom:16px">
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">${t('dash.revenue_today')}</div></div>
+          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">${t('dash.ppv_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">${t('dash.tips_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">${t('dash.revenue_total')}</div></div>
         </div>
         <table class="table mobile-cards">
-          <thead><tr><th>Chatter</th><th>PPV aujourd'hui</th><th>Tips aujourd'hui</th><th>Revenue totale</th></tr></thead>
+          <thead><tr><th>${t('dash.chatter')}</th><th>${t('dash.ppv_today')}</th><th>${t('dash.tips_today')}</th><th>${t('dash.revenue_total')}</th></tr></thead>
           <tbody>
             ${chatters.map(c => `<tr>
               <td data-label="" class="mc-title"><strong>${c.chatter_name}</strong></td>
-              <td data-label="PPV auj." class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
-              <td data-label="Tips auj." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
-              <td data-label="Revenue totale" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+              <td data-label="${t('dash.ppv_short')}" class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
+              <td data-label="${t('dash.tips_short')}" class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+              <td data-label="${t('dash.revenue_total')}" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -3617,7 +3617,7 @@ function renderTasks() {
   if (taskView === 'week') { renderTaskWeek(container, filtered); return; }
 
   // Vue liste
-  container.innerHTML = filtered.length === 0 ? '<div class="panel">' + emptyStateHTML('clipboard', 'Aucune tâche', '+ Nouvelle tâche', 'showTaskForm()') + '</div>' :
+  container.innerHTML = filtered.length === 0 ? '<div class="panel">' + emptyStateHTML('clipboard', t('tasks.no_tasks'), t('common.new_task'), 'showTaskForm()') + '</div>' :
     '<div style="display:grid;gap:10px">' + filtered.map(function(t) { return renderTaskCard(t); }).join('') + '</div>';
 }
 
@@ -3714,7 +3714,7 @@ function showTaskForm() {
       + '</select></div>';
   }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Nouvelle tâche</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('tasks.new_task') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
     + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Titre *</label><input type="text" id="tf-title" class="form-input" placeholder="Titre de la tâche"></div>'
     + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Description</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="Description..."></textarea></div>'
@@ -3766,7 +3766,7 @@ function renderModels() {
   const actions = document.getElementById('models-actions');
 
   if (isAdmin()) {
-    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">+ Nouveau modèle</button>`;
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">${t('common.new_model')}</button>`;
   }
 
   container.innerHTML = `
@@ -5682,7 +5682,7 @@ function updateOnlineUI() {
         + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + u.display_name + '</div><div style="font-size:11px;color:var(--text3)">' + u.role + '</div></div>'
         + '<span style="font-size:11px;color:var(--green)">' + timeSince(u.connected_at) + '</span>'
         + '</div>';
-    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">Personne en ligne</div>';
+    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">${t('dash.nobody_online')}</div>';
   }
 
   // Points verts sur les noms dans les tables équipe (chatters, outreach, va)

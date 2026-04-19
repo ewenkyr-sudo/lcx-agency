@@ -594,5 +594,11 @@
   "section.log": "Activity Log",
   "section.log_sub": "History of all actions",
   "section.settings": "Settings",
-  "section.settings_sub": "Application settings"
+  "section.settings_sub": "Application settings",
+  "settings.statistics": "Statistics",
+  "settings.members": "Members",
+  "student.signed_models": "Signed models",
+  "student.active_discussions": "Active discussions",
+  "student.progression": "Progression",
+  "student.no_data": "No student data"
 }
