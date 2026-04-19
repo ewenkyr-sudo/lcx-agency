@@ -1,7 +1,7 @@
 {
-  "name": "LCX Agency Dashboard",
-  "short_name": "LCX Agency",
-  "description": "LCX Agency Management Suite",
+  "name": "Fuzion Pilot",
+  "short_name": "Fuzion Pilot",
+  "description": "Fuzion Pilot - Agency Management",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

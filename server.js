@@ -141,7 +141,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
         <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
           <div style="text-align:center;margin-bottom:32px;">
-            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#22d3ee);border-radius:16px;line-height:56px;font-size:20px;font-weight:800;color:white;text-align:center;font-family:sans-serif;">FP</div>
             <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
           </div>
           <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;text-align:center;">
@@ -162,7 +162,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
         <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
           <div style="text-align:center;margin-bottom:32px;">
-            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+            <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#22d3ee);border-radius:16px;line-height:56px;font-size:20px;font-weight:800;color:white;text-align:center;font-family:sans-serif;">FP</div>
             <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
           </div>
           <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
@@ -869,8 +869,8 @@ async function seedData() {
 
   // Agency settings
   const settingsData = [
-    ['agency_name', 'LCX Agency'],
-    ['agency_subtitle', 'Management Suite'],
+    ['agency_name', 'Fuzion Pilot'],
+    ['agency_subtitle', 'Fuzion Pilot'],
     ['default_password_team', 'team123'],
     ['default_password_student', 'eleve123'],
   ];
@@ -886,7 +886,7 @@ async function migrateToMultiAgency() {
     // Ensure default agency exists
     const { rows: agencies } = await pool.query('SELECT id FROM agencies LIMIT 1');
     if (agencies.length === 0) {
-      await pool.query("INSERT INTO agencies (id, name, primary_color) VALUES (1, 'LCX Agency', '#8b5cf6')");
+      await pool.query("INSERT INTO agencies (id, name, primary_color) VALUES (1, 'Fuzion Pilot', '#8b5cf6')");
     }
     // ALWAYS fix orphaned data (idempotent) — assign all NULL agency_id rows to agency 1
     const tables = ['users', 'models', 'team_members', 'students', 'tasks', 'outreach_leads', 'chatter_shifts', 'resources', 'planning_shifts', 'leave_requests', 'model_revenue_objectives', 'payments', 'weekly_objectives', 'activity_log'];
@@ -1099,8 +1099,8 @@ app.post('/api/invite/register', rateLimit({
     // Create default settings
     const defaultSettings = [
       ['agency_name', agencyName],
-      ['agency_subtitle', 'Management Suite'],
-      ['agency_logo', '👑']
+      ['agency_subtitle', 'Fuzion Pilot'],
+      ['agency_logo', 'FP']
     ];
     for (const [key, value] of defaultSettings) {
       await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, value, agencyId]);
@@ -1153,8 +1153,8 @@ app.post('/api/register-legacy-disabled', rateLimit({
     // Create default settings for this agency
     const defaultSettings = [
       ['agency_name', agency_name.trim()],
-      ['agency_subtitle', 'Management Suite'],
-      ['agency_logo', '👑']
+      ['agency_subtitle', 'Fuzion Pilot'],
+      ['agency_logo', 'FP']
     ];
     for (const [key, value] of defaultSettings) {
       await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, value, agencyId]);
@@ -1237,7 +1237,7 @@ app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) 
         <div style="background:#09090b;color:#f0f0f5;font-family:'Inter',Arial,sans-serif;padding:0;margin:0;">
           <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
             <div style="text-align:center;margin-bottom:32px;">
-              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#06d6a0);border-radius:16px;line-height:56px;font-size:28px;">👑</div>
+              <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#22d3ee);border-radius:16px;line-height:56px;font-size:20px;font-weight:800;color:white;text-align:center;font-family:sans-serif;">FP</div>
               <h1 style="font-size:24px;font-weight:800;margin:16px 0 0;color:#ffffff;">Fuzion Pilot</h1>
             </div>
             <div style="background:#111114;border:1px solid rgba(124,58,237,0.2);border-radius:16px;padding:32px;">
@@ -2859,7 +2859,7 @@ app.post('/api/admin/test-weekly-report', authMiddleware, adminOnly, async (req,
 
 // Test WhatsApp
 app.post('/api/admin/test-whatsapp', authMiddleware, adminOnly, async (req, res) => {
-  await sendWhatsApp('Test notification LCX Agency - tout fonctionne !');
+  await sendWhatsApp('Test notification Fuzion Pilot - tout fonctionne !');
   res.json({ ok: true });
 });
 
@@ -3946,7 +3946,7 @@ async function start() {
   server.listen(PORT, () => {
     console.log(`
   ╔══════════════════════════════════════╗
-  ║    LCX Agency Dashboard               ║
+  ║    Fuzion Pilot Dashboard              ║
   ║    http://localhost:${PORT}             ║
   ║                                       ║
   ║    Admin: ewen / admin123            ║

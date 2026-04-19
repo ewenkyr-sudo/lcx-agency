@@ -157,7 +157,7 @@
   <!-- Header -->
   <div class="ob-header">
     <div class="ob-logo">
-      <div class="ob-logo-icon">&#10022;</div>
+      <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" class="ob-logo-icon" style="padding:0;font-size:0">
       <h1>Fuzion Pilot</h1>
     </div>
     <button class="ob-logout" onclick="handleLogout()">Deconnexion</button>
@@ -187,10 +187,6 @@
         <label class="ob-label">Nom de l'agence <span class="req">*</span></label>
         <input class="ob-input" id="ob-name" type="text" placeholder="Ex: Elite Models Agency">
         <div class="ob-error" id="err-name">Ce champ est obligatoire</div>
-      </div>
-      <div class="ob-group">
-        <label class="ob-label">Logo (URL de l'image)</label>
-        <input class="ob-input" id="ob-logo" type="url" placeholder="https://monsite.com/logo.png">
       </div>
       <div class="ob-group">
         <label class="ob-label">Couleur principale <span class="req">*</span></label>
@@ -452,7 +448,7 @@ async function init() {
 
 function prefillForm() {
   const map = {
-    'ob-name': 'name', 'ob-logo': 'logo_url', 'ob-country': 'country',
+    'ob-name': 'name', 'ob-country': 'country',
     'ob-timezone': 'timezone', 'ob-currency': 'currency', 'ob-service-type': 'service_type',
     'ob-founded': 'founded_at', 'ob-email': 'contact_email', 'ob-phone': 'phone',
     'ob-legal-name': 'legal_name', 'ob-street': 'address_street', 'ob-city': 'address_city',
@@ -557,7 +553,6 @@ function validateStep(step) {
 function collectStepData() {
   return {
     name: document.getElementById('ob-name').value.trim(),
-    logo_url: document.getElementById('ob-logo').value.trim() || null,
     primary_color: document.getElementById('ob-color').value,
     country: document.getElementById('ob-country').value,
     timezone: document.getElementById('ob-timezone').value,

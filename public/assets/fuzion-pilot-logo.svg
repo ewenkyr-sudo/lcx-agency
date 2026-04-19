@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="pilot-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A855F7"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0615"/>
+      <stop offset="100%" stop-color="#04020A"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="url(#bg-grad)"/>
+  <rect x="4" y="4" width="192" height="192" rx="38" fill="none" stroke="url(#pilot-grad)" stroke-width="1.5" opacity="0.3"/>
+  <text x="100" y="88" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="42" fill="#FFFFFF" letter-spacing="6">FUZION</text>
+  <text x="100" y="132" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="38" fill="url(#pilot-grad)" letter-spacing="8">PILOT</text>
+</svg>

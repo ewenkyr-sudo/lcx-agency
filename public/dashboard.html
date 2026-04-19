@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
-<title>LCX Agency - Dashboard</title>
+<title>Fuzion Pilot - Dashboard</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
 
@@ -1411,7 +1411,7 @@
 <!-- MOBILE HEADER -->
 <div class="mobile-header">
   <button onclick="toggleSidebar()">☰</button>
-  <span style="font-size:15px;font-weight:700" id="mobile-title">LCX Agency</span>
+  <span style="font-size:15px;font-weight:700" id="mobile-title">Fuzion Pilot</span>
   <button onclick="handleLogout()" style="font-size:18px">⏻</button>
 </div>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -1419,10 +1419,10 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="logo">
-    <div class="logo-icon" id="logo-icon">&#10022;</div>
+    <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" style="width:40px;height:40px;border-radius:14px" id="logo-icon">
     <div>
-      <h1 id="logo-agency-name">LCX Agency</h1>
-      <span id="logo-agency-subtitle">Management Suite</span>
+      <h1 id="logo-agency-name">Fuzion Pilot</h1>
+      <span id="logo-agency-subtitle">Fuzion Pilot</span>
     </div>
   </div>
 
@@ -1985,10 +1985,6 @@
                   <input type="text" id="agency-edit-name" class="form-input" placeholder="Mon Agence">
                 </div>
                 <div>
-                  <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">URL du logo</label>
-                  <input type="text" id="agency-edit-logo" class="form-input" placeholder="https://example.com/logo.png">
-                </div>
-                <div>
                   <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Couleur principale</label>
                   <div style="display:flex;gap:10px;align-items:center">
                     <input type="color" id="agency-edit-color" value="#A855F7" style="width:48px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);cursor:pointer">
@@ -2021,22 +2017,18 @@
         <!-- TAB: Général -->
         <div class="settings-pane" id="settings-pane-general">
           <div class="panel" style="padding:24px;margin-bottom:20px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Identité de l'agence</h3>
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Identite de l'agence</h3>
             <div style="display:grid;gap:12px;max-width:500px">
-              <div>
-                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Logo (emoji)</label>
-                <div style="display:flex;gap:10px;align-items:center">
-                  <input type="text" id="setting-agency-logo" class="form-input" style="width:60px;text-align:center;font-size:24px" placeholder="&#10022;" maxlength="2" oninput="document.getElementById('logo-preview').textContent=this.value||'\u2726'">
-                  <span id="logo-preview" style="width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--pink));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px">&#10022;</span>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:12px;border:1px solid var(--border)">
+                <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" style="width:42px;height:42px;border-radius:10px">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Fuzion Pilot</div>
+                  <div style="font-size:11px;color:var(--text3)">Logo et branding de la plateforme</div>
                 </div>
               </div>
               <div>
                 <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Nom de l'agence</label>
-                <input type="text" id="setting-agency-name" class="form-input" placeholder="LCX Agency">
-              </div>
-              <div>
-                <label style="display:block;font-size:13px;color:var(--text2);margin-bottom:6px">Sous-titre</label>
-                <input type="text" id="setting-agency-subtitle" class="form-input" placeholder="Management Suite">
+                <input type="text" id="setting-agency-name" class="form-input" placeholder="Mon Agence">
               </div>
               <button class="btn btn-primary" onclick="saveAgencySettings()" style="width:fit-content;margin-top:4px">Sauvegarder</button>
             </div>
@@ -6193,16 +6185,11 @@ function renderSettings() {
   if (!isAdmin()) return;
 
   // Agency settings
-  const agName = agencySettings.agency_name || 'LCX Agency';
-  const agSub = agencySettings.agency_subtitle || 'Management Suite';
-  const agLogo = agencySettings.agency_logo || '\u2726';
+  const agName = agencySettings.agency_name || 'Fuzion Pilot';
   document.getElementById('setting-agency-name').value = agName;
-  document.getElementById('setting-agency-subtitle').value = agSub;
-  document.getElementById('setting-agency-logo').value = agLogo;
-  document.getElementById('logo-preview').textContent = agLogo;
   document.getElementById('logo-agency-name').textContent = agName;
-  document.getElementById('logo-agency-subtitle').textContent = agSub;
-  document.getElementById('logo-icon').textContent = agLogo;
+  // Subtitle and logo are always Fuzion Pilot branded
+  document.getElementById('logo-agency-subtitle').textContent = 'Fuzion Pilot';
 
   // Users table
   const tbody = document.getElementById('settings-users-table');
@@ -6307,7 +6294,6 @@ async function loadAgencyInfo() {
     document.getElementById('agency-info-loading').style.display = 'none';
     document.getElementById('agency-info-content').style.display = 'block';
     document.getElementById('agency-edit-name').value = agency.name || '';
-    document.getElementById('agency-edit-logo').value = agency.logo_url || '';
     document.getElementById('agency-edit-color').value = agency.primary_color || '#A855F7';
     document.getElementById('agency-color-label').textContent = agency.primary_color || '#A855F7';
     document.getElementById('agency-stat-members').textContent = agency.user_count || 0;
@@ -6322,13 +6308,12 @@ async function loadAgencyInfo() {
 
 async function saveAgencyInfo() {
   const name = document.getElementById('agency-edit-name').value;
-  const logo_url = document.getElementById('agency-edit-logo').value;
   const primary_color = document.getElementById('agency-edit-color').value;
   const res = await fetch('/api/agency', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ name, logo_url, primary_color })
+    body: JSON.stringify({ name, primary_color })
   });
   if (res.ok) {
     showToast('Agence mise a jour !', 'success');
@@ -6344,23 +6329,16 @@ async function saveAgencyInfo() {
 
 async function saveAgencySettings() {
   const name = document.getElementById('setting-agency-name').value;
-  const subtitle = document.getElementById('setting-agency-subtitle').value;
-  const logo = document.getElementById('setting-agency-logo').value || '\u2726';
   const res = await fetch('/api/settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ agency_name: name, agency_subtitle: subtitle, agency_logo: logo })
+    body: JSON.stringify({ agency_name: name })
   });
   if (res.ok) {
     showToast('Paramètres sauvegardés !', 'success');
     agencySettings.agency_name = name;
-    agencySettings.agency_subtitle = subtitle;
-    agencySettings.agency_logo = logo;
     document.getElementById('logo-agency-name').textContent = name;
-    document.getElementById('logo-agency-subtitle').textContent = subtitle;
-    document.getElementById('logo-icon').textContent = logo;
-    document.getElementById('logo-preview').textContent = logo;
   }
 }
 
