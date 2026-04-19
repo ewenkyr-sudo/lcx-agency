@@ -698,6 +698,38 @@ async function initDB() {
       await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS ${col}`);
     } catch(e) {}
   }
+
+  // Onboarding columns — DEFAULT TRUE so existing agencies are NOT affected
+  const onboardingCols = [
+    "onboarding_completed BOOLEAN DEFAULT TRUE",
+    "onboarding_completed_at TIMESTAMPTZ",
+    "country TEXT",
+    "timezone TEXT",
+    "currency TEXT DEFAULT 'EUR'",
+    "service_type TEXT",
+    "models_count INTEGER",
+    "chatters_count INTEGER",
+    "target_markets TEXT[]",
+    "founded_at TEXT",
+    "contact_email TEXT",
+    "phone TEXT",
+    "legal_name TEXT",
+    "address_street TEXT",
+    "address_city TEXT",
+    "address_zip TEXT",
+    "address_country TEXT",
+    "vat_number TEXT",
+    "default_work_start TEXT DEFAULT '09:00'",
+    "default_work_end TEXT DEFAULT '18:00'",
+    "work_days TEXT[] DEFAULT '{lundi,mardi,mercredi,jeudi,vendredi}'",
+    "language TEXT DEFAULT 'fr'",
+    "email_notifications_enabled BOOLEAN DEFAULT TRUE"
+  ];
+  for (const col of onboardingCols) {
+    try {
+      await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS ${col}`);
+    } catch(e) {}
+  }
 }
 
 // ============ SEED DEFAULT DATA ============
@@ -918,13 +950,27 @@ function authMiddleware(req, res, next) {
       // Check subscription status — platform_admin bypasses, wrapped in try/catch
       if (user.role !== 'platform_admin' && user.agency_id) {
         try {
-          const agencyResult = await pool.query('SELECT subscription_status FROM agencies WHERE id = $1', [user.agency_id]);
+          const agencyResult = await pool.query('SELECT subscription_status, onboarding_completed FROM agencies WHERE id = $1', [user.agency_id]);
           const agency = agencyResult.rows[0];
           if (agency && agency.subscription_status && agency.subscription_status !== 'active' && agency.subscription_status !== 'trialing') {
             return res.status(403).json({ error: 'Votre abonnement est expiré. Renouvelez sur fuzionpilot.com' });
           }
+          // Attach onboarding status for downstream middleware
+          req.user.onboarding_completed = agency ? agency.onboarding_completed : true;
         } catch (subErr) {
-          // Si la colonne subscription_status n'existe pas encore, on laisse passer
+          // Si les colonnes n'existent pas encore, on laisse passer
+          req.user.onboarding_completed = true;
+        }
+      } else {
+        req.user.onboarding_completed = true;
+      }
+
+      // Onboarding gate: block non-whitelisted routes if onboarding not completed
+      if (req.user.onboarding_completed === false) {
+        const p = req.path;
+        const onboardingWhitelist = ['/api/me', '/api/logout', '/api/agency/onboarding'];
+        if (!onboardingWhitelist.some(w => p.startsWith(w))) {
+          return res.status(403).json({ error: 'ONBOARDING_REQUIRED' });
         }
       }
 
@@ -1030,10 +1076,10 @@ app.post('/api/invite/register', rateLimit({
   if (exists.rows.length > 0) return res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
 
   try {
-    // Create agency
+    // Create agency — onboarding_completed = FALSE so new clients must complete onboarding
     const agencyName = display_name.trim() + ' Agency';
     const { rows: agencyRows } = await pool.query(
-      'INSERT INTO agencies (name, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      'INSERT INTO agencies (name, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, onboarding_completed) VALUES ($1, $2, $3, $4, $5, FALSE) RETURNING id',
       [agencyName, invite.stripe_customer_id, invite.stripe_subscription_id, 'active', invite.plan]
     );
     const agencyId = agencyRows[0].id;
@@ -1158,7 +1204,7 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
+  const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
   res.json(rows[0]);
 });
 
@@ -3342,6 +3388,114 @@ app.put('/api/agency', authMiddleware, async (req, res) => {
   await pool.query('UPDATE agencies SET name = COALESCE($1, name), logo_url = COALESCE($2, logo_url), primary_color = COALESCE($3, primary_color) WHERE id = $4',
     [name, logo_url, primary_color, req.user.agency_id]);
   res.json({ ok: true });
+});
+
+// ============ AGENCY ONBOARDING ============
+app.get('/api/agency/onboarding-status', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT name, onboarding_completed, country, timezone, currency, service_type,
+        models_count, chatters_count, target_markets, founded_at, contact_email, phone,
+        legal_name, address_street, address_city, address_zip, address_country, vat_number,
+        default_work_start, default_work_end, work_days, language, email_notifications_enabled,
+        logo_url, primary_color
+      FROM agencies WHERE id = $1`, [req.user.agency_id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Agence introuvable' });
+    res.json(rows[0]);
+  } catch(e) {
+    console.error('Onboarding status error:', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/agency/onboarding/draft', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'platform_admin') {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  const fields = ['name', 'logo_url', 'primary_color', 'country', 'timezone', 'currency',
+    'service_type', 'models_count', 'chatters_count', 'target_markets', 'founded_at',
+    'contact_email', 'phone', 'legal_name', 'address_street', 'address_city',
+    'address_zip', 'address_country', 'vat_number', 'default_work_start', 'default_work_end',
+    'work_days', 'language', 'email_notifications_enabled'];
+  const updates = [];
+  const values = [];
+  let idx = 1;
+  for (const f of fields) {
+    if (req.body[f] !== undefined) {
+      updates.push(`${f} = $${idx}`);
+      values.push(req.body[f]);
+      idx++;
+    }
+  }
+  if (updates.length === 0) return res.json({ ok: true });
+  values.push(req.user.agency_id);
+  try {
+    await pool.query(`UPDATE agencies SET ${updates.join(', ')} WHERE id = $${idx}`, values);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Onboarding draft error:', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/agency/onboarding/complete', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'platform_admin') {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  // Validate required fields
+  const required = ['name', 'country', 'timezone', 'currency', 'service_type',
+    'models_count', 'chatters_count', 'target_markets', 'contact_email'];
+  const agency = (await pool.query('SELECT * FROM agencies WHERE id = $1', [req.user.agency_id])).rows[0];
+  if (!agency) return res.status(404).json({ error: 'Agence introuvable' });
+
+  const missing = required.filter(f => !agency[f] && !req.body[f]);
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `Champs obligatoires manquants: ${missing.join(', ')}` });
+  }
+
+  // Apply any final fields from the request body
+  const fields = ['name', 'logo_url', 'primary_color', 'country', 'timezone', 'currency',
+    'service_type', 'models_count', 'chatters_count', 'target_markets', 'founded_at',
+    'contact_email', 'phone', 'legal_name', 'address_street', 'address_city',
+    'address_zip', 'address_country', 'vat_number', 'default_work_start', 'default_work_end',
+    'work_days', 'language', 'email_notifications_enabled'];
+  const updates = ['onboarding_completed = TRUE', 'onboarding_completed_at = NOW()'];
+  const values = [];
+  let idx = 1;
+  for (const f of fields) {
+    if (req.body[f] !== undefined) {
+      updates.push(`${f} = $${idx}`);
+      values.push(req.body[f]);
+      idx++;
+    }
+  }
+  values.push(req.user.agency_id);
+
+  try {
+    await pool.query(`UPDATE agencies SET ${updates.join(', ')} WHERE id = $${idx}`, values);
+
+    // Update settings table too (agency_name sync)
+    if (req.body.name) {
+      await pool.query("UPDATE settings SET value = $1 WHERE key = 'agency_name' AND agency_id = $2", [req.body.name, req.user.agency_id]);
+    }
+
+    // Log activity
+    try {
+      await pool.query(
+        "INSERT INTO activity_log (user_id, agency_id, action, details) VALUES ($1, $2, 'onboarding_completed', $3)",
+        [req.user.id, req.user.agency_id, JSON.stringify({ completed_by: req.user.display_name || req.user.username })]
+      );
+    } catch(e) { /* activity_log may not exist */ }
+
+    // TODO: Send welcome email hook here
+    // await sendWelcomeEmail(agency.contact_email || req.body.contact_email);
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Onboarding complete error:', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 // ============ PLATFORM ADMIN ============

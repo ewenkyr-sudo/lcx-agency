@@ -287,7 +287,7 @@ async function handleRegister(e) {
     // Success
     document.getElementById('invite-form').style.display = 'none';
     document.getElementById('success-msg').classList.add('show');
-    setTimeout(() => { window.location.href = '/dashboard.html'; }, 2000);
+    setTimeout(() => { window.location.href = '/onboarding.html'; }, 2000);
   } catch (err) {
     errorEl.textContent = 'Erreur de connexion au serveur';
     errorEl.classList.add('show');
