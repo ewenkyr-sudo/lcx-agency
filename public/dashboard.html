@@ -1929,7 +1929,7 @@
         <div class="page-subtitle" data-i18n="section.coaching_sub">Suivi complet des élèves</div>
       </div>
     </div>
-    <div id="coaching-main-tabs" style="margin-bottom:20px">
+    <div id="coaching-main-tabs" style="display:none;margin-bottom:20px">
       <div class="tabs">
         <button class="tab active" onclick="switchCoachingMainTab('coaching',this)" data-i18n="nav.coaching">Coaching</button>
         <button class="tab" onclick="switchCoachingMainTab('recruitment',this)" data-i18n="recruit.tab">Recrutement</button>
@@ -5115,7 +5115,7 @@ async function checkRecruitmentEnabled() {
     var data = await res.json();
     _recruitmentEnabled = data.enabled;
     var tabs = document.getElementById('coaching-main-tabs');
-    if (tabs) tabs.style.display = _recruitmentEnabled ? '' : 'none';
+    if (tabs) tabs.style.display = _recruitmentEnabled ? 'block' : 'none';
   } catch(e) {}
 }
 

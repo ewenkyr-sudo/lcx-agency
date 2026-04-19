@@ -3536,17 +3536,22 @@ app.post('/api/recruitment/leads', authMiddleware, async (req, res) => {
   if (!prospect_pseudo) return res.status(400).json({ error: 'Pseudo requis' });
   try {
     const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
-    // Find recruiter_id for this user
-    const recruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.user.agency_id])).rows[0];
-    let recruiterId = recruiter?.id;
-    // If admin/owner, allow specifying recruiter_id or use first available recruiter
-    if (isOwner && req.body.recruiter_id) {
-      recruiterId = req.body.recruiter_id;
-    } else if (isOwner && !recruiterId) {
-      const firstRecruiter = (await pool.query('SELECT id FROM recruiters WHERE agency_id = $1 AND is_active = true LIMIT 1', [req.user.agency_id])).rows[0];
-      recruiterId = firstRecruiter?.id;
+    // Find recruiter_id: explicit body param > user's own recruiter row > first active recruiter (admin only)
+    let recruiterId = null;
+    if (req.body.recruiter_id) {
+      // Verify the recruiter belongs to this agency
+      const check = (await pool.query('SELECT id FROM recruiters WHERE id = $1 AND agency_id = $2', [req.body.recruiter_id, req.user.agency_id])).rows[0];
+      if (check) recruiterId = check.id;
     }
-    if (!recruiterId) return res.status(403).json({ error: 'Not a recruiter' });
+    if (!recruiterId) {
+      const ownRecruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.user.agency_id])).rows[0];
+      recruiterId = ownRecruiter?.id;
+    }
+    if (!recruiterId && isOwner) {
+      const first = (await pool.query('SELECT id FROM recruiters WHERE agency_id = $1 AND is_active = true ORDER BY id LIMIT 1', [req.user.agency_id])).rows[0];
+      recruiterId = first?.id;
+    }
+    if (!recruiterId) return res.status(403).json({ error: isOwner ? 'Ajoutez d\'abord un recruteur' : 'Not a recruiter' });
     const { rows } = await pool.query(
       'INSERT INTO recruitment_leads (agency_id, recruiter_id, prospect_name, prospect_pseudo, platform, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [req.user.agency_id, recruiterId, prospect_name || '', prospect_pseudo, platform || 'instagram', notes || '']
