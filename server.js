@@ -968,7 +968,7 @@ function authMiddleware(req, res, next) {
       // Onboarding gate: block non-whitelisted routes if onboarding not completed
       if (req.user.onboarding_completed === false) {
         const p = req.path;
-        const onboardingWhitelist = ['/api/me', '/api/logout', '/api/agency/onboarding'];
+        const onboardingWhitelist = ['/api/me', '/api/logout', '/api/agency/onboarding', '/api/agency/language'];
         if (!onboardingWhitelist.some(w => p.startsWith(w))) {
           return res.status(403).json({ error: 'ONBOARDING_REQUIRED' });
         }
@@ -1204,8 +1204,19 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
+  const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed, a.language FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
   res.json(rows[0]);
+});
+
+app.patch('/api/agency/language', authMiddleware, async (req, res) => {
+  const { language } = req.body;
+  if (language !== 'fr' && language !== 'en') return res.status(400).json({ error: 'Language must be fr or en' });
+  try {
+    await pool.query('UPDATE agencies SET language = $1 WHERE id = $2', [language, req.user.agency_id]);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ============ USERS CRUD (Admin only) ============

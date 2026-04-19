@@ -8,9 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="/js/i18n.js"></script>
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
-<title>Fuzion Pilot - Dashboard</title>
+<title data-i18n="app.title">Fuzion Pilot - Dashboard</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
 
@@ -1427,101 +1428,101 @@
   </div>
 
   <div id="nav-principal" class="nav-section">
-    <div class="nav-label">Principal</div>
+    <div class="nav-label" data-i18n="nav.principal">Principal</div>
     <div class="nav-item active" data-section="dashboard" onclick="switchSection(event)">
-      <span class="nav-icon">📊</span> Dashboard
+      <span class="nav-icon">📊</span> <span data-i18n="nav.dashboard">Dashboard</span>
     </div>
     <div class="nav-item" data-section="planning" onclick="switchSection(event)">
-      <span class="nav-icon">📅</span> Planning
+      <span class="nav-icon">📅</span> <span data-i18n="nav.planning">Planning</span>
     </div>
     <div class="nav-item" data-section="tasks" onclick="switchSection(event)">
-      <span class="nav-icon">✅</span> Tâches
+      <span class="nav-icon">✅</span> <span data-i18n="nav.tasks">Tâches</span>
       <span class="nav-badge" id="tasks-badge" style="display:none;background:var(--red)"></span>
     </div>
   </div>
 
   <div id="nav-teams" class="nav-section">
-    <div class="nav-label">Équipes</div>
+    <div class="nav-label" data-i18n="nav.teams">Équipes</div>
     <div class="nav-item" data-section="models" onclick="switchSection(event)">
-      <span class="nav-icon">💎</span> Modèles
+      <span class="nav-icon">💎</span> <span data-i18n="nav.models">Modèles</span>
     </div>
     <div class="nav-item" data-section="chatters" onclick="switchSection(event)">
-      <span class="nav-icon">💬</span> Chatters
+      <span class="nav-icon">💬</span> <span data-i18n="nav.chatters">Chatters</span>
     </div>
     <div class="nav-item" data-section="outreach" onclick="switchSection(event)">
-      <span class="nav-icon">🚀</span> Outreach
+      <span class="nav-icon">🚀</span> <span data-i18n="nav.outreach">Outreach</span>
     </div>
     <div class="nav-item" data-section="va" onclick="switchSection(event)">
-      <span class="nav-icon">⚙️</span> VA
+      <span class="nav-icon">⚙️</span> <span data-i18n="nav.va">VA</span>
     </div>
   </div>
 
   <div id="nav-tools" class="nav-section">
-    <div class="nav-label">Outils</div>
+    <div class="nav-label" data-i18n="nav.tools">Outils</div>
     <div class="nav-item" data-section="stats" onclick="switchSection(event)">
-      <span class="nav-icon">📊</span> Stats & Subs
+      <span class="nav-icon">📊</span> <span data-i18n="nav.stats">Stats & Subs</span>
     </div>
     <div class="nav-item" data-section="coaching" onclick="switchSection(event)">
-      <span class="nav-icon">🎓</span> Coaching <span id="admin-msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
+      <span class="nav-icon">🎓</span> <span data-i18n="nav.coaching">Coaching</span> <span id="admin-msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
     </div>
     <div class="nav-item" data-section="performances" onclick="switchSection(event)">
-      <span class="nav-icon">📈</span> Performances
+      <span class="nav-icon">📈</span> <span data-i18n="nav.performances">Performances</span>
     </div>
     <div class="nav-item" data-section="analytics" onclick="switchSection(event)">
-      <span class="nav-icon">📉</span> Analytics
+      <span class="nav-icon">📉</span> <span data-i18n="nav.analytics">Analytics</span>
     </div>
     <div class="nav-item" data-section="finance" onclick="switchSection(event)">
-      <span class="nav-icon">💰</span> Finances
+      <span class="nav-icon">💰</span> <span data-i18n="nav.finances">Finances</span>
     </div>
     <div class="nav-item" data-section="activity-log" onclick="switchSection(event)">
-      <span class="nav-icon">📋</span> Journal
+      <span class="nav-icon">📋</span> <span data-i18n="nav.journal">Journal</span>
     </div>
   </div>
 
   <div id="nav-student" class="nav-section" style="display:none">
-    <div class="nav-label">Mon espace</div>
+    <div class="nav-label" data-i18n="nav.student_space">Mon espace</div>
     <div class="nav-item" data-section="student-home" onclick="switchSection(event)">
-      <span class="nav-icon">🏠</span> Tableau de bord
+      <span class="nav-icon">🏠</span> <span data-i18n="nav.student_home">Tableau de bord</span>
     </div>
     <div class="nav-item" data-section="student-outreach" onclick="switchSection(event)">
-      <span class="nav-icon">📨</span> Outreach
+      <span class="nav-icon">📨</span> <span data-i18n="nav.student_outreach">Outreach</span>
     </div>
     <div class="nav-item" data-section="student-planning" onclick="switchSection(event)">
-      <span class="nav-icon">📅</span> Planning
+      <span class="nav-icon">📅</span> <span data-i18n="nav.student_planning">Planning</span>
     </div>
     <div class="nav-item" data-section="student-tasks" onclick="switchSection(event)">
-      <span class="nav-icon">✓</span> Tâches
+      <span class="nav-icon">✓</span> <span data-i18n="nav.student_tasks">Tâches</span>
     </div>
     <div class="nav-item" data-section="student-recruits" onclick="switchSection(event)">
-      <span class="nav-icon">🎯</span> Recrutement
+      <span class="nav-icon">🎯</span> <span data-i18n="nav.student_recruits">Recrutement</span>
     </div>
     <div class="nav-item" data-section="student-models" onclick="switchSection(event)">
-      <span class="nav-icon">👤</span> Mes modèles
+      <span class="nav-icon">👤</span> <span data-i18n="nav.student_models">Mes modèles</span>
     </div>
     <div class="nav-item" data-section="student-revenue" onclick="switchSection(event)">
-      <span class="nav-icon">💰</span> Revenus
+      <span class="nav-icon">💰</span> <span data-i18n="nav.student_revenue">Revenus</span>
     </div>
     <div class="nav-item" data-section="student-messages" onclick="switchSection(event)">
-      <span class="nav-icon">💬</span> Messages <span id="msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
+      <span class="nav-icon">💬</span> <span data-i18n="nav.student_messages">Messages</span> <span id="msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px"></span>
     </div>
     <div class="nav-item" data-section="student-resources" onclick="switchSection(event)">
-      <span class="nav-icon">📚</span> Formation
+      <span class="nav-icon">📚</span> <span data-i18n="nav.student_resources">Formation</span>
     </div>
     <div class="nav-item" data-section="student-objectives" onclick="switchSection(event)">
-      <span class="nav-icon">🎯</span> Objectifs
+      <span class="nav-icon">🎯</span> <span data-i18n="nav.student_objectives">Objectifs</span>
     </div>
   </div>
 
   <div id="nav-admin" class="nav-section" style="display:none">
-    <div class="nav-label">Admin</div>
+    <div class="nav-label" data-i18n="nav.admin">Admin</div>
     <div class="nav-item" data-section="settings" onclick="switchSection(event)">
-      <span class="nav-icon">⚙️</span> Paramètres
+      <span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Paramètres</span>
     </div>
   </div>
   <div id="nav-platform" class="nav-section" style="display:none">
-    <div class="nav-label">Plateforme</div>
+    <div class="nav-label" data-i18n="nav.platform">Plateforme</div>
     <a href="/platform" class="nav-item" style="text-decoration:none;color:var(--text2)">
-      <span class="nav-icon">🌐</span> Toutes les agences
+      <span class="nav-icon">🌐</span> <span data-i18n="nav.all_agencies">Toutes les agences</span>
     </a>
   </div>
 
@@ -1967,6 +1968,7 @@
           <button class="settings-tab" data-tab="notifications" onclick="switchSettingsTab('notifications')">Notifications</button>
           <button class="settings-tab" data-tab="securite" onclick="switchSettingsTab('securite')">Sécurité</button>
           <button class="settings-tab" data-tab="export" onclick="switchSettingsTab('export')">Export & Données</button>
+          <button class="settings-tab" data-tab="language" onclick="switchSettingsTab('language')" data-i18n="settings.language_tab">Langue / Language</button>
         </div>
       </div>
 
@@ -2251,6 +2253,18 @@
             <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Espace de stockage</h3>
             <div id="db-size-info" style="font-size:13px;color:var(--text3)"></div>
             <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer;margin-top:10px;font-size:12px" onclick="loadDbSize()">Voir l'espace utilisé</button>
+          </div>
+        </div>
+
+        <!-- TAB: Language -->
+        <div class="settings-pane" id="settings-pane-language">
+          <div class="panel" style="padding:24px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="settings.language_label">Langue de l'interface</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px" data-i18n="settings.language_desc">Choisissez la langue d'affichage du dashboard</p>
+            <select class="form-select" id="setting-language" style="max-width:300px" onchange="changeLanguage(this.value)">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
 
@@ -2569,6 +2583,13 @@ async function fetchCurrentUser() {
   if (currentUser.agency_color) {
     document.documentElement.style.setProperty('--accent', currentUser.agency_color);
   }
+  // Set language from API if not already set in localStorage
+  if (currentUser.language && !localStorage.getItem('fp_lang')) {
+    await i18n.setLang(currentUser.language);
+  }
+  // Update language selector in settings
+  var langSel = document.getElementById('setting-language');
+  if (langSel) langSel.value = i18n.getLang();
   updateUserUI();
 }
 
@@ -2589,6 +2610,20 @@ function avatarHTML(user, size = 32) {
     return `<img src="${user.avatar_url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">`;
   }
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.45)}px;font-weight:700;color:white">${(user.display_name || user.name || 'U').charAt(0)}</div>`;
+}
+
+async function changeLanguage(lang) {
+  localStorage.setItem('fp_lang', lang);
+  await fetch('/api/agency/language', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ language: lang })
+  }).catch(() => {});
+  await i18n.setLang(lang);
+  // Update language selector
+  var sel = document.getElementById('setting-language');
+  if (sel) sel.value = lang;
 }
 
 async function handleLogout() {

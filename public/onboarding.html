@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<title>Fuzion Pilot — Configuration</title>
+<title data-i18n="app.onboarding_title">Fuzion Pilot — Configuration</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
   *{margin:0;padding:0;box-sizing:border-box}
@@ -160,18 +160,18 @@
       <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" class="ob-logo-icon" style="padding:0;font-size:0">
       <h1>Fuzion Pilot</h1>
     </div>
-    <button class="ob-logout" onclick="handleLogout()">Deconnexion</button>
+    <button class="ob-logout" onclick="handleLogout()" data-i18n="common.logout">Deconnexion</button>
   </div>
 
   <!-- Progress -->
   <div class="ob-progress">
     <div class="ob-progress-bar"><div class="ob-progress-fill" id="progress-fill" style="width:20%"></div></div>
     <div class="ob-steps">
-      <div class="ob-step-dot active" data-step="1"><span class="ob-step-num">1</span><span class="ob-step-label">Identite</span></div>
-      <div class="ob-step-dot" data-step="2"><span class="ob-step-num">2</span><span class="ob-step-label">Activite</span></div>
-      <div class="ob-step-dot" data-step="3"><span class="ob-step-num">3</span><span class="ob-step-label">Contact</span></div>
-      <div class="ob-step-dot" data-step="4"><span class="ob-step-num">4</span><span class="ob-step-label">Preferences</span></div>
-      <div class="ob-step-dot" data-step="5"><span class="ob-step-num">5</span><span class="ob-step-label">Recap</span></div>
+      <div class="ob-step-dot active" data-step="1"><span class="ob-step-num">1</span><span class="ob-step-label" data-i18n="ob.step_identity">Identite</span></div>
+      <div class="ob-step-dot" data-step="2"><span class="ob-step-num">2</span><span class="ob-step-label" data-i18n="ob.step_activity">Activite</span></div>
+      <div class="ob-step-dot" data-step="3"><span class="ob-step-num">3</span><span class="ob-step-label" data-i18n="ob.step_contact">Contact</span></div>
+      <div class="ob-step-dot" data-step="4"><span class="ob-step-num">4</span><span class="ob-step-label" data-i18n="ob.step_prefs">Preferences</span></div>
+      <div class="ob-step-dot" data-step="5"><span class="ob-step-num">5</span><span class="ob-step-label" data-i18n="ob.step_recap">Recap</span></div>
     </div>
   </div>
 
@@ -180,16 +180,16 @@
 
     <!-- Step 1: Identity -->
     <div class="ob-step-content active" id="step-1">
-      <div class="ob-step-title">Identite de l'agence</div>
-      <div class="ob-step-desc">Personnalisez votre espace Fuzion Pilot avec l'identite de votre agence.</div>
+      <div class="ob-step-title" data-i18n="ob.step1_title">Identite de l'agence</div>
+      <div class="ob-step-desc" data-i18n="ob.step1_desc">Personnalisez votre espace Fuzion Pilot avec l'identite de votre agence.</div>
 
       <div class="ob-group">
-        <label class="ob-label">Nom de l'agence <span class="req">*</span></label>
-        <input class="ob-input" id="ob-name" type="text" placeholder="Ex: Elite Models Agency">
-        <div class="ob-error" id="err-name">Ce champ est obligatoire</div>
+        <label class="ob-label" data-i18n="ob.agency_name">Nom de l'agence <span class="req">*</span></label>
+        <input class="ob-input" id="ob-name" type="text" placeholder="Ex: Elite Models Agency" data-i18n-placeholder="ob.agency_name_placeholder">
+        <div class="ob-error" id="err-name" data-i18n="ob.required">Ce champ est obligatoire</div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Couleur principale <span class="req">*</span></label>
+        <label class="ob-label" data-i18n="ob.primary_color">Couleur principale <span class="req">*</span></label>
         <div class="ob-color-row">
           <input type="color" class="ob-color-input" id="ob-color" value="#8b5cf6">
           <input class="ob-input ob-color-hex" id="ob-color-hex" value="#8b5cf6" placeholder="#8b5cf6">
@@ -197,7 +197,7 @@
       </div>
       <div class="ob-row">
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Pays <span class="req">*</span></label>
+          <label class="ob-label" data-i18n="ob.country">Pays <span class="req">*</span></label>
           <select class="ob-select" id="ob-country">
             <option value="">Selectionnez...</option>
             <option value="FR">France</option><option value="US">Etats-Unis</option><option value="UK">Royaume-Uni</option>
@@ -206,10 +206,10 @@
             <option value="PT">Portugal</option><option value="NL">Pays-Bas</option><option value="RO">Roumanie</option>
             <option value="PL">Pologne</option><option value="AU">Australie</option><option value="OTHER">Autre</option>
           </select>
-          <div class="ob-error" id="err-country">Ce champ est obligatoire</div>
+          <div class="ob-error" id="err-country" data-i18n="ob.required">Ce champ est obligatoire</div>
         </div>
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Fuseau horaire <span class="req">*</span></label>
+          <label class="ob-label" data-i18n="ob.timezone">Fuseau horaire <span class="req">*</span></label>
           <select class="ob-select" id="ob-timezone">
             <option value="">Selectionnez...</option>
             <option value="Europe/Paris">Europe/Paris (CET)</option>
@@ -223,11 +223,11 @@
             <option value="Europe/Bucharest">Europe/Bucharest (EET)</option>
             <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
           </select>
-          <div class="ob-error" id="err-timezone">Ce champ est obligatoire</div>
+          <div class="ob-error" id="err-timezone" data-i18n="ob.required">Ce champ est obligatoire</div>
         </div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Devise <span class="req">*</span></label>
+        <label class="ob-label" data-i18n="ob.currency">Devise <span class="req">*</span></label>
         <select class="ob-select" id="ob-currency">
           <option value="EUR">EUR (Euro)</option>
           <option value="USD">USD (Dollar US)</option>
@@ -242,11 +242,11 @@
 
     <!-- Step 2: Activity -->
     <div class="ob-step-content" id="step-2">
-      <div class="ob-step-title">Votre activite</div>
-      <div class="ob-step-desc">Aidez-nous a personnaliser votre experience en nous parlant de votre agence.</div>
+      <div class="ob-step-title" data-i18n="ob.step2_title">Votre activite</div>
+      <div class="ob-step-desc" data-i18n="ob.step2_desc">Aidez-nous a personnaliser votre experience en nous parlant de votre agence.</div>
 
       <div class="ob-group">
-        <label class="ob-label">Type de service <span class="req">*</span></label>
+        <label class="ob-label" data-i18n="ob.service_type">Type de service <span class="req">*</span></label>
         <select class="ob-select" id="ob-service-type">
           <option value="">Selectionnez...</option>
           <option value="onlyfans-management">OnlyFans Management</option>
@@ -255,32 +255,32 @@
           <option value="content-creation">Creation de contenu</option>
           <option value="other">Autre</option>
         </select>
-        <div class="ob-error" id="err-service-type">Ce champ est obligatoire</div>
+        <div class="ob-error" id="err-service-type" data-i18n="ob.required">Ce champ est obligatoire</div>
       </div>
       <div class="ob-row">
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Nombre de modeles <span class="req">*</span></label>
+          <label class="ob-label" data-i18n="ob.models_count">Nombre de modeles <span class="req">*</span></label>
           <select class="ob-select" id="ob-models-count">
             <option value="">Selectionnez...</option>
             <option value="0">Aucun pour l'instant</option>
             <option value="1">1</option><option value="2">2-3</option><option value="5">4-5</option>
             <option value="8">6-10</option><option value="15">11-20</option><option value="25">20+</option>
           </select>
-          <div class="ob-error" id="err-models-count">Ce champ est obligatoire</div>
+          <div class="ob-error" id="err-models-count" data-i18n="ob.required">Ce champ est obligatoire</div>
         </div>
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Nombre de chatters <span class="req">*</span></label>
+          <label class="ob-label" data-i18n="ob.chatters_count">Nombre de chatters <span class="req">*</span></label>
           <select class="ob-select" id="ob-chatters-count">
             <option value="">Selectionnez...</option>
             <option value="0">Aucun pour l'instant</option>
             <option value="1">1</option><option value="2">2-3</option><option value="5">4-5</option>
             <option value="8">6-10</option><option value="15">11-20</option><option value="25">20+</option>
           </select>
-          <div class="ob-error" id="err-chatters-count">Ce champ est obligatoire</div>
+          <div class="ob-error" id="err-chatters-count" data-i18n="ob.required">Ce champ est obligatoire</div>
         </div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Marches cibles <span class="req">*</span></label>
+        <label class="ob-label" data-i18n="ob.target_markets">Marches cibles <span class="req">*</span></label>
         <div class="ob-chips" id="ob-markets">
           <button class="ob-chip" data-value="FR">France</button>
           <button class="ob-chip" data-value="US">USA</button>
@@ -291,45 +291,45 @@
           <button class="ob-chip" data-value="LATAM">Amerique Latine</button>
           <button class="ob-chip" data-value="MULTI">Multi-langue</button>
         </div>
-        <div class="ob-error" id="err-markets">Selectionnez au moins un marche</div>
+        <div class="ob-error" id="err-markets" data-i18n="ob.select_market_error">Selectionnez au moins un marche</div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Date de creation de l'agence</label>
+        <label class="ob-label" data-i18n="ob.founded">Date de creation de l'agence</label>
         <input class="ob-input" id="ob-founded" type="month" placeholder="2024-01">
       </div>
     </div>
 
     <!-- Step 3: Contact -->
     <div class="ob-step-content" id="step-3">
-      <div class="ob-step-title">Contact & facturation</div>
-      <div class="ob-step-desc">Informations de contact et de facturation pour votre agence.</div>
+      <div class="ob-step-title" data-i18n="ob.step3_title">Contact & facturation</div>
+      <div class="ob-step-desc" data-i18n="ob.step3_desc">Informations de contact et de facturation pour votre agence.</div>
 
       <div class="ob-row">
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Email de contact <span class="req">*</span></label>
-          <input class="ob-input" id="ob-email" type="email" placeholder="contact@monagence.com">
+          <label class="ob-label" data-i18n="ob.contact_email">Email de contact <span class="req">*</span></label>
+          <input class="ob-input" id="ob-email" type="email" placeholder="contact@monagence.com" data-i18n-placeholder="ob.contact_email_placeholder">
           <div class="ob-error" id="err-email">Email valide requis</div>
         </div>
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Telephone</label>
-          <input class="ob-input" id="ob-phone" type="tel" placeholder="+33 6 12 34 56 78">
+          <label class="ob-label" data-i18n="ob.phone">Telephone</label>
+          <input class="ob-input" id="ob-phone" type="tel" placeholder="+33 6 12 34 56 78" data-i18n-placeholder="ob.phone_placeholder">
         </div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Nom legal de la societe</label>
-        <input class="ob-input" id="ob-legal-name" type="text" placeholder="Ex: Ma Societe SARL">
+        <label class="ob-label" data-i18n="ob.legal_name">Nom legal de la societe</label>
+        <input class="ob-input" id="ob-legal-name" type="text" placeholder="Ex: Ma Societe SARL" data-i18n-placeholder="ob.legal_name_placeholder">
       </div>
       <div class="ob-group">
-        <label class="ob-label">Adresse</label>
-        <input class="ob-input" id="ob-street" type="text" placeholder="Rue" style="margin-bottom:8px">
+        <label class="ob-label" data-i18n="ob.address">Adresse</label>
+        <input class="ob-input" id="ob-street" type="text" placeholder="Rue" style="margin-bottom:8px" data-i18n-placeholder="ob.address_street_placeholder">
         <div class="ob-row" style="margin-bottom:0">
-          <input class="ob-input" id="ob-city" type="text" placeholder="Ville">
-          <input class="ob-input" id="ob-zip" type="text" placeholder="Code postal">
+          <input class="ob-input" id="ob-city" type="text" placeholder="Ville" data-i18n-placeholder="ob.address_city_placeholder">
+          <input class="ob-input" id="ob-zip" type="text" placeholder="Code postal" data-i18n-placeholder="ob.address_zip_placeholder">
         </div>
       </div>
       <div class="ob-row">
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Pays de facturation</label>
+          <label class="ob-label" data-i18n="ob.billing_country">Pays de facturation</label>
           <select class="ob-select" id="ob-address-country">
             <option value="">Identique au pays</option>
             <option value="FR">France</option><option value="US">Etats-Unis</option><option value="UK">Royaume-Uni</option>
@@ -338,29 +338,29 @@
           </select>
         </div>
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Numero TVA / SIRET</label>
-          <input class="ob-input" id="ob-vat" type="text" placeholder="FR 12345678901">
+          <label class="ob-label" data-i18n="ob.vat">Numero TVA / SIRET</label>
+          <input class="ob-input" id="ob-vat" type="text" placeholder="FR 12345678901" data-i18n-placeholder="ob.vat_placeholder">
         </div>
       </div>
     </div>
 
     <!-- Step 4: Preferences -->
     <div class="ob-step-content" id="step-4">
-      <div class="ob-step-title">Preferences</div>
-      <div class="ob-step-desc">Configurez les parametres par defaut de votre espace de travail.</div>
+      <div class="ob-step-title" data-i18n="ob.step4_title">Preferences</div>
+      <div class="ob-step-desc" data-i18n="ob.step4_desc">Configurez les parametres par defaut de votre espace de travail.</div>
 
       <div class="ob-row">
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Heure de debut</label>
+          <label class="ob-label" data-i18n="ob.work_start">Heure de debut</label>
           <input class="ob-input" id="ob-work-start" type="time" value="09:00">
         </div>
         <div class="ob-group" style="margin-bottom:0">
-          <label class="ob-label">Heure de fin</label>
+          <label class="ob-label" data-i18n="ob.work_end">Heure de fin</label>
           <input class="ob-input" id="ob-work-end" type="time" value="18:00">
         </div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Jours travailles</label>
+        <label class="ob-label" data-i18n="ob.work_days">Jours travailles</label>
         <div class="ob-days" id="ob-work-days">
           <button class="ob-day selected" data-value="lundi">Lun</button>
           <button class="ob-day selected" data-value="mardi">Mar</button>
@@ -372,7 +372,7 @@
         </div>
       </div>
       <div class="ob-group">
-        <label class="ob-label">Langue de l'interface</label>
+        <label class="ob-label" data-i18n="ob.language">Langue de l'interface</label>
         <select class="ob-select" id="ob-language">
           <option value="fr">Francais</option>
           <option value="en">English</option>
@@ -380,8 +380,8 @@
       </div>
       <div class="ob-toggle-row">
         <div>
-          <div class="ob-toggle-label">Notifications par email</div>
-          <div class="ob-toggle-sub">Recevez des alertes et rapports par email</div>
+          <div class="ob-toggle-label" data-i18n="ob.notifications">Notifications par email</div>
+          <div class="ob-toggle-sub" data-i18n="ob.notifications_desc">Recevez des alertes et rapports par email</div>
         </div>
         <label class="ob-toggle">
           <input type="checkbox" id="ob-email-notif" checked>
@@ -392,20 +392,21 @@
 
     <!-- Step 5: Recap -->
     <div class="ob-step-content" id="step-5">
-      <div class="ob-step-title">Tout est pret !</div>
-      <div class="ob-step-desc">Verifiez vos informations avant de lancer votre dashboard.</div>
+      <div class="ob-step-title" data-i18n="ob.step5_title">Tout est pret !</div>
+      <div class="ob-step-desc" data-i18n="ob.step5_desc">Verifiez vos informations avant de lancer votre dashboard.</div>
       <div id="recap-content"></div>
     </div>
 
     <!-- Actions -->
     <div class="ob-actions">
-      <button class="ob-btn ob-btn-back" id="btn-back" style="display:none" onclick="prevStep()">Precedent</button>
+      <button class="ob-btn ob-btn-back" id="btn-back" style="display:none" onclick="prevStep()" data-i18n="common.previous">Precedent</button>
       <div style="flex:1"></div>
-      <button class="ob-btn ob-btn-next" id="btn-next" onclick="nextStep()">Continuer</button>
+      <button class="ob-btn ob-btn-next" id="btn-next" onclick="nextStep()" data-i18n="common.continue">Continuer</button>
     </div>
   </div>
 </div>
 
+<script src="/js/i18n.js"></script>
 <script>
 let currentStep = 1;
 const totalSteps = 5;

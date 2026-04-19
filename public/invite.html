@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#7C3AED">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-<title>Fuzion Pilot — Activer votre compte</title>
+<title data-i18n="app.invite_title">Fuzion Pilot — Activer votre compte</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -196,8 +196,8 @@
 <div class="container">
   <div class="logo">
     <img src="/assets/fuzion-pilot-logo.svg" alt="Fuzion Pilot" class="logo-icon" style="padding:0;font-size:0">
-    <h1>Fuzion Pilot</h1>
-    <p>Activez votre compte</p>
+    <h1 data-i18n="invite.title">Fuzion Pilot</h1>
+    <p data-i18n="invite.subtitle">Activez votre compte</p>
   </div>
 
   <div class="card">
@@ -206,39 +206,40 @@
 
     <!-- Token invalid state -->
     <div class="token-invalid" id="token-invalid">
-      <h2>Lien invalide ou expire</h2>
-      <p>Ce lien d'activation n'est plus valide.<br>Contactez <a href="mailto:contact@fuzionpilot.com">contact@fuzionpilot.com</a> pour en obtenir un nouveau.</p>
+      <h2 data-i18n="invite.link_invalid">Lien invalide ou expire</h2>
+      <p data-i18n="invite.link_invalid_desc">Ce lien d'activation n'est plus valide.<br>Contactez <a href="mailto:contact@fuzionpilot.com">contact@fuzionpilot.com</a> pour en obtenir un nouveau.</p>
     </div>
 
     <!-- Registration form -->
     <form id="invite-form" onsubmit="handleRegister(event)">
       <div class="form-group">
-        <label class="form-label">Nom d'affichage</label>
-        <input type="text" class="form-input" id="display_name" placeholder="Ex: Marie Dupont" required>
+        <label class="form-label" data-i18n="invite.display_name">Nom d'affichage</label>
+        <input type="text" class="form-input" id="display_name" placeholder="Ex: Marie Dupont" data-i18n-placeholder="invite.display_name_placeholder" required>
       </div>
       <div class="form-group">
-        <label class="form-label">Nom d'utilisateur</label>
-        <input type="text" class="form-input" id="username" placeholder="Ex: marie" required autocomplete="username">
-        <div class="hint">Utilise pour se connecter. Pas d'espaces ni de caracteres speciaux.</div>
+        <label class="form-label" data-i18n="invite.username">Nom d'utilisateur</label>
+        <input type="text" class="form-input" id="username" placeholder="Ex: marie" data-i18n-placeholder="invite.username_placeholder" required autocomplete="username">
+        <div class="hint" data-i18n="invite.username_hint">Utilise pour se connecter. Pas d'espaces ni de caracteres speciaux.</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Mot de passe</label>
-        <input type="password" class="form-input" id="password" placeholder="Minimum 8 caracteres" required minlength="8" autocomplete="new-password">
+        <label class="form-label" data-i18n="invite.password">Mot de passe</label>
+        <input type="password" class="form-input" id="password" placeholder="Minimum 8 caracteres" data-i18n-placeholder="invite.password_placeholder" required minlength="8" autocomplete="new-password">
       </div>
-      <button type="submit" class="btn-submit" id="submit-btn">Activer mon compte</button>
+      <button type="submit" class="btn-submit" id="submit-btn" data-i18n="invite.submit">Activer mon compte</button>
     </form>
 
     <!-- Success state -->
     <div class="success-msg" id="success-msg">
-      <h2>Compte active !</h2>
-      <p>Votre dashboard est pret. Vous allez etre redirige...</p>
-      <a href="/dashboard.html">Acceder au dashboard</a>
+      <h2 data-i18n="invite.success_title">Compte active !</h2>
+      <p data-i18n="invite.success_desc">Votre dashboard est pret. Vous allez etre redirige...</p>
+      <a href="/dashboard.html" data-i18n="invite.success_cta">Acceder au dashboard</a>
     </div>
   </div>
 
-  <div class="footer">&copy; 2026 Fuzion Pilot</div>
+  <div class="footer" data-i18n="invite.footer">&copy; 2026 Fuzion Pilot</div>
 </div>
 
+<script src="/js/i18n.js"></script>
 <script>
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get('token');
