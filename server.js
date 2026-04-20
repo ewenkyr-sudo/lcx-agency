@@ -3123,9 +3123,14 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
     let userFilter, params;
 
     if (isOwner) {
-      // Admins see ALL agency data (including assistants)
-      params = [req.user.agency_id];
-      userFilter = 'u.agency_id = $1';
+      // Admin sees own outreach: leads where user_id = admin OR added_by = admin,
+      // plus leads added by outreach assistants assigned to admin's students
+      const sharedIds = await getSharedOutreachIds(req.user.id);
+      // Get all outreach users in the agency (assistants)
+      const outreachUsers = (await pool.query("SELECT id FROM users WHERE agency_id = $1 AND role = 'outreach'", [req.user.agency_id])).rows.map(r => r.id);
+      const allIds = [...new Set([...sharedIds, ...outreachUsers])];
+      params = [req.user.agency_id, allIds];
+      userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
     } else {
       // Students/assistants see only their own data + paired users' data
       const sharedIds = await getSharedOutreachIds(req.user.id);
