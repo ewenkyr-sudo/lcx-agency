@@ -1143,3 +1143,106 @@ async function initStudentSections() {
     document.querySelector('[data-section="student-home"]')?.classList.add('active');
   }
 }
+
+// ========== STUDENT ANALYTICS ==========
+var _studentAnalyticsDays = 30;
+
+async function renderStudentAnalytics() {
+  var c = document.getElementById('section-student-analytics');
+  if (!c) return;
+
+  c.innerHTML = '<div class="page-header"><div><div class="page-title">Analytics</div><div class="page-subtitle">Statistiques de mon outreach</div></div></div>'
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Leads & DMs par jour</h3>'
+    + '<div style="display:flex;gap:4px" id="student-daily-btns">'
+    + '<button class="filter-chip" onclick="loadStudentDailyChart(1,this)">1j</button>'
+    + '<button class="filter-chip" onclick="loadStudentDailyChart(2,this)">2j</button>'
+    + '<button class="filter-chip" onclick="loadStudentDailyChart(7,this)">7j</button>'
+    + '<button class="filter-chip" onclick="loadStudentDailyChart(14,this)">14j</button>'
+    + '<button class="filter-chip active" onclick="loadStudentDailyChart(30,this)">30j</button>'
+    + '<button class="filter-chip" onclick="loadStudentDailyChart(60,this)">60j</button>'
+    + '</div></div>'
+    + '<div style="position:relative;height:280px"><canvas id="chart-sa-daily"></canvas></div>'
+    + '</div>'
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Activité par heure</h3>'
+    + '<div style="position:relative;height:220px"><canvas id="chart-sa-hourly"></canvas></div>'
+    + '</div>'
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Qui a ajouté les leads</h3>'
+    + '<div id="sa-by-person"></div>'
+    + '</div>';
+
+  loadStudentDailyChart(30);
+}
+
+async function loadStudentDailyChart(days, btn) {
+  _studentAnalyticsDays = days;
+  if (btn) {
+    document.querySelectorAll('#student-daily-btns .filter-chip').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  }
+  try {
+    var res = await fetch('/api/analytics/daily?days=' + days, { credentials: 'include' });
+    var data = await res.json();
+    var daily = data.daily || [];
+    var hourlyData = data.hourly || [];
+    var byPerson = data.byPerson || [];
+
+    // Daily chart
+    if (window._saDaily) window._saDaily.destroy();
+    var ctx = document.getElementById('chart-sa-daily');
+    if (ctx && daily.length > 0) {
+      window._saDaily = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: daily.map(function(d) { var dt = new Date(d.day); return dt.getDate() + '/' + (dt.getMonth()+1); }),
+          datasets: [
+            { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
+            { label: 'DMs', data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 16 } } } }
+      });
+    }
+
+    // Hourly chart
+    if (window._saHourly) window._saHourly.destroy();
+    var hCtx = document.getElementById('chart-sa-hourly');
+    if (hCtx) {
+      var hours = Array.from({length: 24}, function(_, i) { return i; });
+      var hLeads = hours.map(function(h) { var f = hourlyData.find(function(x) { return parseInt(x.hour) === h; }); return f ? parseInt(f.leads) : 0; });
+      var hDms = hours.map(function(h) { var f = hourlyData.find(function(x) { return parseInt(x.hour) === h; }); return f ? parseInt(f.dms) : 0; });
+      window._saHourly = new Chart(hCtx, {
+        type: 'bar',
+        data: {
+          labels: hours.map(function(h) { return h + 'h'; }),
+          datasets: [
+            { label: 'Leads', data: hLeads, backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 3 },
+            { label: 'DMs', data: hDms, backgroundColor: 'rgba(34,211,238,0.5)', borderRadius: 3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 12 } } } }
+      });
+    }
+
+    // By person
+    var personDiv = document.getElementById('sa-by-person');
+    if (personDiv) {
+      if (byPerson.length === 0) {
+        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">Aucune donnée</div>';
+      } else {
+        var totalLeads = byPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
+        personDiv.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th><th>%</th></tr></thead><tbody>'
+          + byPerson.map(function(p) {
+            var pct = totalLeads > 0 ? ((parseInt(p.leads) / totalLeads) * 100).toFixed(1) : '0';
+            return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
+              + '<td data-label="Leads" class="mc-half">' + p.leads + '</td>'
+              + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td>'
+              + '<td data-label="%" class="mc-half" style="color:var(--accent)">' + pct + '%</td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+    }
+  } catch(e) {}
+}

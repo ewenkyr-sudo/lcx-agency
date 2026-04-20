@@ -1574,6 +1574,9 @@
     <div class="nav-item" data-section="student-objectives" onclick="switchSection(event)">
       <span class="nav-icon">🎯</span> <span data-i18n="nav.student_objectives">Objectifs</span>
     </div>
+    <div class="nav-item" data-section="student-analytics" onclick="switchSection(event)">
+      <span class="nav-icon">📊</span> <span data-i18n="nav.analytics">Analytics</span>
+    </div>
   </div>
 
   <div id="nav-admin" class="nav-section" style="display:none">
@@ -1986,6 +1989,7 @@
   <div class="section" id="section-student-messages"></div>
   <div class="section" id="section-student-resources"></div>
   <div class="section" id="section-student-objectives"></div>
+  <div class="section" id="section-student-analytics"></div>
 
   <!-- ANALYTICS SECTION -->
   <div class="section" id="section-analytics">
@@ -2816,6 +2820,7 @@ function switchSection(e) {
     'student-messages': renderStudentMessages,
     'student-resources': renderStudentResources,
     'student-objectives': renderStudentObjectives,
+    'student-analytics': renderStudentAnalytics,
     'analytics': renderAnalytics,
     'finance': renderFinance,
     'activity-log': renderActivityLog,
