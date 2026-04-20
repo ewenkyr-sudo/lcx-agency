@@ -3230,8 +3230,14 @@ wss.on('connection', (ws) => {
   });
 });
 
-const { updateAllFollowers } = require('./services/scraping');
+const { updateAllFollowers, setBroadcast } = require('./services/scraping');
 const { setupCronJobs } = require('./services/cron');
+// Route for manual follower refresh (was in services/scraping.js)
+app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, res) => {
+  updateAllFollowers();
+  res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
+});
+
 // ============ CATCH-ALL (must be last route) ============
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
@@ -3243,6 +3249,9 @@ async function start() {
   await initDB();
   await seedData();
   await migrateToMultiAgency();
+
+  // Pass broadcast to scraping module
+  setBroadcast(broadcast);
 
   // Schedule WhatsApp reports & alerts via node-cron
   await setupCronJobs();

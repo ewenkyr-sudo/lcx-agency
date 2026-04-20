@@ -1,6 +1,10 @@
 const https = require('https');
 const pool = require('../db/pool');
 
+// broadcast is set by server.js after WS init
+let broadcast = function() {};
+function setBroadcast(fn) { broadcast = fn; }
+
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }, (res) => {
@@ -99,11 +103,6 @@ async function updateAllFollowers() {
   }
 }
 
-// Route pour forcer un refresh des followers (admin)
-app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, res) => {
-  updateAllFollowers(); // lancer en arrière-plan
-  res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
-});
+module.exports = { updateAllFollowers, setBroadcast };
 
 
-module.exports = { updateAllFollowers };
