@@ -3123,42 +3123,60 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
     let userFilter, params;
 
     if (isOwner) {
-      // Admin sees all agency leads with detail of who added what
-      params = [req.user.agency_id];
-      userFilter = 'u.agency_id = $1';
-    } else {
-      // Students see leads on THEIR outreach (user_id = them or pairs),
-      // including leads added by assistants — but only on their outreach, not others
-      const sharedIds = await getSharedOutreachIds(req.user.id);
-      params = [req.user.agency_id, sharedIds];
-      userFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
+      // Admin: query outreach_leads table (their own outreach page)
+      const aid = req.user.agency_id;
+      const { rows: daily } = await pool.query(`
+        SELECT ol.created_at::date as day, COUNT(*) as leads,
+          COUNT(*) FILTER (WHERE ol.status != 'to-send') as dms
+        FROM outreach_leads ol WHERE (ol.agency_id = $1 OR ol.agency_id IS NULL)
+          AND ol.created_at > NOW() - INTERVAL '${days} days'
+        GROUP BY day ORDER BY day
+      `, [aid]);
+
+      const { rows: hourly } = await pool.query(`
+        SELECT EXTRACT(HOUR FROM ol.created_at) as hour, COUNT(*) as leads,
+          COUNT(*) FILTER (WHERE ol.status != 'to-send') as dms
+        FROM outreach_leads ol WHERE (ol.agency_id = $1 OR ol.agency_id IS NULL)
+          AND ol.created_at > NOW() - INTERVAL '${days} days'
+        GROUP BY hour ORDER BY hour
+      `, [aid]);
+
+      const { rows: byPerson } = await pool.query(`
+        SELECT u.display_name as name, ol.user_id,
+          COUNT(*) as leads, COUNT(*) FILTER (WHERE ol.status != 'to-send') as dms
+        FROM outreach_leads ol LEFT JOIN users u ON ol.user_id = u.id
+        WHERE (ol.agency_id = $1 OR ol.agency_id IS NULL)
+          AND ol.created_at > NOW() - INTERVAL '${days} days'
+        GROUP BY u.display_name, ol.user_id ORDER BY leads DESC
+      `, [aid]);
+
+      return res.json({ daily, hourly, byPerson });
     }
 
-    // Daily totals
+    // Students: query student_leads table (their own outreach)
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const params = [req.user.agency_id, sharedIds];
+    const userFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
+
     const { rows: daily } = await pool.query(`
-      SELECT sl.created_at::date as day,
-        COUNT(*) as leads,
+      SELECT sl.created_at::date as day, COUNT(*) as leads,
         COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
       WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY day ORDER BY day
     `, params);
 
-    // Hourly breakdown
     const { rows: hourly } = await pool.query(`
-      SELECT EXTRACT(HOUR FROM sl.created_at) as hour,
-        COUNT(*) as leads,
+      SELECT EXTRACT(HOUR FROM sl.created_at) as hour, COUNT(*) as leads,
         COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
       WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY hour ORDER BY hour
     `, params);
 
-    // By added_by (who added the leads)
     const { rows: byPerson } = await pool.query(`
       SELECT ab.display_name as name, sl.added_by as user_id,
-        COUNT(*) as leads,
-        COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
+        COUNT(*) as leads, COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
       LEFT JOIN users ab ON sl.added_by = ab.id
       WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
