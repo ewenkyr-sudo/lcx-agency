@@ -3154,36 +3154,36 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
     }
 
     // Students: query student_leads table (their own outreach)
-    const sharedIds = await getSharedOutreachIds(req.user.id);
-    const params = [req.user.agency_id, sharedIds];
-    const userFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
+    var sIds = await getSharedOutreachIds(req.user.id);
+    var sParams = [req.user.agency_id, sIds];
+    var sFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
 
-    const { rows: daily } = await pool.query(`
+    var sDaily = (await pool.query(`
       SELECT sl.created_at::date as day, COUNT(*) as leads,
         COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
-      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      WHERE ${sFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY day ORDER BY day
-    `, params);
+    `, sParams)).rows;
 
-    const { rows: hourly } = await pool.query(`
+    var sHourly = (await pool.query(`
       SELECT EXTRACT(HOUR FROM sl.created_at) as hour, COUNT(*) as leads,
         COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
-      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      WHERE ${sFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY hour ORDER BY hour
-    `, params);
+    `, sParams)).rows;
 
-    const { rows: byPerson } = await pool.query(`
+    var sByPerson = (await pool.query(`
       SELECT ab.display_name as name, sl.added_by as user_id,
         COUNT(*) as leads, COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
       FROM student_leads sl JOIN users u ON sl.user_id = u.id
       LEFT JOIN users ab ON sl.added_by = ab.id
-      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      WHERE ${sFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY ab.display_name, sl.added_by ORDER BY leads DESC
-    `, params);
+    `, sParams)).rows;
 
-    res.json({ daily, hourly, byPerson });
+    res.json({ daily: sDaily, hourly: sHourly, byPerson: sByPerson });
   } catch(e) { res.json({ daily: [], hourly: [], byPerson: [] }); }
 });
 
