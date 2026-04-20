@@ -3150,7 +3150,16 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
         GROUP BY u.display_name, ol.user_id ORDER BY leads DESC
       `, [aid]);
 
-      return res.json({ daily, hourly, byPerson });
+      const { rows: todayByPerson } = await pool.query(`
+        SELECT u.display_name as name, ol.user_id,
+          COUNT(*) as leads, COUNT(*) FILTER (WHERE ol.status != 'to-send') as dms
+        FROM outreach_leads ol LEFT JOIN users u ON ol.user_id = u.id
+        WHERE (ol.agency_id = $1 OR ol.agency_id IS NULL)
+          AND ol.created_at::date = CURRENT_DATE
+        GROUP BY u.display_name, ol.user_id ORDER BY leads DESC
+      `, [aid]);
+
+      return res.json({ daily, hourly, byPerson, todayByPerson });
     }
 
     // Students: query student_leads table (their own outreach)
@@ -3183,7 +3192,16 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
       GROUP BY ab.display_name, sl.added_by ORDER BY leads DESC
     `, sParams)).rows;
 
-    res.json({ daily: sDaily, hourly: sHourly, byPerson: sByPerson });
+    var sTodayByPerson = (await pool.query(`
+      SELECT ab.display_name as name, sl.added_by as user_id,
+        COUNT(*) as leads, COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
+      FROM student_leads sl JOIN users u ON sl.user_id = u.id
+      LEFT JOIN users ab ON sl.added_by = ab.id
+      WHERE ${sFilter} AND sl.created_at::date = CURRENT_DATE
+      GROUP BY ab.display_name, sl.added_by ORDER BY leads DESC
+    `, sParams)).rows;
+
+    res.json({ daily: sDaily, hourly: sHourly, byPerson: sByPerson, todayByPerson: sTodayByPerson });
   } catch(e) { res.json({ daily: [], hourly: [], byPerson: [] }); }
 });
 

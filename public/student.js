@@ -1153,6 +1153,10 @@ async function renderStudentAnalytics() {
 
   c.innerHTML = '<div class="page-header"><div><div class="page-title">Analytics</div><div class="page-subtitle">Statistiques de mon outreach</div></div></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Aujourd\'hui</h3>'
+    + '<div id="sa-today-stats"><div style="color:var(--text3);font-size:13px">Chargement...</div></div>'
+    + '</div>'
+    + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
     + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Leads & DMs par jour</h3>'
     + '<div style="display:flex;gap:4px" id="student-daily-btns">'
@@ -1189,6 +1193,24 @@ async function loadStudentDailyChart(days, btn) {
     var daily = data.daily || [];
     var hourlyData = data.hourly || [];
     var byPerson = data.byPerson || [];
+    var todayByPerson = data.todayByPerson || [];
+
+    // Today stats
+    var todayDiv = document.getElementById('sa-today-stats');
+    if (todayDiv) {
+      var todayLeads = todayByPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
+      var todayDms = todayByPerson.reduce(function(s, p) { return s + parseInt(p.dms); }, 0);
+      todayDiv.innerHTML = '<div class="stats-grid" style="margin-bottom:12px">'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">Leads aujourd\'hui</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">DMs aujourd\'hui</div></div>'
+        + '</div>'
+        + (todayByPerson.length > 0 ? '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th></tr></thead><tbody>'
+        + todayByPerson.map(function(p) {
+          return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
+            + '<td data-label="Leads" class="mc-half" style="color:var(--accent)">' + p.leads + '</td>'
+            + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">Aucune activité aujourd\'hui</div>');
+    }
 
     // Daily chart
     if (window._saDaily) window._saDaily.destroy();
