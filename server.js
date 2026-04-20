@@ -3123,14 +3123,11 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
     let userFilter, params;
 
     if (isOwner) {
-      // Admin sees own outreach: leads where user_id = admin OR added_by = admin,
-      // plus leads added by outreach assistants assigned to admin's students
+      // Admin sees only leads on HIS outreach (user_id = him),
+      // no matter who added them (him or his assistants)
       const sharedIds = await getSharedOutreachIds(req.user.id);
-      // Get all outreach users in the agency (assistants)
-      const outreachUsers = (await pool.query("SELECT id FROM users WHERE agency_id = $1 AND role = 'outreach'", [req.user.agency_id])).rows.map(r => r.id);
-      const allIds = [...new Set([...sharedIds, ...outreachUsers])];
-      params = [req.user.agency_id, allIds];
-      userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
+      params = [req.user.agency_id, sharedIds];
+      userFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
     } else {
       // Students see leads on THEIR outreach (user_id = them or pairs),
       // including leads added by assistants — but only on their outreach, not others
