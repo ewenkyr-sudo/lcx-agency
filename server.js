@@ -3569,8 +3569,6 @@ app.delete('/api/recruitment/recruiters/:id', authMiddleware, adminOnly, async (
 // Leads
 app.get('/api/recruitment/leads', authMiddleware, async (req, res) => {
   try {
-    // If user is a recruiter, only show their leads; if admin, show all
-    const recruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2', [req.user.id, req.user.agency_id])).rows[0];
     const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
     let query = `SELECT rl.*, r.commission_percentage, u.display_name as recruiter_name
       FROM recruitment_leads rl
@@ -3578,11 +3576,14 @@ app.get('/api/recruitment/leads', authMiddleware, async (req, res) => {
       JOIN users u ON r.user_id = u.id
       WHERE rl.agency_id = $1`;
     const params = [req.user.agency_id];
-    if (!isOwner && recruiter) {
-      query += ' AND rl.recruiter_id = $2';
-      params.push(recruiter.id);
-    } else if (!isOwner) {
-      return res.json([]);
+    if (!isOwner) {
+      // Get paired user IDs then find all their recruiter IDs
+      const sharedIds = await getSharedOutreachIds(req.user.id);
+      const recruiterRows = (await pool.query('SELECT id FROM recruiters WHERE user_id = ANY($1) AND agency_id = $2', [sharedIds, req.user.agency_id])).rows;
+      if (recruiterRows.length === 0) return res.json([]);
+      const recruiterIds = recruiterRows.map(r => r.id);
+      params.push(recruiterIds);
+      query += ' AND rl.recruiter_id = ANY($2)';
     }
     query += ' ORDER BY rl.created_at DESC';
     const { rows } = await pool.query(query, params);
