@@ -3119,10 +3119,19 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
-    // Everyone sees only their own data + paired users' data
-    const sharedIds = await getSharedOutreachIds(req.user.id);
-    const params = [req.user.agency_id, sharedIds];
-    const userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
+    const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
+    let userFilter, params;
+
+    if (isOwner) {
+      // Admins see ALL agency data (including assistants)
+      params = [req.user.agency_id];
+      userFilter = 'u.agency_id = $1';
+    } else {
+      // Students/assistants see only their own data + paired users' data
+      const sharedIds = await getSharedOutreachIds(req.user.id);
+      params = [req.user.agency_id, sharedIds];
+      userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
+    }
 
     // Daily totals
     const { rows: daily } = await pool.query(`
