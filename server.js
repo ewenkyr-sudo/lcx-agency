@@ -3806,6 +3806,40 @@ app.put('/api/platform/agencies/:id', authMiddleware, platformAdminOnly, async (
   res.json({ ok: true });
 });
 
+app.delete('/api/platform/agencies/:id', authMiddleware, platformAdminOnly, async (req, res) => {
+  const agencyId = parseInt(req.params.id);
+  try {
+    // Delete all agency data in order (respect foreign keys)
+    await pool.query('DELETE FROM recruitment_leads WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM recruiters WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM recruitment_settings WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM student_revenue WHERE user_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM student_models WHERE user_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM student_recruits WHERE user_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM student_leads WHERE user_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM call_requests WHERE user_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM activity_log WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM planning_shifts WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM tasks WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM chatter_shifts WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM outreach_leads WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM settings WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM team_members WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM students WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM models WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM objectives WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM messages WHERE sender_id IN (SELECT id FROM users WHERE agency_id = $1) OR receiver_id IN (SELECT id FROM users WHERE agency_id = $1)', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM invitation_tokens WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('UPDATE agencies SET owner_id = NULL WHERE id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM users WHERE agency_id = $1', [agencyId]).catch(() => {});
+    await pool.query('DELETE FROM agencies WHERE id = $1', [agencyId]);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Delete agency error:', e);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
 app.get('/api/platform/stats', authMiddleware, platformAdminOnly, async (req, res) => {
   const agencies = (await pool.query('SELECT COUNT(*) as count FROM agencies')).rows[0].count;
   const users = (await pool.query('SELECT COUNT(*) as count FROM users')).rows[0].count;

@@ -195,6 +195,7 @@ async function loadData() {
             ? `<button class="btn btn-red" onclick="toggleAgency(${a.id}, false)">Desactiver</button>`
             : `<button class="btn btn-green" onclick="toggleAgency(${a.id}, true)">Activer</button>`
           }
+          <button class="btn btn-red" onclick="deleteAgency(${a.id}, '${a.name.replace(/'/g, "\\'")}')">Supprimer</button>
         </td>
       </tr>
     `).join('');
@@ -211,6 +212,17 @@ async function toggleAgency(id, active) {
     body: JSON.stringify({ active })
   });
   loadData();
+}
+
+async function deleteAgency(id, name) {
+  if (!confirm('SUPPRIMER l\'agence "' + name + '" et TOUTES ses donnees (utilisateurs, leads, modeles, etc.) ?\n\nCette action est IRREVERSIBLE.')) return;
+  if (!confirm('Confirmation finale : supprimer definitivement "' + name + '" ?')) return;
+  const res = await fetch('/api/platform/agencies/' + id, { method: 'DELETE', credentials: 'include' });
+  if (res.ok) {
+    loadData();
+  } else {
+    alert('Erreur lors de la suppression');
+  }
 }
 
 // Check auth
