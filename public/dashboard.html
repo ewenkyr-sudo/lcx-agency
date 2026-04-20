@@ -2139,14 +2139,17 @@
         <!-- TAB: Équipe -->
         <div class="settings-pane" id="settings-pane-equipe">
           <div class="panel" style="padding:24px;margin-bottom:20px">
-            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Utilisateurs</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <h3 style="font-size:16px;font-weight:700;color:var(--accent2)">Utilisateurs</h3>
+              <div id="email-stats-badge" style="font-size:11px;color:var(--text3)"></div>
+            </div>
             <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="openModal('add-user')">+ Ajouter un utilisateur</button>
             </div>
             <div style="overflow-x:auto">
               <table class="data-table table mobile-cards" id="settings-users-tbl" style="width:100%">
                 <thead><tr>
-                  <th>Photo</th><th>Nom</th><th>Mdp actuel</th><th>Rôle</th><th>Nouveau mdp</th><th>Actions</th>
+                  <th>Photo</th><th>Nom</th><th>Mdp actuel</th><th>Rôle</th><th>Email</th><th>Nouveau mdp</th><th>Actions</th>
                 </tr></thead>
                 <tbody id="settings-users-table"></tbody>
               </table>
@@ -6533,6 +6536,15 @@ function renderSettings() {
     if (el && data.email) el.value = data.email;
   }).catch(function() {});
 
+  // Email stats badge
+  var withEmail = allUsers.filter(function(u) { return u.email; }).length;
+  var withoutEmail = allUsers.length - withEmail;
+  var badge = document.getElementById('email-stats-badge');
+  if (badge) {
+    badge.innerHTML = '<span style="color:var(--green)">' + withEmail + ' avec email</span> · '
+      + (withoutEmail > 0 ? '<span style="color:var(--red)">' + withoutEmail + ' sans email</span>' : '<span style="color:var(--green)">tous ont un email</span>');
+  }
+
   // Agency settings
   const agName = agencySettings.agency_name || 'Fuzion Pilot';
   document.getElementById('setting-agency-name').value = agName;
@@ -6565,6 +6577,13 @@ function renderSettings() {
         <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
+      </td>
+      <td data-label="Email" class="mc-half">
+        <div style="display:flex;gap:4px;align-items:center;width:100%">
+          <input type="email" id="email-user-${u.id}" class="form-input" style="padding:5px 8px;font-size:11px;flex:1" placeholder="email@..." value="${u.email || ''}">
+          <button class="btn btn-primary" style="padding:5px 8px;font-size:10px" onclick="saveUserEmailAdmin(${u.id})">OK</button>
+        </div>
+        ${!u.email ? '<span style="font-size:10px;color:var(--red);display:block;margin-top:2px">Email manquant</span>' : ''}
       </td>
       <td data-label="Nouveau mdp" class="mc-half">
         <div style="display:flex;gap:6px;align-items:center;width:100%">
@@ -6788,6 +6807,17 @@ async function changeUserRole(userId, newRole) {
     credentials: 'include',
     body: JSON.stringify({ role: newRole })
   });
+}
+
+async function saveUserEmailAdmin(userId) {
+  var email = document.getElementById('email-user-' + userId).value.trim();
+  if (!email) return showToast('Email requis', 'error');
+  var res = await fetch('/api/users/' + userId + '/email', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify({ email: email })
+  });
+  if (res.ok) { showToast('Email sauvegardé !', 'success'); loadAllData(); }
+  else { var d = await res.json(); showToast(d.error || 'Erreur', 'error'); }
 }
 
 async function changeUserPassword(userId) {

@@ -786,6 +786,24 @@ async function initDB() {
     await pool.query(`INSERT INTO recruitment_settings (agency_id, enabled, coaching_price)
       SELECT id, true, 1500 FROM agencies
       ON CONFLICT (agency_id) DO UPDATE SET enabled = true`).catch(function() {});
+
+    // Index on users.email
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)').catch(function() {});
+
+    // Migrate emails from invitation_tokens to users where missing
+    try {
+      const migrated = await pool.query(`
+        UPDATE users u SET email = it.email
+        FROM invitation_tokens it
+        JOIN agencies a ON it.agency_id = a.id
+        WHERE u.agency_id = a.id
+          AND u.role = 'super_admin'
+          AND u.email IS NULL
+          AND it.used_at IS NOT NULL
+          AND it.email IS NOT NULL
+      `);
+      if (migrated.rowCount > 0) console.log('[MIGRATION] Emails migrés depuis invitation_tokens:', migrated.rowCount);
+    } catch(e) {}
   } catch(e) {}
 }
 
@@ -1141,11 +1159,11 @@ app.post('/api/invite/register', rateLimit({
     );
     const agencyId = agencyRows[0].id;
 
-    // Create owner user
+    // Create owner user (with email from invitation token)
     const hash = bcrypt.hashSync(password, 10);
     const { rows: userRows } = await pool.query(
-      'INSERT INTO users (username, password, display_name, role, agency_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [username.trim(), hash, display_name.trim(), 'super_admin', agencyId]
+      'INSERT INTO users (username, password, display_name, role, agency_id, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [username.trim(), hash, display_name.trim(), 'super_admin', agencyId, invite.email || null]
     );
     const userId = userRows[0].id;
 
@@ -1269,7 +1287,9 @@ app.post('/api/forgot-password', forgotPasswordRL, async (req, res) => {
   if (!username) return res.json({ ok: true, message: 'Si ce compte existe, un email a été envoyé.' });
 
   try {
-    const user = (await pool.query('SELECT id, email, display_name, agency_id FROM users WHERE LOWER(username) = LOWER($1)', [username.trim()])).rows[0];
+    // Search by username OR email
+    const input = username.trim();
+    const user = (await pool.query('SELECT id, email, display_name, agency_id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [input])).rows[0];
     if (!user || !user.email) {
       // Try to get email from agency contact_email
       let email = null;
@@ -1379,7 +1399,7 @@ app.patch('/api/agency/language', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, email, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.user.agency_id]);
   res.json(rows);
 });
 
@@ -1720,6 +1740,16 @@ app.put('/api/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/display_name', authMiddleware, adminOnly, async (req, res) => {
   const { display_name } = req.body;
   await pool.query('UPDATE users SET display_name = $1 WHERE id = $2 AND agency_id = $3', [display_name, req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+app.put('/api/users/:id/email', authMiddleware, adminOnly, async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email invalide' });
+  // Check uniqueness within agency
+  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email, req.user.agency_id, req.params.id])).rows[0];
+  if (exists) return res.status(409).json({ error: 'Email déjà utilisé par un autre membre' });
+  await pool.query('UPDATE users SET email = $1 WHERE id = $2 AND agency_id = $3', [email, req.params.id, req.user.agency_id]);
   res.json({ ok: true });
 });
 
