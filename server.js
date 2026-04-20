@@ -1473,6 +1473,12 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
         WHERE (t.agency_id = $1 OR t.agency_id IS NULL) ${orderBy}`;
       params = [aid];
     }
+  } else if (req.user.role === 'student') {
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
+      FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
+      WHERE (t.assigned_to_id = ANY($1) OR t.created_by = ANY($1)) AND (t.agency_id = $2 OR t.agency_id IS NULL) ${orderBy}`;
+    params = [sharedIds, aid];
   } else {
     query = `SELECT t.*, u.display_name as assigned_name, c.display_name as creator_name
       FROM tasks t LEFT JOIN users u ON t.assigned_to_id = u.id LEFT JOIN users c ON t.created_by = c.id
@@ -2098,7 +2104,8 @@ app.delete('/api/call-requests/:id', authMiddleware, async (req, res) => {
 // ============ STUDENT RECRUITS (modèles recrutées) ============
 app.get('/api/student-recruits', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
-    const { rows } = await pool.query('SELECT * FROM student_recruits WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const { rows } = await pool.query('SELECT * FROM student_recruits WHERE user_id = ANY($1) ORDER BY created_at DESC', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
@@ -2601,7 +2608,8 @@ app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
 // ============ STUDENT MODELS ============
 app.get('/api/student-models', authMiddleware, async (req, res) => {
   if (req.user.role === 'student') {
-    const { rows } = await pool.query('SELECT * FROM student_models WHERE user_id = $1 ORDER BY name', [req.user.id]);
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const { rows } = await pool.query('SELECT * FROM student_models WHERE user_id = ANY($1) ORDER BY name', [sharedIds]);
     return res.json(rows);
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
@@ -2647,9 +2655,14 @@ app.delete('/api/student-models/:id', authMiddleware, async (req, res) => {
 
 // ============ STUDENT REVENUE ============
 app.get('/api/student-revenue', authMiddleware, async (req, res) => {
-  const uid = req.user.role === 'student' ? req.user.id : req.query.user_id;
+  if (req.user.role === 'student') {
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const { rows } = await pool.query(`SELECT sr.*, sm.name as model_name, sm.commission_rate
+      FROM student_revenue sr JOIN student_models sm ON sr.student_model_id = sm.id WHERE sr.user_id = ANY($1) ORDER BY sr.month DESC`, [sharedIds]);
+    return res.json(rows);
+  }
+  const uid = req.query.user_id;
   if (!uid && (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin')) {
-    // Admin global: all revenues with student + model names
     const { rows } = await pool.query(`SELECT sr.*, sm.name as model_name, sm.commission_rate, u.display_name as student_name
       FROM student_revenue sr JOIN student_models sm ON sr.student_model_id = sm.id JOIN users u ON sr.user_id = u.id ORDER BY sr.month DESC, u.display_name`);
     return res.json(rows);
@@ -3297,7 +3310,11 @@ app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
     FROM planning_shifts ps JOIN users u ON ps.user_id = u.id WHERE 1=1`;
   const params = [];
 
-  if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') {
+  if (req.user.role === 'student') {
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    params.push(sharedIds);
+    query += ` AND ps.user_id = ANY($${params.length})`;
+  } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') {
     params.push(req.user.id);
     query += ` AND ps.user_id = $${params.length}`;
   } else if (user_id) {
