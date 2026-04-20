@@ -1349,6 +1349,18 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
+app.get('/api/me/email', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT email FROM users WHERE id = $1', [req.user.id]);
+  res.json({ email: rows[0]?.email || '' });
+});
+
+app.put('/api/me/email', authMiddleware, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requis' });
+  await pool.query('UPDATE users SET email = $1 WHERE id = $2', [email.trim(), req.user.id]);
+  res.json({ ok: true });
+});
+
 app.get('/api/me', authMiddleware, async (req, res) => {
   const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed, a.language FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
   res.json(rows[0]);

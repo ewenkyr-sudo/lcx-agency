@@ -2301,6 +2301,14 @@
         <!-- TAB: Sécurité -->
         <div class="settings-pane" id="settings-pane-securite">
           <div class="panel" style="padding:24px;margin-bottom:20px">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Mon email</h3>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Utilisé pour la réinitialisation du mot de passe</p>
+            <div style="display:flex;gap:10px;align-items:center;max-width:400px">
+              <input type="email" id="setting-user-email" class="form-input" placeholder="mon@email.com" style="flex:1">
+              <button class="btn btn-primary" style="white-space:nowrap" onclick="saveUserEmail()">Sauvegarder</button>
+            </div>
+          </div>
+          <div class="panel" style="padding:24px;margin-bottom:20px">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Contrôle d'accès</h3>
             <p style="font-size:13px;color:var(--text3);margin-bottom:12px">Active le mode lecture seule ou une date d'expiration par utilisateur</p>
             <div id="access-control-content"></div>
@@ -6519,6 +6527,12 @@ async function loadSettings() {
 function renderSettings() {
   if (!isAdmin()) return;
 
+  // Load user email
+  fetch('/api/me/email', { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : {}; }).then(function(data) {
+    var el = document.getElementById('setting-user-email');
+    if (el && data.email) el.value = data.email;
+  }).catch(function() {});
+
   // Agency settings
   const agName = agencySettings.agency_name || 'Fuzion Pilot';
   document.getElementById('setting-agency-name').value = agName;
@@ -6675,6 +6689,19 @@ async function saveAgencySettings() {
     agencySettings.agency_name = name;
     document.getElementById('logo-agency-name').textContent = name;
   }
+}
+
+async function saveUserEmail() {
+  var email = document.getElementById('setting-user-email').value.trim();
+  if (!email) return showToast('Email requis', 'error');
+  var res = await fetch('/api/me/email', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email: email })
+  });
+  if (res.ok) showToast('Email sauvegardé !', 'success');
+  else showToast('Erreur', 'error');
 }
 
 async function resetPasswords(role, inputId) {
