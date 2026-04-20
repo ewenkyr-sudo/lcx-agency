@@ -3099,6 +3099,44 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // ============ ANALYTICS ============
+app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const userId = req.query.user_id;
+    let userFilter = 'u.agency_id = $1';
+    const params = [req.user.agency_id];
+    // If user_id specified, filter to that user (for student/assistant view)
+    if (userId) {
+      params.push(parseInt(userId));
+      userFilter += ' AND sl.user_id = $' + params.length;
+    }
+    // Non-admin users can only see their own data + paired students' data
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') {
+      // Get paired student IDs
+      const pairsResult = await pool.query(
+        'SELECT student_a_id, student_b_id FROM student_outreach_pairs WHERE student_a_id = $1 OR student_b_id = $1',
+        [req.user.id]
+      );
+      const pairedIds = [req.user.id];
+      pairsResult.rows.forEach(p => {
+        if (p.student_a_id !== req.user.id) pairedIds.push(p.student_a_id);
+        if (p.student_b_id !== req.user.id) pairedIds.push(p.student_b_id);
+      });
+      params.push(pairedIds);
+      userFilter += ' AND (sl.user_id = ANY($' + params.length + ') OR sl.added_by = ANY($' + params.length + '))';
+    }
+    const { rows } = await pool.query(`
+      SELECT sl.created_at::date as day,
+        COUNT(*) as leads,
+        COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
+      FROM student_leads sl JOIN users u ON sl.user_id = u.id
+      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      GROUP BY day ORDER BY day
+    `, params);
+    res.json(rows);
+  } catch(e) { res.json([]); }
+});
+
 app.get('/api/analytics/reply-rate-weekly', authMiddleware, adminOnly, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT date_trunc('week', sl.created_at)::date as week,

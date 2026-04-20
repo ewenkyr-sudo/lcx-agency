@@ -142,6 +142,12 @@ async function renderStudentHome() {
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${studentData.models.length}</div><div class="stat-label">Modèles gérées</div></div>
     </div>
 
+    <!-- Daily leads & DMs chart -->
+    <div class="panel" style="padding:20px;margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Leads & DMs par jour</h3>
+      <div style="position:relative;height:220px"><canvas id="chart-student-daily"></canvas></div>
+    </div>
+
     <div class="two-col">
       <!-- Calls -->
       <div class="panel" style="padding:16px">
@@ -175,6 +181,29 @@ async function renderStudentHome() {
       </div>
     </div>
   `;
+
+  // Load daily chart
+  try {
+    const dailyRes = await fetch('/api/analytics/daily?days=30', { credentials: 'include' });
+    const daily = await dailyRes.json();
+    if (daily.length > 0) {
+      const ctx = document.getElementById('chart-student-daily');
+      if (ctx) {
+        if (window._studentDailyChart) window._studentDailyChart.destroy();
+        window._studentDailyChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: daily.map(function(d) { var dt = new Date(d.day); return dt.getDate() + '/' + (dt.getMonth()+1); }),
+            datasets: [
+              { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
+              { label: 'DMs', data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 12 } } } }
+        });
+      }
+    }
+  } catch(e) {}
 }
 
 // ========== CALL REQUEST FORM ==========
