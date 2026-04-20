@@ -808,152 +808,55 @@ async function initDB() {
 }
 
 // ============ SEED DEFAULT DATA ============
+const LEGACY_PASSWORDS = ['admin123', 'team123', 'eleve123', 'password', '12345678'];
+
 async function seedData() {
   const { rows } = await pool.query('SELECT COUNT(*) as count FROM users');
-  if (parseInt(rows[0].count) > 0) return;
-
-  console.log('Seeding initial data...');
-
-  const adminHash = bcrypt.hashSync('admin123', 10);
-  await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', ['ewen', adminHash, 'Ewen', 'admin']);
-
-  const defaultHash = bcrypt.hashSync('team123', 10);
-  const studentHash = bcrypt.hashSync('eleve123', 10);
-
-  const teamUsers = [
-    ['sarah', defaultHash, 'Sarah', 'chatter'],
-    ['tom', defaultHash, 'Tom', 'chatter'],
-    ['karim', defaultHash, 'Karim', 'chatter'],
-    ['lea', defaultHash, 'Léa', 'chatter'],
-    ['nathan', defaultHash, 'Nathan', 'chatter'],
-    ['maxime', defaultHash, 'Maxime', 'outreach'],
-    ['yasmine', defaultHash, 'Yasmine', 'outreach'],
-    ['dylan', defaultHash, 'Dylan', 'outreach'],
-    ['ines', defaultHash, 'Inès', 'outreach'],
-    ['amine', defaultHash, 'Amine', 'va'],
-    ['rania', defaultHash, 'Rania', 'va'],
-    ['jules', defaultHash, 'Jules', 'va'],
-  ];
-  for (const u of teamUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
+  if (parseInt(rows[0].count) > 0) {
+    // Check for users with legacy default passwords
+    try {
+      const allUsers = (await pool.query('SELECT id, username, password FROM users')).rows;
+      let warnCount = 0;
+      for (const u of allUsers) {
+        for (const legacyPwd of LEGACY_PASSWORDS) {
+          if (bcrypt.compareSync(legacyPwd, u.password)) {
+            console.warn('[SECURITY WARNING] User "' + u.username + '" (id:' + u.id + ') uses a default password — CHANGE IT IMMEDIATELY');
+            warnCount++;
+            break;
+          }
+        }
+      }
+      if (warnCount > 0) console.warn('[SECURITY WARNING] ' + warnCount + ' user(s) with default passwords detected');
+    } catch(e) {}
+    return;
   }
 
-  const modelUsers = [
-    ['luna', defaultHash, 'Luna', 'model'],
-    ['jade', defaultHash, 'Jade', 'model'],
-    ['mia', defaultHash, 'Mia', 'model'],
-    ['emma', defaultHash, 'Emma', 'model'],
-    ['clara', defaultHash, 'Clara', 'model'],
-  ];
-  for (const u of modelUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
-  }
+  // First boot — create initial admin with random password
+  const adminPassword = crypto.randomBytes(12).toString('base64url').substring(0, 16);
+  const adminHash = bcrypt.hashSync(adminPassword, 10);
+  await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', ['admin', adminHash, 'Admin', 'admin']);
 
-  const studentUsers = [
-    ['lucas', studentHash, 'Lucas', 'student'],
-    ['theo', studentHash, 'Théo', 'student'],
-    ['yassine', studentHash, 'Yassine', 'student'],
-    ['enzo', studentHash, 'Enzo', 'student'],
-    ['mehdi', studentHash, 'Mehdi', 'student'],
-    ['rayan', studentHash, 'Rayan', 'student'],
-  ];
-  for (const u of studentUsers) {
-    await pool.query('INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)', u);
-  }
-
-  // Models
-  const modelData = [
-    ['Luna', '["onlyfans"]', 'active'],
-    ['Jade', '["onlyfans"]', 'active'],
-    ['Mia', '["onlyfans"]', 'active'],
-    ['Emma', '["onlyfans"]', 'onboarding'],
-    ['Clara', '["onlyfans"]', 'active'],
-  ];
-  for (const m of modelData) {
-    await pool.query('INSERT INTO models (name, platforms, status) VALUES ($1, $2, $3)', m);
-  }
-
-  // Accounts
-  const accountData = [
-    [1, 'onlyfans', '@luna_exclusive', 1247],
-    [1, 'instagram', '@luna.model', 5420],
-    [1, 'tiktok', '@luna_vibes', 3210],
-    [1, 'telegram', '@luna_vip', 682],
-    [2, 'onlyfans', '@jade_premium', 892],
-    [2, 'instagram', '@jade.official', 4180],
-    [2, 'tiktok', '@jadexoxo', 2890],
-    [2, 'telegram', '@jade_premium_tg', 0],
-    [3, 'onlyfans', '@mia_dreams', 634],
-    [3, 'instagram', '@mia.content', 3120],
-    [3, 'tiktok', '@miadreams', 1540],
-    [3, 'telegram', '@mia_vip_group', 736],
-    [4, 'onlyfans', '@emma_exclusive', 189],
-    [4, 'instagram', '@emma.new', 1240],
-    [5, 'onlyfans', '@clara_vip', 312],
-    [5, 'instagram', '@clara.lifestyle', 860],
-    [5, 'telegram', '@claravip_channel', 420],
-  ];
-  for (const a of accountData) {
-    await pool.query('INSERT INTO accounts (model_id, platform, handle, current_followers) VALUES ($1, $2, $3, $4)', a);
-  }
-
-  // Sample daily stats (last 7 days)
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    for (let accId = 1; accId <= 17; accId++) {
-      const base = accId <= 4 ? 15 : accId <= 8 ? 10 : 7;
-      const val = Math.max(-2, Math.floor(Math.random() * base * 2) + 1);
-      await pool.query('INSERT INTO daily_stats (account_id, date, new_followers) VALUES ($1, $2, $3) ON CONFLICT (account_id, date) DO NOTHING', [accId, dateStr, val]);
-    }
-  }
-
-  // Students
-  const studentData = [
-    [19, 'Lucas', 'elite', '2026-01-15', 4, 5, 75, '@lucas_dc', 'active'],
-    [20, 'Théo', 'vip', '2026-02-01', 3, 4, 60, '@theo_dc', 'active'],
-    [21, 'Yassine', 'pro', '2026-03-01', 1, 7, 35, '@yassine_dc', 'active'],
-    [22, 'Enzo', 'elite', '2025-12-10', 3, 2, 85, '@enzo_dc', 'active'],
-    [23, 'Mehdi', 'starter', '2026-03-15', 0, 3, 15, '@mehdi_dc', 'active'],
-    [24, 'Rayan', 'pro', '2026-02-10', 2, 2, 50, '@rayan_dc', 'active'],
-  ];
-  for (const s of studentData) {
-    await pool.query('INSERT INTO students (user_id, name, program, start_date, models_signed, active_discussions, progression, contact, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)', s);
-  }
-
-  // Team members
-  const memberData = [
-    [2, 'Sarah', 'chatter', '08h-16h', '["Luna","Jade"]', null, '@sarah_dc', 'online'],
-    [3, 'Tom', 'chatter', '16h-00h', '["Luna","Mia"]', null, '@tom_dc', 'online'],
-    [4, 'Karim', 'chatter', '00h-08h', '["Jade","Clara"]', null, '@karim_dc', 'offline'],
-    [5, 'Léa', 'chatter', '08h-16h', '["Mia","Emma"]', null, '@lea_dc', 'online'],
-    [6, 'Nathan', 'chatter', '16h-00h', '["Luna","Clara"]', null, '@nathan_dc', 'break'],
-    [7, 'Maxime', 'outreach', '09h-17h', '[]', 'Instagram', '@maxime_dc', 'online'],
-    [8, 'Yasmine', 'outreach', '09h-17h', '[]', 'TikTok, Reddit', '@yasmine_dc', 'online'],
-    [9, 'Dylan', 'outreach', '14h-22h', '[]', 'Twitter, Reddit', '@dylan_dc', 'offline'],
-    [10, 'Inès', 'outreach', '09h-17h', '[]', 'Instagram, TikTok', '@ines_dc', 'online'],
-    [11, 'Amine', 'va', '07h-15h', '[]', null, '@amine_dc', 'online'],
-    [12, 'Rania', 'va', '09h-17h', '[]', null, '@rania_dc', 'online'],
-    [13, 'Jules', 'va', '14h-22h', '[]', null, '@jules_dc', 'offline'],
-  ];
-  for (const m of memberData) {
-    await pool.query('INSERT INTO team_members (user_id, name, role, shift, models_assigned, platform, contact, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', m);
-  }
+  console.log('');
+  console.log('╔══════════════════════════════════════════════════════════╗');
+  console.log('║  ⚠️  COMPTE ADMIN INITIAL CRÉÉ                          ║');
+  console.log('║                                                          ║');
+  console.log('║  Username : admin                                        ║');
+  console.log('║  Mot de passe : ' + adminPassword + '                              ║');
+  console.log('║                                                          ║');
+  console.log('║  CHANGEZ CE MOT DE PASSE IMMÉDIATEMENT APRÈS CONNEXION  ║');
+  console.log('╚══════════════════════════════════════════════════════════╝');
+  console.log('');
 
   // Agency settings
   const settingsData = [
     ['agency_name', 'Fuzion Pilot'],
     ['agency_subtitle', 'Fuzion Pilot'],
-    ['default_password_team', 'team123'],
-    ['default_password_student', 'eleve123'],
   ];
   for (const s of settingsData) {
     await pool.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', s);
   }
 
-  console.log('Seed complete!');
+  console.log('Seed complete — admin account created (no test accounts).');
 }
 
 async function migrateToMultiAgency() {
@@ -1822,7 +1725,9 @@ app.post('/api/admin/import-csv', authMiddleware, adminOnly, async (req, res) =>
     // Créer Gaby si elle n'existe pas
     let gaby = (await pool.query("SELECT id FROM users WHERE username = 'gaby'")).rows[0];
     if (!gaby) {
-      const hash = bcrypt.hashSync('team123', 10);
+      const gabyPwd = crypto.randomBytes(12).toString('base64url').substring(0, 16);
+      const hash = bcrypt.hashSync(gabyPwd, 10);
+      console.log('[IMPORT CSV] User "gaby" créé avec mdp:', gabyPwd);
       gaby = (await pool.query(
         "INSERT INTO users (username, password, display_name, role) VALUES ('gaby', $1, 'Gaby', 'outreach') RETURNING id", [hash]
       )).rows[0];
@@ -4471,9 +4376,7 @@ async function start() {
   ║    Fuzion Pilot Dashboard              ║
   ║    http://localhost:${PORT}             ║
   ║                                       ║
-  ║    Admin: ewen / admin123            ║
-  ║    Team:  prenom / team123           ║
-  ║    Eleve: prenom / eleve123          ║
+  ║    Ready to serve                      ║
   ╚══════════════════════════════════════╝
     `);
   });
