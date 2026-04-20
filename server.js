@@ -3132,9 +3132,15 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
       params = [req.user.agency_id, allIds];
       userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
     } else {
-      // Students/assistants see only their own data + paired users' data
+      // Students see own data + paired users + assigned assistants' work
       const sharedIds = await getSharedOutreachIds(req.user.id);
-      params = [req.user.agency_id, sharedIds];
+      // Get assistants assigned to this student (or paired students)
+      const assignedAssistants = (await pool.query(
+        'SELECT outreach_user_id FROM student_outreach_assignments WHERE student_user_id = ANY($1)',
+        [sharedIds]
+      )).rows.map(r => r.outreach_user_id);
+      const allIds = [...new Set([...sharedIds, ...assignedAssistants])];
+      params = [req.user.agency_id, allIds];
       userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
     }
 
