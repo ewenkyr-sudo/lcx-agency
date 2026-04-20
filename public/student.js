@@ -185,7 +185,8 @@ async function renderStudentHome() {
   // Load daily chart
   try {
     const dailyRes = await fetch('/api/analytics/daily?days=30', { credentials: 'include' });
-    const daily = await dailyRes.json();
+    const data = await dailyRes.json();
+    const daily = data.daily || [];
     if (daily.length > 0) {
       const ctx = document.getElementById('chart-student-daily');
       if (ctx) {

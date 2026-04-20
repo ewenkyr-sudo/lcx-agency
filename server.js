@@ -3119,30 +3119,13 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
-    const userId = req.query.user_id;
-    let userFilter = 'u.agency_id = $1';
-    const params = [req.user.agency_id];
-    // If user_id specified, filter to that user (for student/assistant view)
-    if (userId) {
-      params.push(parseInt(userId));
-      userFilter += ' AND sl.user_id = $' + params.length;
-    }
-    // Non-admin users can only see their own data + paired students' data
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') {
-      // Get paired student IDs
-      const pairsResult = await pool.query(
-        'SELECT student_a_id, student_b_id FROM student_outreach_pairs WHERE student_a_id = $1 OR student_b_id = $1',
-        [req.user.id]
-      );
-      const pairedIds = [req.user.id];
-      pairsResult.rows.forEach(p => {
-        if (p.student_a_id !== req.user.id) pairedIds.push(p.student_a_id);
-        if (p.student_b_id !== req.user.id) pairedIds.push(p.student_b_id);
-      });
-      params.push(pairedIds);
-      userFilter += ' AND (sl.user_id = ANY($' + params.length + ') OR sl.added_by = ANY($' + params.length + '))';
-    }
-    const { rows } = await pool.query(`
+    // Everyone sees only their own data + paired users' data
+    const sharedIds = await getSharedOutreachIds(req.user.id);
+    const params = [req.user.agency_id, sharedIds];
+    const userFilter = 'u.agency_id = $1 AND (sl.user_id = ANY($2) OR sl.added_by = ANY($2))';
+
+    // Daily totals
+    const { rows: daily } = await pool.query(`
       SELECT sl.created_at::date as day,
         COUNT(*) as leads,
         COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
@@ -3150,8 +3133,30 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
       WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
       GROUP BY day ORDER BY day
     `, params);
-    res.json(rows);
-  } catch(e) { res.json([]); }
+
+    // Hourly breakdown
+    const { rows: hourly } = await pool.query(`
+      SELECT EXTRACT(HOUR FROM sl.created_at) as hour,
+        COUNT(*) as leads,
+        COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
+      FROM student_leads sl JOIN users u ON sl.user_id = u.id
+      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      GROUP BY hour ORDER BY hour
+    `, params);
+
+    // By added_by (who added the leads)
+    const { rows: byPerson } = await pool.query(`
+      SELECT ab.display_name as name, sl.added_by as user_id,
+        COUNT(*) as leads,
+        COUNT(*) FILTER (WHERE sl.status != 'to-send') as dms
+      FROM student_leads sl JOIN users u ON sl.user_id = u.id
+      LEFT JOIN users ab ON sl.added_by = ab.id
+      WHERE ${userFilter} AND sl.created_at > NOW() - INTERVAL '${days} days'
+      GROUP BY ab.display_name, sl.added_by ORDER BY leads DESC
+    `, params);
+
+    res.json({ daily, hourly, byPerson });
+  } catch(e) { res.json({ daily: [], hourly: [], byPerson: [] }); }
 });
 
 app.get('/api/analytics/reply-rate-weekly', authMiddleware, adminOnly, async (req, res) => {
