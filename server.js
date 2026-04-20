@@ -1361,6 +1361,9 @@ app.post('/api/reset-password', async (req, res) => {
     // Invalidate all tokens for this user
     await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [result.user_id]);
 
+    // Clear auth cookie so user must re-login with new password
+    res.clearCookie('token');
+
     console.log('[PASSWORD RESET] Mot de passe réinitialisé pour user_id:', result.user_id);
     res.json({ ok: true });
   } catch(e) {
