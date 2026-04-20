@@ -224,6 +224,16 @@
       </div>
       <button class="btn-login" type="submit" id="btn-login" data-i18n="login.submit">Se connecter</button>
     </form>
+
+    <!-- Forgot password -->
+    <div id="forgot-section" style="margin-top:16px;text-align:center">
+      <a href="#" onclick="showForgotForm(event)" style="color:#9585B0;font-size:12px;text-decoration:none">Mot de passe oublie ?</a>
+      <div id="forgot-form" style="display:none;margin-top:12px">
+        <input class="form-input" type="text" id="forgot-username" placeholder="Ton nom d'utilisateur" style="margin-bottom:8px">
+        <button class="btn-login" type="button" onclick="sendForgotPassword()" style="font-size:13px;padding:10px">Envoyer le lien</button>
+        <div id="forgot-msg" style="display:none;margin-top:10px;font-size:12px;color:#34D399;background:rgba(52,211,153,0.08);padding:8px 12px;border-radius:8px"></div>
+      </div>
+    </div>
   </div>
 
   <div class="login-footer">
@@ -275,6 +285,27 @@
     btn.disabled = false;
     btn.textContent = 'Se connecter';
   });
+
+  function showForgotForm(e) {
+    e.preventDefault();
+    var form = document.getElementById('forgot-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function sendForgotPassword() {
+    var username = document.getElementById('forgot-username').value.trim();
+    if (!username) return;
+    var msg = document.getElementById('forgot-msg');
+    try {
+      await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username })
+      });
+    } catch(e) {}
+    msg.textContent = 'Si ce compte existe et a un email associe, un lien de reinitialisation a ete envoye.';
+    msg.style.display = 'block';
+  }
 </script>
 <script>
   (function() {

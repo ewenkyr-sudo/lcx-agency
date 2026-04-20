@@ -767,6 +767,21 @@ async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
+    // Password reset tokens
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+
+    // Add email column to users
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT').catch(function() {});
+
     // Auto-enable recruitment for all agencies
     await pool.query(`INSERT INTO recruitment_settings (agency_id, enabled, coaching_price)
       SELECT id, true, 1500 FROM agencies
@@ -1243,6 +1258,95 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 app.post('/api/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ ok: true });
+});
+
+// ============ PASSWORD RESET ============
+const forgotPasswordRL = rateLimit({ windowMs: 60 * 60 * 1000, max: 3, keyGenerator: (req) => req.body.username || req.ip, message: { error: 'Trop de demandes, réessayez dans 1 heure' } });
+
+app.post('/api/forgot-password', forgotPasswordRL, async (req, res) => {
+  const { username } = req.body;
+  // Always return success to prevent user enumeration
+  if (!username) return res.json({ ok: true, message: 'Si ce compte existe, un email a été envoyé.' });
+
+  try {
+    const user = (await pool.query('SELECT id, email, display_name, agency_id FROM users WHERE LOWER(username) = LOWER($1)', [username.trim()])).rows[0];
+    if (!user || !user.email) {
+      // Try to get email from agency contact_email
+      let email = null;
+      if (user && user.agency_id) {
+        const agency = (await pool.query('SELECT contact_email FROM agencies WHERE id = $1', [user.agency_id])).rows[0];
+        email = agency?.contact_email;
+      }
+      if (!email) return res.json({ ok: true, message: 'Si ce compte existe, un email a été envoyé.' });
+      // Use agency email as fallback
+      user.email = email;
+    }
+
+    // Generate secure token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Invalidate previous tokens for this user
+    await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [user.id]);
+
+    // Store hashed token
+    await pool.query('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)', [user.id, tokenHash, expiresAt]);
+
+    // Send email
+    const resetLink = APP_URL + '/reset-password.html?token=' + rawToken;
+    await sendEmail(user.email, 'Réinitialisation de votre mot de passe — Fuzion Pilot', `
+      <div style="max-width:500px;margin:0 auto;font-family:sans-serif;background:#0A0615;color:#EDE4FF;padding:40px;border-radius:16px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#7c3aed,#22d3ee);border-radius:16px;line-height:56px;font-size:20px;font-weight:800;color:white;text-align:center;font-family:sans-serif;">FP</div>
+        </div>
+        <h2 style="text-align:center;font-size:20px;margin-bottom:16px;">Réinitialisation de mot de passe</h2>
+        <p style="color:#9585B0;font-size:14px;line-height:1.6;">Bonjour ${user.display_name || username},</p>
+        <p style="color:#9585B0;font-size:14px;line-height:1.6;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau :</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#A855F7,#7C3AED);color:white;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;">Réinitialiser mon mot de passe</a>
+        </div>
+        <p style="color:#6B5A84;font-size:12px;line-height:1.5;">Ce lien expire dans <strong>1 heure</strong>.</p>
+        <p style="color:#6B5A84;font-size:12px;line-height:1.5;">Si vous n'avez pas demandé ce changement, ignorez simplement cet email. Votre mot de passe ne sera pas modifié.</p>
+        <hr style="border:none;border-top:1px solid #1C1333;margin:24px 0;">
+        <p style="color:#6B5A84;font-size:11px;text-align:center;">Fuzion Pilot — contact@fuzionpilot.com</p>
+      </div>
+    `);
+    console.log('[PASSWORD RESET] Email envoyé à', user.email.substring(0, 3) + '***');
+  } catch(e) {
+    console.error('[PASSWORD RESET] Erreur:', e.message);
+  }
+
+  res.json({ ok: true, message: 'Si ce compte existe, un email a été envoyé.' });
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return res.status(400).json({ error: 'Token et mot de passe requis' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const result = (await pool.query(
+      'SELECT * FROM password_reset_tokens WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()',
+      [tokenHash]
+    )).rows[0];
+
+    if (!result) return res.status(400).json({ error: 'Lien invalide ou expiré. Demandez un nouveau lien.' });
+
+    // Hash new password
+    const hash = bcrypt.hashSync(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, result.user_id]);
+
+    // Invalidate all tokens for this user
+    await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [result.user_id]);
+
+    console.log('[PASSWORD RESET] Mot de passe réinitialisé pour user_id:', result.user_id);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[PASSWORD RESET] Erreur reset:', e.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
