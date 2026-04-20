@@ -767,6 +767,10 @@ async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
+    // Auto-enable recruitment for all agencies
+    await pool.query(`INSERT INTO recruitment_settings (agency_id, enabled, coaching_price)
+      SELECT id, true, 1500 FROM agencies
+      ON CONFLICT (agency_id) DO UPDATE SET enabled = true`).catch(function() {});
   } catch(e) {}
 }
 
