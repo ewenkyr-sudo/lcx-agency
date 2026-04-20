@@ -35,6 +35,12 @@ if (!resendClient) console.error('[BOOT] ERREUR: RESEND_API_KEY manquante — le
 console.log('[BOOT] STRIPE_WEBHOOK_SECRET présente:', !!process.env.STRIPE_WEBHOOK_SECRET);
 console.log('[BOOT] APP_URL:', APP_URL);
 
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  if (email.length < 5 || email.length > 255) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 async function sendEmail(to, subject, html) {
   if (!resendClient) { console.log('[EMAIL] Resend non configuré (RESEND_API_KEY manquante), email ignoré vers', to); return; }
   try {
@@ -1282,7 +1288,9 @@ app.get('/api/me/email', authMiddleware, async (req, res) => {
 
 app.put('/api/me/email', authMiddleware, async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email requis' });
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'Email invalide' });
+  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email.trim(), req.user.agency_id, req.user.id])).rows[0];
+  if (exists) return res.status(409).json({ error: 'Email déjà utilisé par un autre membre' });
   await pool.query('UPDATE users SET email = $1 WHERE id = $2', [email.trim(), req.user.id]);
   res.json({ ok: true });
 });
@@ -1651,7 +1659,7 @@ app.put('/api/users/:id/display_name', authMiddleware, adminOnly, async (req, re
 
 app.put('/api/users/:id/email', authMiddleware, adminOnly, async (req, res) => {
   const { email } = req.body;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email invalide' });
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'Email invalide' });
   // Check uniqueness within agency
   const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email, req.user.agency_id, req.params.id])).rows[0];
   if (exists) return res.status(409).json({ error: 'Email déjà utilisé par un autre membre' });
