@@ -795,6 +795,8 @@ async function initDB() {
 
     // Index on users.email
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)').catch(function() {});
+    // Unique constraint on email per agency (allows NULL emails)
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_agency ON users(email, agency_id) WHERE email IS NOT NULL').catch(function() {});
 
     // Migrate emails from invitation_tokens to users where missing
     try {
