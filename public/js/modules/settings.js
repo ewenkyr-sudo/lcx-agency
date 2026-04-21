@@ -119,7 +119,7 @@ function renderSettings() {
   if (stepsPreview) {
     stepsPreview.innerHTML = STEPS.map(function(s, i) {
       return '<div style="display:flex;align-items:center;gap:6px">'
-        + '<span style="padding:6px 14px;border-radius:8px;background:var(--bg3);font-size:13px;font-weight:600">' + s.icon + ' ' + s.label + '</span>'
+        + '<span style="padding:6px 14px;border-radius:8px;background:var(--bg3);font-size:13px;font-weight:600">' + s.icon + ' ' + t(s.labelKey) + '</span>'
         + (i < STEPS.length - 1 ? '<span style="color:var(--text3)">→</span>' : '')
         + '</div>';
     }).join('');
