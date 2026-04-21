@@ -346,12 +346,12 @@ function showLeaveRequestForm() {
   var wrap = document.getElementById('plan-leave-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:16px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">Demande de congé</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">' + t('planning.leave_request_title') + '</h3>'
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">'
-    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Du</label><input type="date" id="lr-start" class="form-input" style="font-size:12px"></div>'
-    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Au</label><input type="date" id="lr-end" class="form-input" style="font-size:12px"></div>'
-    + '<div style="flex:1"><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Motif</label><input type="text" id="lr-reason" class="form-input" style="font-size:12px" placeholder="Raison..."></div>'
-    + '<button class="btn btn-primary" style="font-size:12px" onclick="submitLeaveRequest()">Envoyer</button>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.from') + '</label><input type="date" id="lr-start" class="form-input" style="font-size:12px"></div>'
+    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.to') + '</label><input type="date" id="lr-end" class="form-input" style="font-size:12px"></div>'
+    + '<div style="flex:1"><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.reason') + '</label><input type="text" id="lr-reason" class="form-input" style="font-size:12px"></div>'
+    + '<button class="btn btn-primary" style="font-size:12px" onclick="submitLeaveRequest()">' + t('common.send') + '</button>'
     + '</div></div>';
 }
 
@@ -370,7 +370,7 @@ function renderPlanLeaves() {
   if (pending.length === 0 && !isAdmin()) { container.innerHTML = ''; return; }
 
   container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">Demandes de congé' + (pending.length > 0 ? ' <span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px">' + pending.length + '</span>' : '') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">' + t('planning.leave_requests') + (pending.length > 0 ? ' <span style="background:var(--red);color:white;font-size:10px;padding:2px 8px;border-radius:10px">' + pending.length + '</span>' : '') + '</h3>'
     + '<div style="display:grid;gap:8px">'
     + planLeaves.map(function(l) {
       var stColor = l.status === 'pending' ? 'var(--yellow)' : l.status === 'accepted' ? 'var(--green)' : 'var(--red)';
@@ -380,8 +380,8 @@ function renderPlanLeaves() {
         + '<span style="font-size:12px;color:var(--text2)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'
         + (l.reason ? '<span style="font-size:11px;color:var(--text3);flex:1">' + l.reason + '</span>' : '<span style="flex:1"></span>')
         + (isAdmin() && l.status === 'pending'
-          ? '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'accepted\')">Accepter</button>'
-            + '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'refused\')">Refuser</button>'
+          ? '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'accepted\')">' + t('planning.accept') + '</button>'
+            + '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'refused\')">' + t('planning.refuse') + '</button>'
           : '<span style="font-size:11px;font-weight:600;color:' + stColor + '">' + stLabel + '</span>')
         + '</div>';
     }).join('')
@@ -414,18 +414,18 @@ async function renderPlanStats(start, end) {
   ]);
 
   container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Récapitulatif heures</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('planning.hours_recap') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
     // Semaine
-    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">Cette semaine</h4>'
-    + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>Membre</th><th>Planifié</th><th>Réel</th></tr></thead><tbody>'
+    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">' + t('planning.this_week_label') + '</h4>'
+    + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>' + t('common.name') + '</th><th>' + t('planning.planned') + '</th><th>' + t('planning.actual') + '</th></tr></thead><tbody>'
     + weekStats.map(function(s) {
       var planned = parseFloat(s.planned_hours);
       var actual = parseFloat(s.actual_hours);
       var diffColor = actual >= planned ? 'var(--green)' : 'var(--red)';
       return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
-        + '<td data-label="Planifié" class="mc-half">' + planned.toFixed(0) + 'h</td>'
-        + '<td data-label="Réel" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
+        + '<td data-label="' + t('planning.planned') + '" class="mc-half">' + planned.toFixed(0) + 'h</td>'
+        + '<td data-label="' + t('planning.actual') + '" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
     }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">Aucune donnée</td></tr>'
     + '</tbody></table></div>'
     // Mois
@@ -436,8 +436,8 @@ async function renderPlanStats(start, end) {
       var actual = parseFloat(s.actual_hours);
       var diffColor = actual >= planned ? 'var(--green)' : 'var(--red)';
       return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
-        + '<td data-label="Planifié" class="mc-half">' + planned.toFixed(0) + 'h</td>'
-        + '<td data-label="Réel" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
+        + '<td data-label="' + t('planning.planned') + '" class="mc-half">' + planned.toFixed(0) + 'h</td>'
+        + '<td data-label="' + t('planning.actual') + '" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
     }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">Aucune donnée</td></tr>'
     + '</tbody></table></div>'
     + '</div></div>';

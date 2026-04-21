@@ -1054,5 +1054,8 @@
   "perf.new_followers_cumul": "Nouveaux followers cumulés",
   "perf.dms_sent_label": "DMs envoyés",
   "perf.replies_label": "Réponses",
-  "perf.leads_count_label": "Nombre de leads"
+  "perf.leads_count_label": "Nombre de leads",
+  "planning.from": "Du",
+  "planning.to": "Au",
+  "planning.member": "Membre"
 }
