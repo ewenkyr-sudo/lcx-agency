@@ -16,7 +16,7 @@ function renderTasks() {
   if (!container) return;
 
   // Badge nav
-  const urgentOrOverdue = allTasks.filter(t => t.status !== 'completed' && (t.priority === 'urgent' || getTaskDeadlineState(t.deadline) === 'overdue'));
+  const urgentOrOverdue = allTasks.filter(tk => tk.status !== 'completed' && (tk.priority === 'urgent' || getTaskDeadlineState(tk.deadline) === 'overdue'));
   const badge = document.getElementById('tasks-badge');
   if (badge) {
     if (urgentOrOverdue.length > 0) { badge.style.display = ''; badge.textContent = urgentOrOverdue.length; }
@@ -25,43 +25,43 @@ function renderTasks() {
 
   // Filtrer
   let filtered = allTasks;
-  if (taskFilter === 'mine') filtered = allTasks.filter(t => t.assigned_to_id === currentUser.id || t.created_by === currentUser.id);
-  else if (taskFilter === 'pending') filtered = allTasks.filter(t => t.status === 'pending');
-  else if (taskFilter === 'in_progress') filtered = allTasks.filter(t => t.status === 'in_progress');
-  else if (taskFilter === 'completed') filtered = allTasks.filter(t => t.status === 'completed');
-  else if (taskFilter === 'urgent') filtered = allTasks.filter(t => t.priority === 'urgent' || getTaskDeadlineState(t.deadline) === 'overdue');
+  if (taskFilter === 'mine') filtered = allTasks.filter(tk => tk.assigned_to_id === currentUser.id || tk.created_by === currentUser.id);
+  else if (taskFilter === 'pending') filtered = allTasks.filter(tk => tk.status === 'pending');
+  else if (taskFilter === 'in_progress') filtered = allTasks.filter(tk => tk.status === 'in_progress');
+  else if (taskFilter === 'completed') filtered = allTasks.filter(tk => tk.status === 'completed');
+  else if (taskFilter === 'urgent') filtered = allTasks.filter(tk => tk.priority === 'urgent' || getTaskDeadlineState(tk.deadline) === 'overdue');
 
   if (taskView === 'week') { renderTaskWeek(container, filtered); return; }
 
   // Vue liste
   container.innerHTML = filtered.length === 0 ? '<div class="panel">' + emptyStateHTML('clipboard', t('tasks.no_tasks'), t('common.new_task'), 'showTaskForm()') + '</div>' :
-    '<div style="display:grid;gap:10px">' + filtered.map(function(t) { return renderTaskCard(t); }).join('') + '</div>';
+    '<div style="display:grid;gap:10px">' + filtered.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div>';
 }
 
-function renderTaskCard(t) {
-  const dlState = getTaskDeadlineState(t.deadline);
-  const isUrgent = t.priority === 'urgent';
+function renderTaskCard(tk) {
+  const dlState = getTaskDeadlineState(tk.deadline);
+  const isUrgent = tk.priority === 'urgent';
   const borderColor = dlState === 'overdue' ? 'var(--red)' : dlState === 'soon' ? '#f59e0b' : isUrgent ? 'var(--red)' : 'var(--accent)';
   const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('tasks.pending_label') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: t('tasks.completed_label') } };
-  const st = statusColors[t.status] || statusColors['pending'];
-  const dl = t.deadline || '';
+  const st = statusColors[tk.status] || statusColors['pending'];
+  const dl = tk.deadline || '';
   const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">' + t('tasks.overdue') + '</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">' + t('tasks.soon') + '</span>' : dl ? '<span style="color:var(--text3)">' + dl + '</span>' : '<span style="color:var(--text3)">' + t('tasks.no_deadline') + '</span>';
 
   return '<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
     + (isUrgent ? '<span style="position:absolute;top:10px;right:40px;background:var(--red);color:white;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">URGENT</span>' : '')
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">'
-    + '<strong style="font-size:14px;' + (t.status === 'completed' ? 'text-decoration:line-through;opacity:0.5' : '') + '">' + t.title + '</strong>'
-    + '<button class="btn-delete-small" onclick="deleteTask(' + t.id + ')" style="flex-shrink:0">✕</button>'
+    + '<strong style="font-size:14px;' + (tk.status === 'completed' ? 'text-decoration:line-through;opacity:0.5' : '') + '">' + tk.title + '</strong>'
+    + '<button class="btn-delete-small" onclick="deleteTask(' + tk.id + ')" style="flex-shrink:0">✕</button>'
     + '</div>'
-    + (t.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + t.description + '</div>' : '')
+    + (tk.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + tk.description + '</div>' : '')
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
-    + '<select onchange="updateTaskStatus(' + t.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
-    + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.pending_label') + '</option>'
-    + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.in_progress_label') + '</option>'
-    + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.completed_label') + '</option></select>'
+    + '<select onchange="updateTaskStatus(' + tk.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
+    + '<option value="pending"' + (tk.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.pending_label') + '</option>'
+    + '<option value="in_progress"' + (tk.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.in_progress_label') + '</option>'
+    + '<option value="completed"' + (tk.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.completed_label') + '</option></select>'
     + '<div>📅 ' + dlLabel + '</div>'
-    + (t.assigned_name ? '<div>👤 <span style="color:var(--accent2)">' + t.assigned_name + '</span></div>' : '')
-    + (t.notes ? '<div style="color:var(--text3)">' + t.notes + '</div>' : '')
+    + (tk.assigned_name ? '<div>👤 <span style="color:var(--accent2)">' + tk.assigned_name + '</span></div>' : '')
+    + (tk.notes ? '<div style="color:var(--text3)">' + tk.notes + '</div>' : '')
     + '</div></div>';
 }
 
@@ -80,22 +80,22 @@ function renderTaskWeek(container, tasks) {
   const dayNames = [t('days.mon'), t('days.tue'), t('days.wed'), t('days.thu'), t('days.fri'), t('days.sat'), t('days.sun')];
   const todayStr = today.toISOString().split('T')[0];
 
-  const noDeadline = tasks.filter(function(t) { return !t.deadline; });
-  const otherWeek = tasks.filter(function(t) { return t.deadline && !days.includes(t.deadline); });
+  const noDeadline = tasks.filter(function(tk) { return !tk.deadline; });
+  const otherWeek = tasks.filter(function(tk) { return tk.deadline && !days.includes(tk.deadline); });
 
   container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:16px">'
     + days.map(function(day, i) {
       const isToday = day === todayStr;
-      const dayTasks = tasks.filter(function(t) { return t.deadline === day; });
+      const dayTasks = tasks.filter(function(tk) { return tk.deadline === day; });
       return '<div style="background:var(--bg3);border-radius:10px;padding:10px;min-height:120px;border:' + (isToday ? '2px solid var(--accent)' : '1px solid var(--border)') + '">'
         + '<div style="font-size:11px;font-weight:700;color:' + (isToday ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:8px;text-align:center">' + dayNames[i] + ' ' + day.substring(8) + '</div>'
-        + (dayTasks.length === 0 ? '' : dayTasks.map(function(t) {
-          var isUrgent = t.priority === 'urgent';
-          var dlState = getTaskDeadlineState(t.deadline);
+        + (dayTasks.length === 0 ? '' : dayTasks.map(function(tk) {
+          var isUrgent = tk.priority === 'urgent';
+          var dlState = getTaskDeadlineState(tk.deadline);
           var bg = dlState === 'overdue' ? 'rgba(239,68,68,0.15)' : isUrgent ? 'rgba(239,68,68,0.1)' : 'var(--bg)';
           var color = dlState === 'overdue' ? 'var(--red)' : isUrgent ? 'var(--red)' : 'var(--text)';
-          return '<div style="background:' + bg + ';padding:6px 8px;border-radius:6px;margin-bottom:4px;font-size:11px;cursor:pointer;color:' + color + ';' + (t.status==='completed'?'text-decoration:line-through;opacity:0.4':'') + '" onclick="updateTaskStatus(' + t.id + ',\'' + (t.status==='completed'?'pending':'completed') + '\')" title="' + (t.assigned_name||'') + '">'
-            + (isUrgent ? '🔴 ' : '') + t.title + '</div>';
+          return '<div style="background:' + bg + ';padding:6px 8px;border-radius:6px;margin-bottom:4px;font-size:11px;cursor:pointer;color:' + color + ';' + (tk.status==='completed'?'text-decoration:line-through;opacity:0.4':'') + '" onclick="updateTaskStatus(' + tk.id + ',\'' + (tk.status==='completed'?'pending':'completed') + '\')" title="' + (tk.assigned_name||'') + '">'
+            + (isUrgent ? '🔴 ' : '') + tk.title + '</div>';
         }).join(''))
         + '</div>';
     }).join('')

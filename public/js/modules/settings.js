@@ -82,7 +82,7 @@ function renderSettings() {
         </div>
       </td>
       <td data-label="" class="mc-actions">
-        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="Supprimer">✕</button>` : '<span style="color:var(--text3);font-size:11px">' + t('settings.you_label') + '</span>'}
+        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="${t('common.delete')}">✕</button>` : '<span style="color:var(--text3);font-size:11px">' + t('settings.you_label') + '</span>'}
       </td>
     </tr>
   `).join('');

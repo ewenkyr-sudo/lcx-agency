@@ -1404,5 +1404,9 @@
   "common.title_label": "Titre",
   "common.priority": "Priorité",
   "common.normal": "Normale",
-  "common.urgent": "Urgente"
+  "common.urgent": "Urgente",
+  "acc.cat_personal": "Personal Brand",
+  "acc.cat_fake": "Fake Models",
+  "acc.cat_assistants": "Assistantes",
+  "acc.cat_agency": "Agence"
 }

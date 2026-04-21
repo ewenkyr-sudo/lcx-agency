@@ -2,11 +2,13 @@
 // Instagram/TikTok accounts managed by the agency team
 
 var ACCOUNT_CATEGORIES = [
-  { key: 'personal_brand', label: 'Personal Brand', icon: '👤', color: '#A855F7' },
-  { key: 'fake_models', label: 'Fake Models', icon: '🎭', color: '#F472B6' },
-  { key: 'assistantes', label: 'Assistantes', icon: '💬', color: '#22D3EE' },
-  { key: 'agency', get label() { return t('acc.agency_label'); }, icon: '🏢', color: '#10B981' }
+  { key: 'personal_brand', labelKey: 'acc.cat_personal', icon: '👤', color: '#A855F7' },
+  { key: 'fake_models', labelKey: 'acc.cat_fake', icon: '🎭', color: '#F472B6' },
+  { key: 'assistantes', labelKey: 'acc.cat_assistants', icon: '💬', color: '#22D3EE' },
+  { key: 'agency', labelKey: 'acc.cat_agency', icon: '🏢', color: '#10B981' }
 ];
+
+function getAccCatLabel(cat) { return t(cat.labelKey); }
 
 var agencyAccounts = [];
 
@@ -32,14 +34,14 @@ async function renderAgencyAccounts() {
   var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(6,1fr);margin-bottom:20px">'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + total + '</div><div class="coaching-kpi-label">' + t('acc.total') + '</div></div>'
     + ACCOUNT_CATEGORIES.map(function(c) {
-      return '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:' + c.color + '">' + (byCat[c.key] || 0) + '</div><div class="coaching-kpi-label">' + c.icon + ' ' + c.label + '</div></div>';
+      return '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:' + c.color + '">' + (byCat[c.key] || 0) + '</div><div class="coaching-kpi-label">' + c.icon + ' ' + getAccCatLabel(c) + '</div></div>';
     }).join('')
     + '</div>';
 
   // Tabs by category
   html += '<div class="tabs" style="margin-bottom:16px">'
     + '<button class="tab active" onclick="filterAccountsCat(null,this)">' + t('acc.all_tab', { count: total }) + '</button>'
-    + ACCOUNT_CATEGORIES.map(function(c) { return '<button class="tab" onclick="filterAccountsCat(\'' + c.key + '\',this)">' + c.icon + ' ' + c.label + ' (' + (byCat[c.key]||0) + ')</button>'; }).join('')
+    + ACCOUNT_CATEGORIES.map(function(c) { return '<button class="tab" onclick="filterAccountsCat(\'' + c.key + '\',this)">' + c.icon + ' ' + getAccCatLabel(c) + ' (' + (byCat[c.key]||0) + ')</button>'; }).join('')
     + '</div>';
 
   html += '<div id="accounts-list"></div>';
@@ -51,7 +53,7 @@ var currentAccountCat = null;
 
 function filterAccountsCat(cat, btn) {
   currentAccountCat = cat;
-  document.querySelectorAll('#accounts-content .tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('#accounts-content .tab').forEach(function(tb) { tb.classList.remove('active'); });
   if (btn) btn.classList.add('active');
   var filtered = cat ? agencyAccounts.filter(function(a) { return a.category === cat; }) : agencyAccounts;
   renderAccountsList(filtered);
@@ -76,13 +78,13 @@ function renderAccountsList(accounts) {
         + '<div style="display:none;width:48px;height:48px;border-radius:50%;background:' + cat.color + ';align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;flex-shrink:0">' + (a.handle||'?').replace(/^@/,'').charAt(0).toUpperCase() + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + platIcon + ' ' + a.handle + '</div>'
-        + '<div style="font-size:11px;color:var(--text3)">' + cat.icon + ' ' + cat.label + (a.assigned_name ? ' · ' + a.assigned_name : '') + '</div>'
+        + '<div style="font-size:11px;color:var(--text3)">' + cat.icon + ' ' + getAccCatLabel(cat) + (a.assigned_name ? ' · ' + a.assigned_name : '') + '</div>'
         + (a.purpose ? '<div style="font-size:10px;color:var(--text3);font-style:italic">' + a.purpose + '</div>' : '')
         + '</div>'
         + '</div>'
         // Stats
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">Followers</div></div>'
+        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + t('acc.followers') + '</div></div>'
         + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + t('acc.evolution') + '</div></div>'
         + '</div>'
         // Actions
@@ -98,15 +100,15 @@ function renderAccountsList(accounts) {
 function openAddAccountModal(editId) {
   var acc = editId ? agencyAccounts.find(function(a) { return a.id === editId; }) : null;
   var teamOpts = '<option value="">—</option>' + (window.allTeam || []).concat(window.allUsers || []).filter(function(u,i,arr) { return arr.findIndex(function(x) { return x.id === u.id; }) === i; }).map(function(u) { return '<option value="' + u.id + '"' + (acc && acc.assigned_to_id === u.id ? ' selected' : '') + '>' + (u.display_name || u.name) + '</option>'; }).join('');
-  var catOpts = ACCOUNT_CATEGORIES.map(function(c) { return '<option value="' + c.key + '"' + (acc && acc.category === c.key ? ' selected' : '') + '>' + c.icon + ' ' + c.label + '</option>'; }).join('');
+  var catOpts = ACCOUNT_CATEGORIES.map(function(c) { return '<option value="' + c.key + '"' + (acc && acc.category === c.key ? ' selected' : '') + '>' + c.icon + ' ' + getAccCatLabel(c) + '</option>'; }).join('');
 
   var html = '<div class="modal-overlay show" id="acc-modal" onclick="if(event.target===this)this.remove()">'
     + '<div class="modal" style="width:440px"><div class="modal-header"><div class="modal-title">' + (acc ? t('acc.edit_title') : t('acc.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'acc-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">@Handle *</label><input class="form-input" id="acc-handle" value="' + (acc ? acc.handle : '') + '" placeholder="@username"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + '<div class="form-group"><label class="form-label">Plateforme</label><select class="form-input" id="acc-platform"><option value="instagram"' + (acc && acc.platform==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (acc && acc.platform==='tiktok'?' selected':'') + '>🎵 TikTok</option></select></div>'
-    + '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-input" id="acc-category">' + catOpts + '</select></div></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select class="form-input" id="acc-platform"><option value="instagram"' + (acc && acc.platform==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (acc && acc.platform==='tiktok'?' selected':'') + '>🎵 TikTok</option></select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('student.category_label') + '</label><select class="form-input" id="acc-category">' + catOpts + '</select></div></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select class="form-input" id="acc-assigned">' + teamOpts + '</select></div>'
     + '<div class="form-group"><label class="form-label">' + t('common.description') + '</label><input class="form-input" id="acc-purpose" value="' + (acc ? (acc.purpose||'') : '') + '" placeholder="' + t('acc.description_placeholder') + '"></div>'
     + '</div><div class="modal-footer">'

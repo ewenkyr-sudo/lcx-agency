@@ -4,9 +4,9 @@
 function switchCockpitTab(tab, btn, modelId) {
   document.querySelectorAll('#cockpit-content .tab').forEach(function(t2) { t2.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  ['dashboard','profile','schedule','tracklinks','fans'].forEach(function(t) {
-    var el = document.getElementById('cockpit-' + t + '-content');
-    if (el) el.style.display = t === tab ? '' : 'none';
+  ['dashboard','profile','schedule','tracklinks','fans'].forEach(function(tb) {
+    var el = document.getElementById('cockpit-' + tb + '-content');
+    if (el) el.style.display = tb === tab ? '' : 'none';
   });
   if (tab === 'profile') renderModelProfile(modelId);
   else if (tab === 'schedule') renderModelSchedule(modelId);
@@ -213,20 +213,21 @@ async function renderModelCockpit(modelId) {
 
     // Render team
     var teamHtml = d.assignedTeam.length === 0 ? emptyStateHTML('users', t('models.no_chatter_assigned')) : '';
-    d.assignedTeam.forEach(function(t) {
+    d.assignedTeam.forEach(function(tm) {
       var clockInfo = '';
-      if (t.todayClocks.length > 0) {
-        var last = t.todayClocks[t.todayClocks.length - 1];
-        var inTime = new Date(last.clock_in).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
-        clockInfo = last.clock_out ? inTime + ' - ' + new Date(last.clock_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : t('models.since').replace('{time}', inTime);
+      if (tm.todayClocks.length > 0) {
+        var last = tm.todayClocks[tm.todayClocks.length - 1];
+        var loc = window.currentLang === 'en' ? 'en-US' : 'fr-FR';
+        var inTime = new Date(last.clock_in).toLocaleTimeString(loc, {hour:'2-digit',minute:'2-digit'});
+        clockInfo = last.clock_out ? inTime + ' - ' + new Date(last.clock_out).toLocaleTimeString(loc,{hour:'2-digit',minute:'2-digit'}) : t('models.since').replace('{time}', inTime);
       }
       teamHtml += '<div class="cockpit-team-row">'
-        + '<div class="cockpit-online-dot" style="background:' + (t.online ? 'var(--green)' : 'var(--text3)') + '"></div>'
-        + '<div style="flex:1"><strong style="font-size:13px">' + t.name + '</strong>'
+        + '<div class="cockpit-online-dot" style="background:' + (tm.online ? 'var(--green)' : 'var(--text3)') + '"></div>'
+        + '<div style="flex:1"><strong style="font-size:13px">' + tm.name + '</strong>'
         + (clockInfo ? '<div style="font-size:11px;color:var(--text3)">' + clockInfo + '</div>' : '')
         + '</div>'
-        + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">$' + t.monthRevenue.toFixed(2) + '</div>'
-        + '<div style="font-size:10px;color:var(--text3)">' + t.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
+        + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">$' + tm.monthRevenue.toFixed(2) + '</div>'
+        + '<div style="font-size:10px;color:var(--text3)">' + tm.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
         + '</div>';
     });
     document.getElementById('cockpit-team').innerHTML = teamHtml;
