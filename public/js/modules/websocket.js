@@ -104,11 +104,11 @@ function connectWebSocket() {
       // Notifications pour événements leads importants
       if (msg.event === 'lead-updated' && msg.data) {
         if (msg.data.status === 'call-booked') {
-          showToast('Call booked ! ' + (msg.data.username || ''), 'success');
+          showToast(t('ws.call_booked') + ' ' + (msg.data.username || ''), 'success');
           sendNotification('Call Booked !', (msg.data.username || 'Un lead') + ' a un call de prévu', 'success');
         }
         if (msg.data.status === 'signed') {
-          showToast('Lead signé ! ' + (msg.data.username || ''), 'success');
+          showToast(t('ws.lead_signed') + ' ' + (msg.data.username || ''), 'success');
           sendNotification('Lead Signé !', (msg.data.username || 'Un lead') + ' vient de signer !', 'success');
         }
         if (msg.data.status === 'talking-warm') {

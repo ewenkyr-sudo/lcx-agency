@@ -45,7 +45,7 @@ async function renderFinance() {
         + '<td data-label="Statut" class="mc-half"><select onchange="updatePayment(' + p.id + ',{status:this.value})" style="background:' + stBg + ';color:' + stColor + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><option value="pending"' + (p.status==='pending'?' selected':'') + '>En attente</option><option value="paid"' + (p.status==='paid'?' selected':'') + '>Payé</option><option value="cancelled"' + (p.status==='cancelled'?' selected':'') + '>Annulé</option></select></td>'
         + '<td data-label="Notes" class="mc-full" style="font-size:12px;color:var(--text2)">' + (p.notes||'-') + '</td>'
         + '<td data-label=""><button class="btn-delete-small" onclick="deletePayment(' + p.id + ')">✕</button></td></tr>';
-    }).join('') || '<tr><td colspan="6">' + emptyStateHTML('dollar', 'Aucun paiement') + '</td></tr>'
+    }).join('') || '<tr><td colspan="6">' + emptyStateHTML('dollar', t('finances.no_payment')) + '</td></tr>'
     + '</tbody></table></div>'
 
     // Objectifs revenus modèles
@@ -107,7 +107,7 @@ async function addPayment() {
   var res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({ model_id: document.getElementById('pay-model').value, month: document.getElementById('pay-month').value, amount: document.getElementById('pay-amount').value, notes: document.getElementById('pay-notes').value.trim() })
   });
-  if (res.ok) { showToast('Paiement ajouté', 'success'); renderFinance(); }
+  if (res.ok) { showToast(t('finances.payment_added_toast'), 'success'); renderFinance(); }
 }
 
 async function updatePayment(id, data) {
@@ -136,7 +136,7 @@ async function addRevenueObj() {
   var res = await fetch('/api/model-revenue-objectives', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({ model_id: document.getElementById('robj-model').value, month: document.getElementById('robj-month').value, target: document.getElementById('robj-target').value })
   });
-  if (res.ok) { showToast('Objectif ajouté', 'success'); renderFinance(); }
+  if (res.ok) { showToast(t('finances.objective_added'), 'success'); renderFinance(); }
 }
 
 async function updateRevenueObj(id, data) {

@@ -224,7 +224,7 @@ function restoreMOValues() {
 
 function moNext() {
   saveMOStep();
-  if (moStep === 1 && !moData.name) return showToast('Nom requis', 'error');
+  if (moStep === 1 && !moData.name) return showToast(t('mo.name_required'), 'error');
   if (moStep < moTotalSteps) { moStep++; renderMOStep(); }
   else submitModelOnboarding();
 }
@@ -244,14 +244,14 @@ function moTogglePlatform(key) {
 
 async function submitModelOnboarding() {
   var btn = document.getElementById('mo-next');
-  btn.disabled = true; btn.textContent = 'Création...';
+  btn.disabled = true; btn.textContent = t('mo.creating');
   try {
     var res = await fetch('/api/models', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify(moData)
     });
     if (res.ok) {
-      showToast('Créatrice ajoutée ! 🎉', 'success');
+      showToast(t('mo.creator_added'), 'success');
       closeModal('add-model');
       moData = {};
       allModels = await fetch('/api/models', { credentials: 'include' }).then(function(r) { return r.json(); });
@@ -262,7 +262,7 @@ async function submitModelOnboarding() {
       btn.disabled = false; btn.textContent = 'Ajouter la créatrice';
     }
   } catch(e) {
-    showToast('Erreur réseau', 'error');
+    showToast(t('toast.error_network'), 'error');
     btn.disabled = false; btn.textContent = 'Ajouter la créatrice';
   }
 }

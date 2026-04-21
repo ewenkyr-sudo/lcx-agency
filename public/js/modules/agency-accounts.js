@@ -101,7 +101,7 @@ function openAddAccountModal(editId) {
   var catOpts = ACCOUNT_CATEGORIES.map(function(c) { return '<option value="' + c.key + '"' + (acc && acc.category === c.key ? ' selected' : '') + '>' + c.icon + ' ' + c.label + '</option>'; }).join('');
 
   var html = '<div class="modal-overlay show" id="acc-modal" onclick="if(event.target===this)this.remove()">'
-    + '<div class="modal" style="width:440px"><div class="modal-header"><div class="modal-title">' + (acc ? 'Modifier le compte' : 'Ajouter un compte') + '</div><button class="modal-close" onclick="document.getElementById(\'acc-modal\').remove()">✕</button></div>'
+    + '<div class="modal" style="width:440px"><div class="modal-header"><div class="modal-title">' + (acc ? t('acc.edit_title') : t('acc.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'acc-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">@Handle *</label><input class="form-input" id="acc-handle" value="' + (acc ? acc.handle : '') + '" placeholder="@username"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
@@ -121,18 +121,18 @@ function editAgencyAccount(id) { openAddAccountModal(id); }
 
 async function saveAgencyAccount(editId) {
   var handle = document.getElementById('acc-handle').value.trim();
-  if (!handle) return showToast('Handle requis', 'error');
+  if (!handle) return showToast(t('acc.handle_required'), 'error');
   var data = { handle: handle, platform: document.getElementById('acc-platform').value, category: document.getElementById('acc-category').value, assigned_to_id: document.getElementById('acc-assigned').value ? parseInt(document.getElementById('acc-assigned').value) : null, purpose: document.getElementById('acc-purpose').value };
   var url = editId ? '/api/agency-accounts/' + editId : '/api/agency-accounts';
   var method = editId ? 'PUT' : 'POST';
   var res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-  if (res.ok) { document.getElementById('acc-modal')?.remove(); showToast(editId ? 'Compte modifié' : 'Compte ajouté !', 'success'); renderAgencyAccounts(); }
+  if (res.ok) { document.getElementById('acc-modal')?.remove(); showToast(editId ? t('acc.account_modified') : t('acc.account_added'), 'success'); renderAgencyAccounts(); }
   else showToast('Erreur', 'error');
 }
 
 async function deleteAgencyAccount(id) {
-  if (!(await confirmDelete('Supprimer ce compte ?'))) return;
+  if (!(await confirmDelete(t('acc.delete_confirm')))) return;
   await fetch('/api/agency-accounts/' + id, { method: 'DELETE', credentials: 'include' });
-  showToast('Compte supprimé', 'success');
+  showToast(t('acc.account_deleted'), 'success');
   renderAgencyAccounts();
 }

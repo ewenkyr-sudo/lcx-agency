@@ -289,7 +289,7 @@ async function saveCPPost(postId) {
   var method = postId ? 'PUT' : 'POST';
   var res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   if (res.ok) {
-    showToast(postId ? 'Post modifié' : 'Post créé !', 'success');
+    showToast(postId ? t('cp.post_modified_toast') : t('cp.post_created_toast'), 'success');
     closeCPModal();
     loadContentPosts();
   } else {
@@ -299,9 +299,9 @@ async function saveCPPost(postId) {
 }
 
 async function deleteCPPost(id) {
-  if (!(await confirmDelete('Supprimer ce post ?'))) return;
+  if (!(await confirmDelete(t('cp.post_deleted_confirm')))) return;
   await fetch('/api/content-posts/' + id, { method: 'DELETE', credentials: 'include' });
-  showToast('Post supprimé', 'success');
+  showToast(t('cp.post_deleted_toast'), 'success');
   loadContentPosts();
 }
 

@@ -55,7 +55,7 @@ function renderLeadsBulkBar() {
 async function applyLeadsBulk() {
   const script = document.getElementById('bulk-script').value;
   const account = document.getElementById('bulk-account').value;
-  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  if (!script && !account) return showToast(t('outreach.choose_script_ig'), 'warning');
   const body = { ids: Array.from(selectedLeadIds) };
   if (script) body.script_used = script;
   if (account) body.ig_account_used = account;
@@ -93,7 +93,7 @@ function updateLeadField(id, field, value) {
   const body = {};
   body[field] = value;
   fetch('/api/leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
-    .catch(() => showToast('Erreur de connexion', 'error'));
+    .catch(() => showToast(t('toast.error_network'), 'error'));
 }
 
 async function loadLeads() {
@@ -323,7 +323,7 @@ async function addLead() {
       const newLead = await res.json();
       allLeads.unshift(newLead);
       renderLeads();
-      showToast('Lead ajouté !', 'success');
+      showToast(t('outreach.lead_added_toast'), 'success');
     } else {
       const err = await res.json().catch(function() { return {}; });
       showToast(err.error || 'Erreur serveur', 'error');
@@ -348,7 +348,7 @@ async function deleteLead(id) {
   allLeads = allLeads.filter(l => l.id !== id);
   renderLeads();
   fetch('/api/leads/' + id, { method: 'DELETE', credentials: 'include' })
-    .catch(() => showToast('Erreur de suppression', 'error'));
+    .catch(() => showToast(t('toast.error_delete'), 'error'));
   loadOutreachKPIs();
 }
 

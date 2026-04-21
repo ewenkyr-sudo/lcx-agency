@@ -39,7 +39,7 @@ async function renderActivityLog(page) {
         + '<span style="color:var(--text2)">' + (l.user_name || '?') + '</span>'
         + (l.details ? '<span style="color:var(--text3);font-size:12px">' + l.details + '</span>' : '')
         + '</div>';
-    }).join('') || emptyStateHTML('clipboard', 'Aucune activité')
+    }).join('') || emptyStateHTML('clipboard', t('misc.no_activity'))
     + '</div>'
     + paginationHTML(activityLogPage, activityLogTotalPages, 'renderActivityLog')
     + '</div>';

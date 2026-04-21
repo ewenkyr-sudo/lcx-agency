@@ -37,7 +37,7 @@ let _confirmDeleteResolve = null;
 function confirmDelete(message) {
   return new Promise(function(resolve) {
     _confirmDeleteResolve = resolve;
-    document.getElementById('confirm-delete-message').textContent = message || 'Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.';
+    document.getElementById('confirm-delete-message').textContent = message || t('common.confirm_delete');
     document.getElementById('modal-confirm-delete').classList.add('show');
   });
 }
@@ -114,7 +114,7 @@ function showPromptModal(title, placeholder) {
 // Time since helper
 function timeSince(dateStr) {
   var diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (diff < 1) return "à l'instant";
+  if (diff < 1) return t('common.just_now');
   if (diff < 60) return diff + ' min';
   var hours = Math.floor(diff / 60);
   return hours + 'h' + (diff % 60 > 0 ? (diff % 60) + 'min' : '');

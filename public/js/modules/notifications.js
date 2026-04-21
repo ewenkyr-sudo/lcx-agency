@@ -66,7 +66,7 @@ function getNotifIcon(type) {
 
 function notifTimeAgo(dateStr) {
   var diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (diff < 1) return "à l'instant";
+  if (diff < 1) return t('common.just_now');
   if (diff < 60) return diff + ' min';
   var hours = Math.floor(diff / 60);
   if (hours < 24) return hours + 'h';

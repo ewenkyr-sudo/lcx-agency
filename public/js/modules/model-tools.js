@@ -134,7 +134,7 @@ async function saveModelProfile(modelId) {
     current_situation: g('current_situation'), blocked_notes: g('blocked_notes')
   };
   var res = await fetch('/api/model-profile/' + modelId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-  if (res.ok) showToast('Fiche sauvegardée !', 'success');
+  if (res.ok) showToast(t('mp.profile_saved'), 'success');
   else showToast('Erreur', 'error');
 }
 
@@ -239,20 +239,20 @@ function openMSModal(modelId, dayDate, timeSlot, editId) {
 
 async function saveMSItem(modelId, editId) {
   var title = document.getElementById('ms-title').value.trim();
-  if (!title) return showToast('Titre requis', 'error');
+  if (!title) return showToast(t('ms.title_required'), 'error');
   var data = { model_id: modelId, day_date: document.getElementById('ms-date').value, time_slot: document.getElementById('ms-time').value || null, title: title, category: document.getElementById('ms-cat').value, notes: document.getElementById('ms-notes').value };
   var url = editId ? '/api/model-schedule/' + editId : '/api/model-schedule';
   var method = editId ? 'PUT' : 'POST';
   await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   document.getElementById('ms-modal').remove();
-  showToast(editId ? 'Modifié' : 'Ajouté', 'success');
+  showToast(editId ? 'Modifié' : t('ms.added_toast'), 'success');
   renderModelSchedule(modelId);
 }
 
 async function deleteMSItem(id, modelId) {
   await fetch('/api/model-schedule/' + id, { method: 'DELETE', credentials: 'include' });
   document.getElementById('ms-modal').remove();
-  showToast('Supprimé', 'success');
+  showToast(t('ms.deleted_toast'), 'success');
   renderModelSchedule(modelId);
 }
 
@@ -288,12 +288,12 @@ async function addTracklink(modelId) {
   var account = await showPromptModal('Nom du compte', 'Ex: @chloe.agts');
   var link = await showPromptModal('Lien', 'https://...');
   await fetch('/api/model-tracklinks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ model_id: modelId, platform: platform, account_name: account, link: link }) });
-  showToast('Tracklink ajouté', 'success');
+  showToast(t('tl.added_toast'), 'success');
   renderModelTracklinks(modelId);
 }
 
 async function deleteTracklink(id, modelId) {
-  if (!(await confirmDelete('Supprimer ce tracklink ?'))) return;
+  if (!(await confirmDelete(t('tl.delete_confirm')))) return;
   await fetch('/api/model-tracklinks/' + id, { method: 'DELETE', credentials: 'include' });
   renderModelTracklinks(modelId);
 }

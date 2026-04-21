@@ -203,7 +203,7 @@ async function saveFanInteraction(fanId) {
   await fetch('/api/fans/' + fanId + '/interactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   document.getElementById('fan-int-modal')?.remove();
   document.getElementById('fan-detail-modal')?.remove();
-  showToast('Interaction ajoutée', 'success');
+  showToast(t('fan.interaction_added'), 'success');
   openFanDetail(fanId);
   loadFans();
 }
@@ -229,10 +229,10 @@ function openAddFanModal() {
 
 async function submitAddFan() {
   var username = document.getElementById('af-username').value.trim();
-  if (!username) return showToast('Username requis', 'error');
+  if (!username) return showToast(t('fan.username_required'), 'error');
   var data = { model_id: parseInt(document.getElementById('af-model').value), platform: document.getElementById('af-platform').value, username: username, display_name: document.getElementById('af-display').value.trim() || null, total_spent: parseFloat(document.getElementById('af-spent').value) || 0, notes: document.getElementById('af-notes').value, is_important: document.getElementById('af-important').checked };
   var res = await fetch('/api/fans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-  if (res.ok) { document.getElementById('add-fan-modal')?.remove(); showToast('Fan ajouté !', 'success'); loadFans(); }
+  if (res.ok) { document.getElementById('add-fan-modal')?.remove(); showToast(t('fan.fan_added_toast'), 'success'); loadFans(); }
   else { var err = await res.json(); showToast(err.error || 'Erreur', 'error'); }
 }
 

@@ -174,7 +174,7 @@ async function saveAgencyInfo() {
     body: JSON.stringify({ name, primary_color })
   });
   if (res.ok) {
-    showToast('Agence mise a jour !', 'success');
+    showToast(t('settings.agency_updated_toast'), 'success');
     // Apply color override
     if (primary_color) {
       document.documentElement.style.setProperty('--accent', primary_color);
@@ -194,7 +194,7 @@ async function saveAgencySettings() {
     body: JSON.stringify({ agency_name: name })
   });
   if (res.ok) {
-    showToast('Paramètres sauvegardés !', 'success');
+    showToast(t('settings.settings_saved_toast'), 'success');
     agencySettings.agency_name = name;
     document.getElementById('logo-agency-name').textContent = name;
   }
@@ -202,21 +202,21 @@ async function saveAgencySettings() {
 
 async function saveUserEmail() {
   var email = document.getElementById('setting-user-email').value.trim();
-  if (!email) return showToast('Email requis', 'error');
+  if (!email) return showToast(t('settings.email_required'), 'error');
   var res = await fetch('/api/me/email', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify({ email: email })
   });
-  if (res.ok) showToast('Email sauvegardé !', 'success');
+  if (res.ok) showToast(t('settings.email_saved_toast'), 'success');
   else showToast('Erreur', 'error');
 }
 
 async function resetPasswords(role, inputId) {
   const input = document.getElementById(inputId);
   const pwd = input.value.trim();
-  if (!pwd || pwd.length < 4) { showToast('Mot de passe trop court (min 4 caractères)', 'error'); return; }
+  if (!pwd || pwd.length < 4) { showToast(t('settings.password_too_short'), 'error'); return; }
   if (!(await confirmDelete(`Réinitialiser le mot de passe de tous les ${role}s ? Cette action est irréversible.`))) return;
   const res = await fetch('/api/admin/reset-passwords', {
     method: 'POST',
@@ -254,7 +254,7 @@ async function addUser() {
 async function uploadAvatar(userId, input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) return showToast('Image trop lourde (max 2 Mo)', 'error');
+  if (file.size > 2 * 1024 * 1024) return showToast(t('settings.image_too_large'), 'error');
 
   const reader = new FileReader();
   reader.onload = async () => {
@@ -280,7 +280,7 @@ async function uploadAvatar(userId, input) {
         body: JSON.stringify({ avatar_url: base64 })
       });
       if (res.ok) {
-        showToast('Photo de profil mise à jour !', 'success');
+        showToast(t('settings.avatar_updated_toast'), 'success');
         await loadSettings();
         renderSettings();
       }
@@ -321,7 +321,7 @@ async function changeUserPassword(userId) {
     body: JSON.stringify({ password: pwd })
   });
   if (res.ok) {
-    showToast('Mot de passe modifié !', 'success');
+    showToast(t('settings.password_changed_toast'), 'success');
     input.value = '';
   }
 }
@@ -344,7 +344,7 @@ async function saveWhatsAppSettings() {
       whatsapp_api_key: document.getElementById('setting-wa-apikey').value.trim()
     })
   });
-  showToast('Connexion WhatsApp sauvegardée', 'success');
+  showToast(t('settings.whatsapp_saved_toast'), 'success');
 }
 
 async function testWhatsApp() {
@@ -379,7 +379,7 @@ async function saveNotifSettings() {
       whatsapp_extra_recipients: extra
     })
   });
-  if (res.ok) showToast('Notifications sauvegardées !', 'success');
+  if (res.ok) showToast(t('settings.notif_saved_toast'), 'success');
   else showToast('Erreur lors de la sauvegarde', 'error');
 }
 

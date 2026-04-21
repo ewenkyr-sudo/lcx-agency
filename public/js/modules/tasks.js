@@ -146,7 +146,7 @@ function showTaskForm() {
 
 async function addTask() {
   var title = document.getElementById('tf-title').value.trim();
-  if (!title) return showToast('Titre requis', 'error');
+  if (!title) return showToast(t('tasks.title_required_toast'), 'error');
   var body = {
     title: title,
     description: document.getElementById('tf-desc').value.trim(),
@@ -158,7 +158,7 @@ async function addTask() {
   if (assignEl && assignEl.value) body.assigned_to_id = parseInt(assignEl.value);
   var res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
   if (res.ok) {
-    showToast('Tâche créée !', 'success');
+    showToast(t('tasks.task_created_toast'), 'success');
     document.getElementById('task-form-wrap').innerHTML = '';
     allTasks = await fetch('/api/tasks', { credentials: 'include' }).then(function(r) { return r.json(); });
     renderTasks();
@@ -172,7 +172,7 @@ async function updateTaskStatus(id, status) {
 }
 
 async function deleteTask(id) {
-  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_task')))) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   allTasks = await fetch('/api/tasks', { credentials: 'include' }).then(function(r) { return r.json(); });
   renderTasks();
