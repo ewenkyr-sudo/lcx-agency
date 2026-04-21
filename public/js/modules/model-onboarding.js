@@ -80,7 +80,7 @@ function renderMOStep() {
         return '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:10px;border-left:3px solid ' + p.color + '">'
           + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
           + '<strong style="font-size:14px">' + p.label + '</strong>'
-          + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mo-has-' + p.key + '" onchange="moTogglePlatform(\'' + p.key + '\')" ' + (hasAccount ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer"><span style="font-size:12px">' + (hasAccount ? 'Actif' : 'Non') + '</span></label>'
+          + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mo-has-' + p.key + '" onchange="moTogglePlatform(\'' + p.key + '\')" ' + (hasAccount ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer"><span style="font-size:12px">' + (hasAccount ? t('mo.active') : 'Non') + '</span></label>'
           + '</div>'
           + '<div id="mo-plat-details-' + p.key + '" style="' + (hasAccount ? '' : 'display:none') + '">'
           + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'

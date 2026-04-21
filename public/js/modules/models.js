@@ -212,7 +212,7 @@ async function renderModelCockpit(modelId) {
     `;
 
     // Render team
-    var teamHtml = d.assignedTeam.length === 0 ? emptyStateHTML('users', 'Aucun chatter assigné') : '';
+    var teamHtml = d.assignedTeam.length === 0 ? emptyStateHTML('users', t('models.no_chatter_assigned')) : '';
     d.assignedTeam.forEach(function(t) {
       var clockInfo = '';
       if (t.todayClocks.length > 0) {

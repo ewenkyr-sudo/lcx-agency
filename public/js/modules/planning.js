@@ -8,9 +8,9 @@ var planLeaves = [];
 var planSelectedUser = null;
 
 var SHIFT_TYPES = {
-  'morning':   { label: 'Matin', time: '6h-14h', start: '06:00', end: '14:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  'afternoon': { label: 'Après-midi', time: '14h-22h', start: '14:00', end: '22:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  'night':     { label: 'Nuit', time: '22h-06h', start: '22:00', end: '06:00', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  'morning':   { label: t('planning.morning'), time: '6h-14h', start: '06:00', end: '14:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  'afternoon': { label: t('planning.afternoon'), time: '14h-22h', start: '14:00', end: '22:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'night':     { label: t('planning.night'), time: '22h-06h', start: '22:00', end: '06:00', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
   'off':       { label: 'Off', time: '', start: null, end: null, color: '#6B5A84', bg: 'rgba(107,107,128,0.12)' },
   'custom':    { label: 'Custom', time: '', start: null, end: null, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' }
 };
@@ -251,7 +251,7 @@ function showPlanShiftForm(userId, dateStr, defaultEntryType) {
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Priorité</label><select id="ps-priority" class="form-input" style="font-size:12px"><option value="normal">Normale</option><option value="urgent">Urgente</option></select></div></div>'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Modèle(s) / Compte(s)</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="2"><option value="">Aucun</option>' + modelOpts + '</select></div>'
     // Description (task) or Notes (shift)
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px" id="ps-desc-label">' + (entryType==='task'?'Description de la tâche':'Notes') + '</label><input type="text" id="ps-description" class="form-input" style="font-size:12px" placeholder="' + (entryType==='task'?'Ex: Envoyer 40 DMs sur @btfavmenace':'Notes...') + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px" id="ps-desc-label">' + (entryType==='task'?t('planning.description_task'):'Notes') + '</label><input type="text" id="ps-description" class="form-input" style="font-size:12px" placeholder="' + (entryType==='task'?'Ex: Envoyer 40 DMs sur @btfavmenace':'Notes...') + '"></div>'
     + '</div>'
     + '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addPlanShift()">Ajouter</button><button class="btn" style="font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'plan-shift-form-inline\').remove()">Annuler</button></div>'
     + '</div>';
@@ -372,7 +372,7 @@ function renderPlanLeaves() {
     + '<div style="display:grid;gap:8px">'
     + planLeaves.map(function(l) {
       var stColor = l.status === 'pending' ? 'var(--yellow)' : l.status === 'accepted' ? 'var(--green)' : 'var(--red)';
-      var stLabel = l.status === 'pending' ? 'En attente' : l.status === 'accepted' ? 'Accepté' : 'Refusé';
+      var stLabel = l.status === 'pending' ? t('planning.pending') : l.status === 'accepted' ? t('planning.accepted') : t('planning.refused');
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:8px;border-left:3px solid ' + stColor + '">'
         + '<strong style="font-size:13px;min-width:100px">' + l.user_name + '</strong>'
         + '<span style="font-size:12px;color:var(--text2)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'

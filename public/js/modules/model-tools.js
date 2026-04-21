@@ -61,7 +61,7 @@ async function renderModelProfile(modelId) {
     + pf('Partie du corps la plus sexy', 'sexiest_body_part', p.sexiest_body_part)
     + pf('Apparence physique', 'physical_appearance', p.physical_appearance)
     + pf('Disponibilité de travail', 'work_availability', p.work_availability)
-    + pf('Expérience plateformes adultes', 'of_experience', p.of_experience)
+    + pf(t('mp.platform_experience'), 'of_experience', p.of_experience)
     + pf('Revenus', 'current_revenue', p.current_revenue)
     + pf('Équipement', 'equipment', p.equipment)
     + '</div>'
@@ -220,7 +220,7 @@ function openMSModal(modelId, dayDate, timeSlot, editId) {
     { val: 'agency_task', label: '🏢 Tâche agence (en bas)', col: '#3B82F6' }
   ];
   var html = '<div class="modal-overlay show" id="ms-modal" onclick="if(event.target===this)document.getElementById(\'ms-modal\').remove()">'
-    + '<div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title">' + (item ? 'Modifier' : 'Ajouter') + '</div><button class="modal-close" onclick="document.getElementById(\'ms-modal\').remove()">✕</button></div>'
+    + '<div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title">' + (item ? t('ms.edit_title') : t('ms.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'ms-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">Titre *</label><input class="form-input" id="ms-title" value="' + (item ? item.title : '') + '"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'

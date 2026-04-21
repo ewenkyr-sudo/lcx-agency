@@ -58,7 +58,7 @@ function renderCPToolbar() {
     ? 'Semaine du ' + mon.getDate() + ' ' + mon.toLocaleDateString('fr-FR',{month:'short'}) + ' au ' + sun.getDate() + ' ' + sun.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})
     : cpView === 'month'
     ? cpDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-    : 'Liste';
+    : t('cp.list_view');
 
   tb.innerHTML = '<div class="cp-toolbar">'
     + '<button class="cp-nav-btn" onclick="cpNavigate(-1)">←</button>'

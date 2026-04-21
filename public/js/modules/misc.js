@@ -18,12 +18,12 @@ async function renderActivityLog(page) {
   activityLogTotalPages = result.totalPages;
 
   var actionLabels = {
-    'lead-talking-warm': { label: 'Lead discussion chaude', color: 'var(--yellow)', icon: '🔥' },
-    'lead-call-booked': { label: 'Lead call prévu', color: 'var(--accent)', icon: '📞' },
-    'lead-signed': { label: 'Lead signé', color: 'var(--green)', icon: '✅' },
+    'lead-talking-warm': { label: t('misc.lead_warm'), color: 'var(--yellow)', icon: '🔥' },
+    'lead-call-booked': { label: t('misc.lead_call_booked'), color: 'var(--accent)', icon: '📞' },
+    'lead-signed': { label: t('misc.lead_signed'), color: 'var(--green)', icon: '✅' },
     'call-request': { label: 'Demande de call', color: 'var(--blue)', icon: '📞' },
-    'clock-in': { label: 'Pointage entrée', color: 'var(--green)', icon: '🟢' },
-    'clock-out': { label: 'Pointage sortie', color: 'var(--red)', icon: '🔴' },
+    'clock-in': { label: t('misc.clock_in_action'), color: 'var(--green)', icon: '🟢' },
+    'clock-out': { label: t('misc.clock_out_action'), color: 'var(--red)', icon: '🔴' },
     'inactive-chatter-alert': { label: 'Alerte chatter inactif', color: 'var(--yellow)', icon: '⚠️' }
   };
 
