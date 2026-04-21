@@ -1319,8 +1319,10 @@ async function loadAllData() {
 // ========== ROLE-BASED ACCESS ==========
 function applyRoleBasedAccess() {
   const role = currentUser.role;
-  const adminNav = ['nav-principal', 'nav-teams', 'nav-tools', 'nav-accounts', 'nav-admin'];
-  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'accounts', 'settings'];
+  // Accounts section: only visible to user "ewen" (feature in progress)
+  var showAccounts = currentUser.username === 'ewen';
+  const adminNav = ['nav-principal', 'nav-teams', 'nav-tools'].concat(showAccounts ? ['nav-accounts'] : []).concat(['nav-admin']);
+  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log'].concat(showAccounts ? ['accounts'] : []).concat(['settings']);
   const showNav = {
     admin: adminNav, super_admin: adminNav, platform_admin: adminNav,
     model: ['nav-principal'],
