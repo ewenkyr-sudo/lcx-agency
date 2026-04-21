@@ -72,7 +72,7 @@ function renderAccountsList(accounts) {
 
       return '<div style="background:var(--bg3);border-radius:14px;padding:16px;border-left:3px solid ' + cat.color + ';transition:all 0.2s" onmouseover="this.style.borderColor=\'' + cat.color + '\'" onmouseout="this.style.borderColor=\'' + cat.color + '\'">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
-        + '<img src="/api/agency-accounts/' + a.id + '/avatar" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid ' + cat.color + '40" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+        + '<img src="https://unavatar.io/' + (a.platform||'instagram') + '/' + (a.handle||'').replace(/^@/,'') + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid ' + cat.color + '40" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
         + '<div style="display:none;width:48px;height:48px;border-radius:50%;background:' + cat.color + ';align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;flex-shrink:0">' + (a.handle||'?').replace(/^@/,'').charAt(0).toUpperCase() + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + platIcon + ' ' + a.handle + '</div>'

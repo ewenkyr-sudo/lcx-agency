@@ -145,8 +145,9 @@ function accountAvatarHTML(accountId, handle, platform, size) {
   var platIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
   var color = platColors[platform] || '#A855F7';
   var initial = (handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
+  var avatarUrl = (platform === 'instagram' || platform === 'tiktok') ? 'https://unavatar.io/' + platform + '/' + (handle||'').replace(/^@/,'') : '/api/accounts/' + accountId + '/avatar';
   return '<div style="display:flex;align-items:center;gap:8px">'
-    + '<img src="/api/accounts/' + accountId + '/avatar" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;border:2px solid ' + color + '30;background:' + color + '20" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+    + '<img src="' + avatarUrl + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;border:2px solid ' + color + '30;background:' + color + '20" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
     + '<div style="display:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color + ';align-items:center;justify-content:center;font-size:' + Math.round(size*0.4) + 'px;font-weight:700;color:white;flex-shrink:0">' + initial + '</div>'
     + '<div style="min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (handle || '') + '</div>'
     + '<div style="font-size:10px;color:var(--text3)">' + (platIcons[platform] || '') + ' ' + (platform || '') + '</div></div></div>';
