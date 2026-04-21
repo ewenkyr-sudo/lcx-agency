@@ -669,14 +669,14 @@ async function coachingDeleteTask(id) {
 
 async function toggleOutreachUS(studentId, enabled) {
   await fetch('/api/students/' + studentId + '/outreach-us', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ enabled }) });
-  showToast(enabled ? 'Outreach US activé' : 'Outreach US désactivé', 'success');
+  showToast(enabled ? t('coaching.us_enabled_toast') : t('coaching.us_disabled_toast'), 'success');
   // Recharger les données students
   allStudents = await fetch('/api/students', { credentials: 'include' }).then(r => r.json());
 }
 
 async function updateStudentDrive(studentId, value) {
   await fetch('/api/students/' + studentId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ drive_folder: value || null }) });
-  showToast('Dossier Drive mis à jour', 'success');
+  showToast(t('coaching.drive_updated_toast'), 'success');
   allStudents = await fetch('/api/students', { credentials: 'include' }).then(r => r.json());
   renderCoaching();
 }
@@ -684,32 +684,32 @@ async function updateStudentDrive(studentId, value) {
 async function addOutreachPair(studentAId, studentBId) {
   if (!studentBId) return;
   const res = await fetch('/api/student-outreach-pairs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_a_id: parseInt(studentAId), student_b_id: parseInt(studentBId) }) });
-  if (res.ok) { showToast('Élèves pairés', 'success'); renderCoaching(); }
+  if (res.ok) { showToast(t('coaching.paired_toast'), 'success'); renderCoaching(); }
   else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
 async function removeOutreachPair(id) {
   await fetch('/api/student-outreach-pairs/' + id, { method: 'DELETE', credentials: 'include' });
-  showToast('Paire retirée', 'success');
+  showToast(t('coaching.pair_removed_toast'), 'success');
   renderCoaching();
 }
 
 async function assignOutreach(studentUserId, outreachUserId) {
   if (!outreachUserId) return;
   const res = await fetch('/api/student-outreach-assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_user_id: studentUserId, outreach_user_id: parseInt(outreachUserId) }) });
-  if (res.ok) { showToast('Assistante assignée', 'success'); renderCoaching(); }
+  if (res.ok) { showToast(t('coaching.assistant_assigned_toast'), 'success'); renderCoaching(); }
   else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
 async function removeOutreachAssignment(id) {
   await fetch('/api/student-outreach-assignments/' + id, { method: 'DELETE', credentials: 'include' });
-  showToast('Assignation retirée', 'success');
+  showToast(t('coaching.assignment_removed_toast'), 'success');
   renderCoaching();
 }
 
 async function updateStudentProgression(studentId, step) {
   await fetch('/api/students/' + studentId + '/progression', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ progression_step: step }) });
-  showToast('Progression mise à jour', 'success');
+  showToast(t('coaching.progression_updated_toast'), 'success');
 }
 
 async function handleCallRequest(id, status) {
@@ -719,7 +719,7 @@ async function handleCallRequest(id, status) {
     if (!scheduled_at) return;
   }
   await fetch('/api/call-requests/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status, scheduled_at }) });
-  showToast(status === 'accepted' ? 'Call accepté' : 'Call refusé', status === 'accepted' ? 'success' : 'info');
+  showToast(status === 'accepted' ? t('coaching.call_accepted') : t('coaching.call_refused'), status === 'accepted' ? 'success' : 'info');
   renderCoaching();
 }
 
@@ -746,7 +746,7 @@ async function addAdminObjective() {
   const description = document.getElementById('obj-desc').value.trim();
   const target = parseInt(document.getElementById('obj-target').value) || 0;
   await fetch('/api/objectives', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ user_id, week_start: getWeekStart(), obj_type, description, target }) });
-  showToast('Objectif ajouté', 'success'); renderCoaching();
+  showToast(t('coaching.objective_added_toast'), 'success'); renderCoaching();
 }
 
 async function deleteAdminObjective(id) {

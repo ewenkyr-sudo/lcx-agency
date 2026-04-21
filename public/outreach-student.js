@@ -58,7 +58,7 @@ function renderSOBulkBar(studentUserId) {
 async function applySOLeadsBulk(studentUserId) {
   var script = (document.getElementById('so-bulk-script-' + studentUserId) || {}).value || '';
   var account = (document.getElementById('so-bulk-account-' + studentUserId) || {}).value || '';
-  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  if (!script && !account) return showToast(t('outreach.choose_script_ig'), 'warning');
   var ids = Array.from(selectedSOLeadIds[studentUserId] || []);
   var body = { ids: ids };
   if (script) body.script_used = script;
@@ -271,7 +271,7 @@ function updateSOLead(leadId, data) {
     if (lead) { Object.assign(lead, data); break; }
   }
   fetch('/api/student-leads/' + leadId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) })
-    .catch(function() { showToast('Erreur de connexion', 'error'); });
+    .catch(function() { showToast(t('toast.error_network'), 'error'); });
 }
 
 async function deleteSOLead(studentUserId, leadId) {
@@ -279,7 +279,7 @@ async function deleteSOLead(studentUserId, leadId) {
   studentOutreachData[studentUserId].leads = studentOutreachData[studentUserId].leads.filter(function(l) { return l.id !== leadId; });
   renderSOLeadTable(studentUserId);
   fetch('/api/student-leads/' + leadId, { method: 'DELETE', credentials: 'include' })
-    .catch(function() { showToast('Erreur de suppression', 'error'); });
+    .catch(function() { showToast(t('toast.error_delete'), 'error'); });
 }
 
 function showSOOptionsManager(studentUserId) {

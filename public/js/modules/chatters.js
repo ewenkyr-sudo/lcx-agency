@@ -111,7 +111,7 @@ function renderStats() {
 async function updateManualFollowers(accId) {
   const input = document.getElementById('manual-followers-' + accId);
   const val = parseInt(input.value);
-  if (isNaN(val) || val < 0) return showToast('Nombre invalide', 'error');
+  if (isNaN(val) || val < 0) return showToast(t('toast.invalid_number'), 'error');
   const res = await fetch('/api/accounts/' + accId, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -119,13 +119,13 @@ async function updateManualFollowers(accId) {
     body: JSON.stringify({ current_followers: val })
   });
   if (res.ok) {
-    showToast('Followers mis à jour !', 'success');
+    showToast(t('toast.followers_updated'), 'success');
     await reloadAccounts();
   }
 }
 
 async function refreshFollowers() {
-  showToast('Mise à jour des followers lancée...', 'info');
+  showToast(t('toast.followers_refresh'), 'info');
   await fetch('/api/admin/refresh-followers', { method: 'POST', credentials: 'include' });
 }
 

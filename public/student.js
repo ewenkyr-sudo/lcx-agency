@@ -68,7 +68,7 @@ function renderStudentBulkBar() {
 async function applyStudentLeadsBulk() {
   const script = document.getElementById('student-bulk-script').value;
   const account = document.getElementById('student-bulk-account').value;
-  if (!script && !account) return showToast('Choisis un script ou un compte IG', 'warning');
+  if (!script && !account) return showToast(t('outreach.choose_script_ig'), 'warning');
   const ids = Array.from(selectedStudentLeadIds);
   const body = { ids };
   if (script) body.script_used = script;
@@ -231,9 +231,9 @@ function showCallRequestForm() {
 async function submitCallRequest() {
   const message = document.getElementById('cr-message').value.trim();
   const availabilities = document.getElementById('cr-avail').value.trim();
-  if (!message) return showToast('Message requis', 'error');
+  if (!message) return showToast(t('toast.message_required'), 'error');
   const res = await fetch('/api/call-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ message, availabilities }) });
-  if (res.ok) { showToast('Demande envoyée !', 'success'); document.getElementById('call-request-form')?.remove(); renderStudentHome(); }
+  if (res.ok) { showToast(t('planning.request_sent'), 'success'); document.getElementById('call-request-form')?.remove(); renderStudentHome(); }
 }
 
 // ========== STUDENT OUTREACH ==========
@@ -403,7 +403,7 @@ function switchStudentMarket(m) {
 
 async function addStudentLead() {
   const username = document.getElementById('sl-username').value.trim();
-  if (!username) return showToast('Username requis', 'error');
+  if (!username) return showToast(t('toast.username_required'), 'error');
   const dup = studentData.leads.find(l => l.username.replace(/^@/,'').toLowerCase() === username.replace(/^@/,'').toLowerCase());
   if (dup) return showToast('Ce lead existe déjà (' + dup.status + ')', 'error');
   const res = await fetch('/api/student-leads', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({
@@ -416,9 +416,9 @@ async function addStudentLead() {
     studentData.leads.unshift(newLead);
     document.getElementById('student-lead-form-wrap').innerHTML = '';
     renderStudentLeadTable();
-    showToast('Lead ajouté !', 'success');
+    showToast(t('toast.lead_added_ex'), 'success');
   } else {
-    try { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); } catch(err) { showToast('Erreur serveur', 'error'); }
+    try { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); } catch(err) { showToast(t('toast.error_server'), 'error'); }
   }
 }
 
@@ -426,7 +426,7 @@ function updateStudentLead(id, status) {
   const lead = studentData.leads.find(l => l.id === id);
   if (lead) lead.status = status;
   fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ status }) })
-    .catch(() => showToast('Erreur de connexion', 'error'));
+    .catch(() => showToast(t('toast.error_network'), 'error'));
 }
 
 function updateStudentLeadField(id, field, value) {
@@ -443,7 +443,7 @@ async function deleteStudentLead(id) {
   studentData.leads = studentData.leads.filter(l => l.id !== id);
   renderStudentLeadTable();
   fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' })
-    .catch(() => showToast('Erreur de suppression', 'error'));
+    .catch(() => showToast(t('toast.error_delete'), 'error'));
 }
 
 function showOptionsManager() {
@@ -489,7 +489,7 @@ async function deleteOption(id) {
   ['script', 'account', 'type'].forEach(key => {
     userOptions[key] = userOptions[key].filter(o => o.id !== id);
   });
-  showToast('Option supprimée', 'success');
+  showToast(t('toast.option_deleted'), 'success');
   showOptionsManager();
 }
 
@@ -503,7 +503,7 @@ async function importStudentCSV(input) {
   reader.onload = async function() {
     var content = reader.result;
     var lines = content.split('\n').filter(function(l) { return l.trim(); });
-    if (lines.length < 2) return showToast('Fichier vide', 'error');
+    if (lines.length < 2) return showToast(t('toast.file_empty'), 'error');
 
     showToast('Import en cours... (' + (lines.length - 1) + ' lignes)', 'info');
 
@@ -568,10 +568,10 @@ function showRecruitForm() {
 
 async function addRecruit() {
   const ig_name = document.getElementById('rec-name').value.trim();
-  if (!ig_name) return showToast('Nom Instagram requis', 'error');
+  if (!ig_name) return showToast(t('toast.ig_name_required'), 'error');
   const res = await fetch('/api/student-recruits', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
     body: JSON.stringify({ ig_name, ig_link: document.getElementById('rec-link').value.trim(), notes: document.getElementById('rec-notes').value.trim() })});
-  if (res.ok) { showToast('Modèle ajoutée !', 'success'); renderStudentRecruits(); }
+  if (res.ok) { showToast(t('toast.recruit_added'), 'success'); renderStudentRecruits(); }
 }
 
 async function updateRecruit(id, status) {
@@ -640,10 +640,10 @@ function showStudentModelForm() {
 
 async function addStudentModel() {
   const name = document.getElementById('sm-name').value.trim();
-  if (!name) return showToast('Nom requis', 'error');
+  if (!name) return showToast(t('toast.name_required'), 'error');
   await fetch('/api/student-models', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
     body: JSON.stringify({ name, of_handle: document.getElementById('sm-handle').value.trim(), fans_count: parseInt(document.getElementById('sm-fans').value)||0, commission_rate: parseFloat(document.getElementById('sm-commission').value)||0 })});
-  showToast('Modèle ajouté !', 'success'); renderStudentModels();
+  showToast(t('toast.model_added'), 'success'); renderStudentModels();
 }
 
 async function updateStudentModel(id, data) {
@@ -713,9 +713,9 @@ async function addStudentRevenue() {
   const student_model_id = document.getElementById('rev-model').value;
   const month = document.getElementById('rev-month').value;
   const revenue = parseFloat(document.getElementById('rev-amount').value) || 0;
-  if (!student_model_id || !month) return showToast('Modèle et mois requis', 'error');
+  if (!student_model_id || !month) return showToast(t('toast.model_month_required'), 'error');
   await fetch('/api/student-revenue', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ student_model_id, month, revenue }) });
-  showToast('Revenu ajouté !', 'success'); renderStudentRevenue();
+  showToast(t('toast.revenue_added'), 'success'); renderStudentRevenue();
 }
 
 // ========== MESSAGES (Chat) ==========
@@ -847,20 +847,20 @@ function showAddResourceForm() {
 
 async function addResource() {
   const title = document.getElementById('res-title').value.trim();
-  if (!title) return showToast('Titre requis', 'error');
+  if (!title) return showToast(t('toast.title_required'), 'error');
   const resType = document.getElementById('res-type').value;
   const body = { title, category: document.getElementById('res-cat').value, res_type: resType, description: document.getElementById('res-desc').value.trim() };
 
   if (resType === 'link') { body.url = document.getElementById('res-url').value.trim(); }
   else {
     const file = document.getElementById('res-file').files[0];
-    if (!file) return showToast('Fichier requis', 'error');
-    if (file.size > 10 * 1024 * 1024) return showToast('Fichier trop gros (max 10Mo)', 'error');
+    if (!file) return showToast(t('toast.file_required'), 'error');
+    if (file.size > 10 * 1024 * 1024) return showToast(t('toast.file_too_large'), 'error');
     const reader = new FileReader();
     reader.onload = async () => {
       body.file_data = reader.result; body.file_name = file.name; body.file_mime = file.type;
       await fetch('/api/resources', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-      showToast('Ressource ajoutée !', 'success'); renderStudentResources();
+      showToast(t('toast.resource_added'), 'success'); renderStudentResources();
     };
     reader.readAsDataURL(file); return;
   }

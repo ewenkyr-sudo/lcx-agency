@@ -198,7 +198,7 @@ async function updateModelDrive(modelId, field, value) {
   const body = {};
   body[field] = value || null;
   await fetch('/api/models/' + modelId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
-  showToast('Lien mis à jour', 'success');
+  showToast(t('toast.link_updated'), 'success');
   await loadAllData();
   renderModels();
   // Recharger les plannings
@@ -218,9 +218,9 @@ function showPlanningForm(modelId) {
 async function addPlanning(modelId) {
   var label = document.getElementById('plan-label-' + modelId).value.trim();
   var link = document.getElementById('plan-link-' + modelId).value.trim();
-  if (!label || !link) return showToast('Label et lien requis', 'error');
+  if (!label || !link) return showToast(t('toast.label_link_required'), 'error');
   var res = await fetch('/api/models/' + modelId + '/planning', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ label: label, drive_link: link }) });
-  if (res.ok) { showToast('Planning ajouté', 'success'); document.getElementById('planning-form-' + modelId).innerHTML = ''; loadModelPlanning(modelId); }
+  if (res.ok) { showToast(t('toast.planning_added'), 'success'); document.getElementById('planning-form-' + modelId).innerHTML = ''; loadModelPlanning(modelId); }
   else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 

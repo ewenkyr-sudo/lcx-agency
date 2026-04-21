@@ -305,14 +305,14 @@ async function addPlanShift() {
       user_id: userId ? parseInt(userId) : undefined
     })
   });
-  if (res.ok) { showToast(entryType === 'task' ? 'Tâche ajoutée' : 'Shift ajouté', 'success'); var f = document.getElementById('plan-shift-form-inline'); if (f) f.remove(); renderPlanDetail(); }
+  if (res.ok) { showToast(entryType === 'task' ? 'Tâche ajoutée' : t('planning.shift_added'), 'success'); var f = document.getElementById('plan-shift-form-inline'); if (f) f.remove(); renderPlanDetail(); }
   else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
 async function editPlanShift(id) {
   var s = planShifts.find(function(x) { return x.id === id; });
   if (!s) return;
-  if (!isAdmin() && s.user_id !== currentUser.id) return showToast('Tu ne peux modifier que tes propres shifts', 'error');
+  if (!isAdmin() && s.user_id !== currentUser.id) return showToast(t('toast.cannot_edit_others_shifts'), 'error');
 
   var newType = prompt('Type de shift (morning/afternoon/night/off/custom) :', s.shift_type);
   if (newType === null) return;
@@ -328,14 +328,14 @@ async function editPlanShift(id) {
   await fetch('/api/planning-shifts/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({ shift_type: newType, start_time: newStart, end_time: newEnd })
   });
-  showToast('Shift modifié', 'success');
+  showToast(t('planning.shift_modified'), 'success');
   renderPlanning();
 }
 
 async function deletePlanShift(id) {
-  if (!(await confirmDelete('Supprimer ce shift ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_shift')))) return;
   await fetch('/api/planning-shifts/' + id, { method: 'DELETE', credentials: 'include' });
-  showToast('Shift supprimé', 'success');
+  showToast(t('planning.shift_deleted'), 'success');
   renderPlanning();
 }
 
@@ -357,7 +357,7 @@ async function submitLeaveRequest() {
   var res = await fetch('/api/leave-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({ start_date: document.getElementById('lr-start').value, end_date: document.getElementById('lr-end').value, reason: document.getElementById('lr-reason').value.trim() })
   });
-  if (res.ok) { showToast('Demande envoyée', 'success'); document.getElementById('plan-leave-form-wrap').innerHTML = ''; renderPlanning(); }
+  if (res.ok) { showToast(t('planning.request_sent'), 'success'); document.getElementById('plan-leave-form-wrap').innerHTML = ''; renderPlanning(); }
   else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
 }
 
@@ -388,7 +388,7 @@ function renderPlanLeaves() {
 
 async function handleLeave(id, status) {
   await fetch('/api/leave-requests/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status: status }) });
-  showToast(status === 'accepted' ? 'Congé accepté' : 'Congé refusé', 'success');
+  showToast(status === 'accepted' ? t('planning.leave_accepted_toast') : t('planning.leave_refused_toast'), 'success');
   renderPlanning();
 }
 
