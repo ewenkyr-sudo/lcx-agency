@@ -3371,6 +3371,203 @@ app.delete('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, r
   res.json({ ok: true });
 });
 
+// ============ FAN CRM ============
+
+// Segment thresholds (hardcoded for MVP, configurable later)
+var FAN_WHALE_THRESHOLD = 500;
+var FAN_VIP_THRESHOLD = 100;
+var FAN_SILENT_DAYS = 30;
+var FAN_AT_RISK_DAYS = 7;
+var FAN_NEW_DAYS = 7;
+
+app.get('/api/fans', authMiddleware, async (req, res) => {
+  try {
+    var { model_id, platform, tag, is_important, search, segment, sort, limit, offset } = req.query;
+    var lim = Math.min(parseInt(limit) || 50, 200);
+    var off = parseInt(offset) || 0;
+    var params = [req.user.agency_id];
+    var where = 'f.agency_id = $1';
+    if (model_id) { params.push(model_id); where += ' AND f.model_id = $' + params.length; }
+    if (platform) { params.push(platform); where += ' AND f.platform = $' + params.length; }
+    if (is_important === 'true') where += ' AND f.is_important = true';
+    if (search) { params.push('%' + search.toLowerCase() + '%'); where += ' AND (LOWER(f.username) LIKE $' + params.length + ' OR LOWER(f.display_name) LIKE $' + params.length + ')'; }
+    if (tag) { params.push(tag); where += ' AND f.tags ? $' + params.length; }
+
+    // Segment filtering (calculated live)
+    if (segment === 'whale') where += ' AND f.total_spent >= ' + FAN_WHALE_THRESHOLD;
+    else if (segment === 'vip') where += ' AND f.total_spent >= ' + FAN_VIP_THRESHOLD;
+    else if (segment === 'silent') where += " AND f.last_interaction_at < NOW() - INTERVAL '" + FAN_SILENT_DAYS + " days'";
+    else if (segment === 'at_risk') where += " AND f.subscription_expires_at IS NOT NULL AND f.subscription_expires_at < NOW() + INTERVAL '" + FAN_AT_RISK_DAYS + " days' AND f.subscription_expires_at > NOW()";
+    else if (segment === 'new') where += " AND f.first_seen_at > NOW() - INTERVAL '" + FAN_NEW_DAYS + " days'";
+
+    var orderBy = 'f.total_spent DESC';
+    if (sort === 'last_interaction') orderBy = 'f.last_interaction_at DESC NULLS LAST';
+    else if (sort === 'first_seen') orderBy = 'f.first_seen_at DESC';
+    else if (sort === 'username') orderBy = 'f.username ASC';
+
+    var countResult = await pool.query('SELECT COUNT(*) as total FROM fans f WHERE ' + where, params);
+    var total = parseInt(countResult.rows[0].total);
+
+    params.push(lim); params.push(off);
+    var { rows: fans } = await pool.query(
+      'SELECT f.*, m.name as model_name FROM fans f JOIN models m ON f.model_id = m.id WHERE ' + where + ' ORDER BY ' + orderBy + ' LIMIT $' + (params.length - 1) + ' OFFSET $' + params.length, params);
+
+    // Stats
+    var statsParams = [req.user.agency_id];
+    var statsWhere = 'agency_id = $1';
+    if (model_id) { statsParams.push(model_id); statsWhere += ' AND model_id = $' + statsParams.length; }
+    var statsResult = await pool.query('SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE total_spent >= ' + FAN_WHALE_THRESHOLD + ') as whales, COUNT(*) FILTER (WHERE total_spent >= ' + FAN_VIP_THRESHOLD + ') as vips, COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL \'' + FAN_NEW_DAYS + ' days\') as new_fans, COUNT(*) FILTER (WHERE last_interaction_at < NOW() - INTERVAL \'' + FAN_SILENT_DAYS + ' days\') as silent, COUNT(*) FILTER (WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW() + INTERVAL \'' + FAN_AT_RISK_DAYS + ' days\' AND subscription_expires_at > NOW()) as at_risk FROM fans WHERE ' + statsWhere, statsParams);
+
+    res.json({ fans, total, stats: statsResult.rows[0] });
+  } catch(e) { console.error('Fans list error:', e.message); res.json({ fans: [], total: 0, stats: {} }); }
+});
+
+app.get('/api/fans/:id', authMiddleware, async (req, res) => {
+  try {
+    var fan = (await pool.query('SELECT f.*, m.name as model_name FROM fans f JOIN models m ON f.model_id = m.id WHERE f.id = $1 AND f.agency_id = $2', [req.params.id, req.user.agency_id])).rows[0];
+    if (!fan) return res.status(404).json({ error: 'Fan non trouvé' });
+    var interactions = (await pool.query('SELECT fi.*, u.display_name as user_name FROM fan_interactions fi LEFT JOIN users u ON fi.user_id = u.id WHERE fi.fan_id = $1 ORDER BY fi.created_at DESC LIMIT 50', [fan.id])).rows;
+    res.json({ fan, interactions });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.post('/api/fans', authMiddleware, async (req, res) => {
+  var { model_id, platform, username, display_name, total_spent, tags, notes, is_important } = req.body;
+  if (!model_id || !username) return res.status(400).json({ error: 'Modèle et username requis' });
+  try {
+    var { rows } = await pool.query(
+      'INSERT INTO fans (agency_id, model_id, platform, username, display_name, total_spent, tags, notes, is_important, imported_from, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+      [req.user.agency_id, model_id, platform || 'onlyfans', username.trim(), display_name || null, total_spent || 0, JSON.stringify(tags || []), notes || null, is_important || false, 'manual', req.user.id]);
+    res.json(rows[0]);
+  } catch(e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Ce fan existe déjà pour ce modèle' });
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/fans/:id', authMiddleware, async (req, res) => {
+  var { display_name, total_spent, tags, notes, is_important, subscription_status, subscription_expires_at } = req.body;
+  try {
+    await pool.query(
+      'UPDATE fans SET display_name=COALESCE($1,display_name), total_spent=COALESCE($2,total_spent), tags=COALESCE($3,tags), notes=COALESCE($4,notes), is_important=COALESCE($5,is_important), subscription_status=COALESCE($6,subscription_status), subscription_expires_at=$7, updated_at=NOW() WHERE id=$8 AND agency_id=$9',
+      [display_name, total_spent, tags ? JSON.stringify(tags) : null, notes, is_important, subscription_status, subscription_expires_at || null, req.params.id, req.user.agency_id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.delete('/api/fans/:id', authMiddleware, async (req, res) => {
+  await pool.query('DELETE FROM fans WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+app.post('/api/fans/:id/interactions', authMiddleware, async (req, res) => {
+  var { interaction_type, amount, content } = req.body;
+  if (!interaction_type) return res.status(400).json({ error: 'Type requis' });
+  try {
+    var { rows } = await pool.query('INSERT INTO fan_interactions (fan_id, user_id, interaction_type, amount, content) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [req.params.id, req.user.id, interaction_type, amount || null, content || null]);
+    // Update fan last_interaction_at + total_spent
+    var updates = ['last_interaction_at = NOW()'];
+    if ((interaction_type === 'purchase' || interaction_type === 'tip') && amount) {
+      updates.push('total_spent = total_spent + ' + parseFloat(amount));
+      updates.push('last_spent_at = NOW()');
+    }
+    await pool.query('UPDATE fans SET ' + updates.join(', ') + ', updated_at = NOW() WHERE id = $1', [req.params.id]);
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.delete('/api/fans/:id/interactions/:interactionId', authMiddleware, async (req, res) => {
+  await pool.query('DELETE FROM fan_interactions WHERE id = $1 AND fan_id = $2', [req.params.interactionId, req.params.id]);
+  res.json({ ok: true });
+});
+
+// Import CSV
+app.post('/api/fans/import-csv', authMiddleware, adminOnly, async (req, res) => {
+  var { model_id, platform, csv_data, column_mapping } = req.body;
+  if (!model_id || !csv_data || !column_mapping) return res.status(400).json({ error: 'Données manquantes' });
+  try {
+    // Parse CSV
+    var lines = csv_data.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+    if (lines.length < 2) return res.status(400).json({ error: 'CSV vide' });
+    if (lines.length > 10001) return res.status(400).json({ error: 'Maximum 10 000 lignes' });
+
+    // Parse header
+    var headers = parseCSVLine(lines[0]);
+    var imported = 0, updated = 0, errors = [];
+
+    for (var i = 1; i < lines.length; i++) {
+      try {
+        var cols = parseCSVLine(lines[i]);
+        var getCol = function(field) {
+          var colName = column_mapping[field];
+          if (!colName) return null;
+          var idx = headers.indexOf(colName);
+          return idx >= 0 ? (cols[idx] || '').trim() : null;
+        };
+        var username = getCol('username');
+        if (!username) { errors.push({ line: i + 1, error: 'Username manquant' }); continue; }
+
+        // Build custom_fields from unmapped columns
+        var mappedCols = new Set(Object.values(column_mapping));
+        var custom = {};
+        headers.forEach(function(h, idx) { if (!mappedCols.has(h) && cols[idx]) custom[h] = cols[idx]; });
+
+        var totalSpent = parseFloat((getCol('total_spent') || '0').replace(/[^0-9.]/g, '')) || 0;
+        var subStatus = getCol('subscription_status') || 'active';
+
+        var result = await pool.query(
+          `INSERT INTO fans (agency_id, model_id, platform, username, display_name, total_spent, subscription_status, custom_fields, imported_from, created_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (model_id, platform, username) DO UPDATE SET
+             total_spent = GREATEST(fans.total_spent, EXCLUDED.total_spent),
+             subscription_status = EXCLUDED.subscription_status,
+             custom_fields = fans.custom_fields || EXCLUDED.custom_fields,
+             updated_at = NOW()
+           RETURNING (xmax = 0) as is_new`,
+          [req.user.agency_id, model_id, platform || 'onlyfans', username, getCol('display_name'), totalSpent, subStatus, JSON.stringify(custom), 'csv_custom', req.user.id]);
+
+        if (result.rows[0].is_new) imported++; else updated++;
+      } catch(lineErr) {
+        errors.push({ line: i + 1, error: lineErr.message });
+        if (errors.length > 50) break;
+      }
+    }
+    res.json({ imported, updated, errors: errors.slice(0, 20), total_lines: lines.length - 1 });
+  } catch(e) { console.error('CSV import error:', e.message); res.status(500).json({ error: 'Erreur import' }); }
+});
+
+// CSV line parser (handles quoted fields with commas)
+function parseCSVLine(line) {
+  var result = [], current = '', inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += c; }
+  }
+  result.push(current);
+  return result;
+}
+
+app.get('/api/fans/stats/:modelId', authMiddleware, async (req, res) => {
+  try {
+    var aid = req.user.agency_id;
+    var mid = req.params.modelId;
+    var stats = (await pool.query(`SELECT
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE total_spent >= ${FAN_WHALE_THRESHOLD}) as whales,
+      COUNT(*) FILTER (WHERE total_spent >= ${FAN_VIP_THRESHOLD}) as vips,
+      COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL '${FAN_NEW_DAYS} days') as new_fans,
+      COUNT(*) FILTER (WHERE last_interaction_at < NOW() - INTERVAL '${FAN_SILENT_DAYS} days') as silent,
+      COUNT(*) FILTER (WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW() + INTERVAL '${FAN_AT_RISK_DAYS} days' AND subscription_expires_at > NOW()) as at_risk,
+      COALESCE(SUM(total_spent), 0) as total_revenue
+      FROM fans WHERE agency_id = $1 AND model_id = $2`, [aid, mid])).rows[0];
+    var topSpenders = (await pool.query('SELECT username, display_name, total_spent, platform, tags FROM fans WHERE agency_id = $1 AND model_id = $2 ORDER BY total_spent DESC LIMIT 10', [aid, mid])).rows;
+    res.json({ stats, topSpenders });
+  } catch(e) { res.json({ stats: {}, topSpenders: [] }); }
+});
+
 // ============ CONTENT PLANNER ============
 app.get('/api/content-posts', authMiddleware, async (req, res) => {
   try {

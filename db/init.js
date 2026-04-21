@@ -619,6 +619,49 @@ async function initDB() {
       );
     `).catch(function() {});
 
+    // Fan CRM
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fans (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+        platform VARCHAR(20) DEFAULT 'onlyfans',
+        username VARCHAR(255) NOT NULL,
+        display_name VARCHAR(255),
+        total_spent DECIMAL(10,2) DEFAULT 0,
+        last_spent_at TIMESTAMPTZ,
+        last_interaction_at TIMESTAMPTZ,
+        first_seen_at TIMESTAMPTZ DEFAULT NOW(),
+        subscription_status VARCHAR(20) DEFAULT 'active',
+        subscription_expires_at TIMESTAMPTZ,
+        tags JSONB DEFAULT '[]',
+        notes TEXT,
+        custom_fields JSONB DEFAULT '{}',
+        is_important BOOLEAN DEFAULT false,
+        imported_from VARCHAR(50),
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(model_id, platform, username)
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_fans_agency_model ON fans(agency_id, model_id, is_important)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_fans_model_spent ON fans(model_id, total_spent DESC)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_fans_username ON fans(username)').catch(function() {});
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fan_interactions (
+        id SERIAL PRIMARY KEY,
+        fan_id INTEGER REFERENCES fans(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        interaction_type VARCHAR(30) NOT NULL,
+        amount DECIMAL(10,2),
+        content TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_fan_interactions ON fan_interactions(fan_id, created_at DESC)').catch(function() {});
+
     // Content posts (content planner)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_posts (
