@@ -149,6 +149,22 @@
     </a>
   </div>
 
+  <!-- Notification bell -->
+  <div style="padding:8px 16px;border-top:1px solid var(--border);position:relative">
+    <button id="notif-bell" onclick="toggleNotifPanel(event)" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:8px 12px;border-radius:10px;width:100%;text-align:left;display:flex;align-items:center;gap:10px;transition:background 0.2s;font-family:inherit">
+      <span style="font-size:18px">🔔</span>
+      <span style="font-size:13px;font-weight:500" data-i18n="notifications.title">Notifications</span>
+      <span id="notif-badge" style="display:none;background:var(--red);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:auto">0</span>
+    </button>
+    <div id="notif-panel" style="display:none;position:absolute;bottom:50px;left:8px;right:8px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,0.5);max-height:400px;overflow:hidden;z-index:200">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:13px" data-i18n="notifications.title">Notifications</strong>
+        <button onclick="markAllNotifRead()" style="background:none;border:none;color:var(--accent2);cursor:pointer;font-size:11px;font-weight:600;font-family:inherit" data-i18n="notifications.markAllRead">Tout marquer comme lu</button>
+      </div>
+      <div id="notif-list" style="overflow-y:auto;max-height:340px;padding:4px 0"></div>
+    </div>
+  </div>
+
   <div class="sidebar-footer" onclick="handleLogout()">
     <div class="user-info">
       <div class="user-avatar" id="user-avatar">E</div>
@@ -1745,6 +1761,7 @@ async function loadDashboardChatterStats() {
 // ========== MODULE EXTRACTED ==========
 var origSwitchSection = typeof switchSection === 'function' ? switchSection : null;
 </script>
+<script src="/js/modules/notifications.js"></script>
 <script src="/js/modules/planning.js"></script>
 <script src="/js/modules/tasks.js"></script>
 <script src="/js/modules/models.js"></script>

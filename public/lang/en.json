@@ -654,5 +654,9 @@
   "recruit.my_leads": "My leads",
   "recruit.my_stats": "My stats",
   "recruit.signed": "Signed",
-  "recruit.commission_earned": "Commission earned"
+  "recruit.commission_earned": "Commission earned",
+  "notifications.title": "Notifications",
+  "notifications.markAllRead": "Mark all as read",
+  "notifications.viewAll": "View all",
+  "notifications.empty": "No notifications"
 }
