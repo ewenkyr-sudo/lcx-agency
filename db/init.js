@@ -702,6 +702,28 @@ async function initDB() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read_at)').catch(function() {});
     await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)').catch(function() {});
 
+    // Agency accounts (comptes IG de l'agence)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS agency_accounts (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        handle VARCHAR(255) NOT NULL,
+        platform VARCHAR(30) DEFAULT 'instagram',
+        category VARCHAR(30) DEFAULT 'agency',
+        assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        purpose TEXT,
+        current_followers INTEGER DEFAULT 0,
+        previous_followers INTEGER DEFAULT 0,
+        profile_picture_data TEXT,
+        profile_picture_url TEXT,
+        profile_picture_updated_at TIMESTAMPTZ,
+        last_scraped TIMESTAMPTZ,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agency_accounts ON agency_accounts(agency_id, category)').catch(function() {});
+
     // Account profile pictures
     await pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture_data TEXT').catch(function() {});
     await pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT').catch(function() {});

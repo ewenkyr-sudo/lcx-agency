@@ -3371,6 +3371,59 @@ app.delete('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, r
   res.json({ ok: true });
 });
 
+// ============ AGENCY ACCOUNTS ============
+app.get('/api/agency-accounts', authMiddleware, async (req, res) => {
+  var { category } = req.query;
+  var query = 'SELECT aa.*, u.display_name as assigned_name FROM agency_accounts aa LEFT JOIN users u ON aa.assigned_to_id = u.id WHERE aa.agency_id = $1';
+  var params = [req.user.agency_id];
+  if (category) { params.push(category); query += ' AND aa.category = $' + params.length; }
+  query += ' ORDER BY aa.category, aa.handle';
+  var { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/agency-accounts', authMiddleware, adminOnly, async (req, res) => {
+  var { handle, platform, category, assigned_to_id, purpose } = req.body;
+  if (!handle) return res.status(400).json({ error: 'Handle requis' });
+  var { rows } = await pool.query(
+    'INSERT INTO agency_accounts (agency_id, handle, platform, category, assigned_to_id, purpose) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [req.user.agency_id, handle.trim(), platform || 'instagram', category || 'agency', assigned_to_id || null, purpose || null]);
+  res.json(rows[0]);
+});
+
+app.put('/api/agency-accounts/:id', authMiddleware, adminOnly, async (req, res) => {
+  var { handle, platform, category, assigned_to_id, purpose, status } = req.body;
+  await pool.query('UPDATE agency_accounts SET handle=COALESCE($1,handle), platform=COALESCE($2,platform), category=COALESCE($3,category), assigned_to_id=$4, purpose=COALESCE($5,purpose), status=COALESCE($6,status) WHERE id=$7 AND agency_id=$8',
+    [handle, platform, category, assigned_to_id||null, purpose, status, req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/agency-accounts/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM agency_accounts WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+app.get('/api/agency-accounts/:id/avatar', authMiddleware, async (req, res) => {
+  try {
+    var { rows } = await pool.query('SELECT profile_picture_data, handle, platform FROM agency_accounts WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).send('Not found');
+    var acc = rows[0];
+    if (acc.profile_picture_data) {
+      var buf = Buffer.from(acc.profile_picture_data, 'base64');
+      res.set('Content-Type', 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(buf);
+    }
+    var initial = (acc.handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
+    var colors = { instagram: '#E4405F', tiktok: '#00f2ea' };
+    var color = colors[acc.platform] || '#A855F7';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" fill="' + color + '"/><text x="40" y="52" text-anchor="middle" fill="white" font-family="sans-serif" font-size="32" font-weight="700">' + initial + '</text></svg>';
+    res.set('Content-Type', 'image/svg+xml');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(svg);
+  } catch(e) { res.status(500).send('Error'); }
+});
+
 // ============ ACCOUNT AVATAR ============
 app.get('/api/accounts/:id/avatar', authMiddleware, async (req, res) => {
   try {

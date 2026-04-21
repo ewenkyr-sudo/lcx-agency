@@ -99,6 +99,13 @@
     </div>
   </div>
 
+  <div id="nav-accounts" class="nav-section">
+    <div class="nav-label">Accounts</div>
+    <div class="nav-item" data-section="accounts" onclick="switchSection(event)">
+      <span class="nav-icon">📱</span> <span>Accounts</span>
+    </div>
+  </div>
+
   <div id="nav-student" class="nav-section" style="display:none">
     <div class="nav-label" data-i18n="nav.student_space">Mon espace</div>
     <div class="nav-item" data-section="student-home" onclick="switchSection(event)">
@@ -587,6 +594,18 @@
   <div class="section" id="section-activity-log">
     <div class="page-header"><div><div class="page-title" data-i18n="section.log">Journal d'activité</div><div class="page-subtitle" data-i18n="section.log_sub">Historique de toutes les actions</div></div></div>
     <div id="activity-log-content"></div>
+  </div>
+
+  <!-- ACCOUNTS SECTION -->
+  <div class="section" id="section-accounts">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Accounts</div>
+        <div class="page-subtitle">Comptes Instagram de l'agence</div>
+      </div>
+      <div class="header-actions" id="accounts-actions"></div>
+    </div>
+    <div id="accounts-content"></div>
   </div>
 
   <!-- SETTINGS SECTION (Admin Only) -->
@@ -1300,8 +1319,8 @@ async function loadAllData() {
 // ========== ROLE-BASED ACCESS ==========
 function applyRoleBasedAccess() {
   const role = currentUser.role;
-  const adminNav = ['nav-principal', 'nav-teams', 'nav-tools', 'nav-admin'];
-  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'settings'];
+  const adminNav = ['nav-principal', 'nav-teams', 'nav-tools', 'nav-accounts', 'nav-admin'];
+  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'finance', 'activity-log', 'accounts', 'settings'];
   const showNav = {
     admin: adminNav, super_admin: adminNav, platform_admin: adminNav,
     model: ['nav-principal'],
@@ -1321,7 +1340,7 @@ function applyRoleBasedAccess() {
   };
 
   // Show/hide nav sections
-  ['nav-principal', 'nav-teams', 'nav-tools', 'nav-student', 'nav-admin'].forEach(id => {
+  ['nav-principal', 'nav-teams', 'nav-tools', 'nav-accounts', 'nav-student', 'nav-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = showNav[role]?.includes(id) ? '' : 'none';
   });
@@ -1385,6 +1404,7 @@ function switchSection(e) {
     'analytics': renderAnalytics,
     'finance': renderFinance,
     'activity-log': renderActivityLog,
+    'accounts': renderAgencyAccounts,
     'settings': function() { renderSettings(); switchSettingsTab(document.querySelector('.settings-tab.active')?.getAttribute('data-tab') || 'mon-agence'); }
   };
   if (loaders[section]) loaders[section]();
@@ -1746,6 +1766,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/model-onboarding.js"></script>
 <script src="/js/modules/model-tools.js"></script>
 <script src="/js/modules/fan-crm.js"></script>
+<script src="/js/modules/agency-accounts.js"></script>
 <script src="/js/modules/chatters.js"></script>
 <script src="/js/modules/coaching.js"></script>
 <script src="/js/modules/recruitment.js"></script>

@@ -186,6 +186,40 @@ async function updateProfilePictures() {
   }
 }
 
-module.exports = { updateAllFollowers, updateProfilePictures, setBroadcast };
+// ========== AGENCY ACCOUNTS SCRAPING ==========
+async function updateAgencyAccounts() {
+  try {
+    var { rows: accounts } = await pool.query(
+      "SELECT id, platform, handle, current_followers FROM agency_accounts WHERE platform IN ('instagram','tiktok')"
+    );
+    for (var acc of accounts) {
+      try {
+        var newCount = null;
+        if (acc.platform === 'instagram') newCount = await scrapeInstagramFollowers(acc.handle);
+        else if (acc.platform === 'tiktok') newCount = await scrapeTikTokFollowers(acc.handle);
+        if (newCount !== null) {
+          await pool.query('UPDATE agency_accounts SET previous_followers = current_followers, current_followers = $1, last_scraped = NOW() WHERE id = $2', [newCount, acc.id]);
+        }
+        // Also scrape avatar if needed
+        if (acc.platform === 'instagram' || acc.platform === 'tiktok') {
+          var needsAvatar = (await pool.query('SELECT profile_picture_updated_at FROM agency_accounts WHERE id = $1 AND (profile_picture_updated_at IS NULL OR profile_picture_updated_at < NOW() - INTERVAL \'24 hours\')', [acc.id])).rows[0];
+          if (needsAvatar) {
+            var username = acc.handle.replace(/^@/, '');
+            var url = acc.platform === 'instagram' ? 'https://www.instagram.com/' + username + '/' : 'https://www.tiktok.com/@' + username;
+            var html = await httpGet(url);
+            var ogUrl = scrapeOgImage(html);
+            if (ogUrl) {
+              var base64 = await downloadImage(ogUrl);
+              if (base64) await pool.query('UPDATE agency_accounts SET profile_picture_data = $1, profile_picture_url = $2, profile_picture_updated_at = NOW() WHERE id = $3', [base64, ogUrl, acc.id]);
+            }
+          }
+        }
+      } catch(e) { console.log('[AGENCY SCRAPE] Failed for', acc.handle + ':', e.message); }
+      await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+  } catch(e) { console.error('[AGENCY SCRAPE] Error:', e.message); }
+}
+
+module.exports = { updateAllFollowers, updateProfilePictures, updateAgencyAccounts, setBroadcast };
 
 
