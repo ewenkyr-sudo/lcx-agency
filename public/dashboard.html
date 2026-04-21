@@ -1218,7 +1218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (err) {
     console.error('Init error:', err);
-    window.location.href = '/';
+    // Only redirect to login if it's an auth error, not a JS bug
+    if (err.message === 'Failed to fetch user') window.location.href = '/';
   }
 });
 
