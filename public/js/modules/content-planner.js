@@ -36,7 +36,8 @@ var CP_TYPE_LABELS = {
   post_twitter: 'Post'
 };
 
-var CP_STATUS = { draft: t('cp.status_draft'), scheduled: t('cp.status_scheduled'), published: t('cp.status_published'), cancelled: t('cp.status_cancelled') };
+function getCPStatus(key) { var labels = { draft: 'cp.status_draft', scheduled: 'cp.status_scheduled', published: 'cp.status_published', cancelled: 'cp.status_cancelled' }; return labels[key] ? t(labels[key]) : key; }
+var CP_STATUS = { draft: 'Brouillon', scheduled: 'Planifié', published: 'Publié', cancelled: 'Annulé' };
 
 // ========== RENDERING ==========
 
@@ -206,7 +207,7 @@ function renderCPList(container) {
       + '<td data-label="" class="mc-half">' + plat.icon + ' ' + plat.label + '</td>'
       + '<td data-label="Type" class="mc-half">' + (CP_TYPE_LABELS[p.content_type] || p.content_type) + '</td>'
       + '<td data-label="Caption" class="mc-full" style="color:var(--text2);font-size:12px">' + ((p.caption || '').substring(0,50) || '-') + '</td>'
-      + '<td data-label="Statut" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent2)') + '">' + (CP_STATUS[p.status] || p.status) + '</span></td>'
+      + '<td data-label="Statut" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent2)') + '">' + (getCPStatus(p.status)) + '</span></td>'
       + '<td data-label="" class="mc-half">' + (isAdmin() ? '<button class="btn-delete-small" onclick="event.stopPropagation();deleteCPPost(' + p.id + ')">✕</button>' : '') + '</td>'
       + '</tr>';
   });
