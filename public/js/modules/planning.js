@@ -8,12 +8,14 @@ var planLeaves = [];
 var planSelectedUser = null;
 
 var SHIFT_TYPES = {
-  'morning':   { label: t('planning.morning'), time: '6h-14h', start: '06:00', end: '14:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  'afternoon': { label: t('planning.afternoon'), time: '14h-22h', start: '14:00', end: '22:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  'night':     { label: t('planning.night'), time: '22h-06h', start: '22:00', end: '06:00', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
-  'off':       { label: 'Off', time: '', start: null, end: null, color: '#6B5A84', bg: 'rgba(107,107,128,0.12)' },
-  'custom':    { label: 'Custom', time: '', start: null, end: null, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' }
+  'morning':   { labelKey: 'planning.morning', time: '6h-14h', start: '06:00', end: '14:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  'afternoon': { labelKey: 'planning.afternoon', time: '14h-22h', start: '14:00', end: '22:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'night':     { labelKey: 'planning.night', time: '22h-06h', start: '22:00', end: '06:00', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  'off':       { labelKey: null, label: 'Off', time: '', start: null, end: null, color: '#6B5A84', bg: 'rgba(107,107,128,0.12)' },
+  'custom':    { labelKey: null, label: 'Custom', time: '', start: null, end: null, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' }
 };
+// Get shift label dynamically (t() not available at load time)
+function getShiftLabel(st) { return st.labelKey ? t(st.labelKey) : (st.label || ''); }
 
 var ROLE_COLORS = { chatter: '#3b82f6', outreach: '#10b981', va: '#f59e0b', admin: '#ec4899', student: '#06B6D4', model: '#6B5A84' };
 var ROLE_BG = { chatter: 'rgba(59,130,246,0.12)', outreach: 'rgba(16,185,129,0.12)', va: 'rgba(245,158,11,0.12)', admin: 'rgba(236,72,153,0.12)', student: 'rgba(6,182,212,0.12)', model: 'rgba(107,107,128,0.12)' };
@@ -164,7 +166,7 @@ async function renderPlanDetail() {
             totalHours += eh - sh;
           }
           html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
-            + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
+            + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : getShiftLabel(st)) + '</div>'
             + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
             + (modelNames.length > 0 ? '<div style="display:flex;gap:4px;flex-wrap:wrap">' + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('') + '</div>' : '')
             + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
@@ -242,7 +244,7 @@ function showPlanShiftForm(userId, dateStr, defaultEntryType) {
     // Shift fields
     + '<div id="ps-shift-fields" style="display:' + (entryType==='shift'?'contents':'none') + '">'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Type de shift</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
-    + Object.entries(SHIFT_TYPES).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + (e[1].time ? ' (' + e[1].time + ')' : '') + '</option>'; }).join('')
+    + Object.entries(SHIFT_TYPES).map(function(e) { return '<option value="' + e[0] + '">' + getShiftLabel(e[1]) + (e[1].time ? ' (' + e[1].time + ')' : '') + '</option>'; }).join('')
     + '</select></div></div>'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Début</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'18:00':'06:00') + '"></div>'
     + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Fin</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'19:00':'14:00') + '"></div>'
