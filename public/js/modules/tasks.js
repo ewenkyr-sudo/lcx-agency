@@ -42,7 +42,7 @@ function renderTaskCard(t) {
   const dlState = getTaskDeadlineState(t.deadline);
   const isUrgent = t.priority === 'urgent';
   const borderColor = dlState === 'overdue' ? 'var(--red)' : dlState === 'soon' ? '#f59e0b' : isUrgent ? 'var(--red)' : 'var(--accent)';
-  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'En attente' }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'En cours' }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Terminée' } };
+  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('tasks.pending_label') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: t('tasks.completed_label') } };
   const st = statusColors[t.status] || statusColors['pending'];
   const dl = t.deadline || '';
   const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">En retard</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">Bientôt</span>' : dl ? '<span style="color:var(--text3)">' + dl + '</span>' : '<span style="color:var(--text3)">Pas de deadline</span>';

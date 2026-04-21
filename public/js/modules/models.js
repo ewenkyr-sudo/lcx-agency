@@ -241,7 +241,7 @@ async function renderModelCockpit(modelId) {
       feedItems.push({ time: new Date(a.created_at), html: '<strong>' + (a.user_name||'Système') + '</strong> ' + a.action + (a.details ? ' — ' + a.details : ''), icon: icons[a.action] || '📋' });
     });
     feedItems.sort(function(a, b) { return b.time - a.time; });
-    var feedHtml = feedItems.length === 0 ? emptyStateHTML('clipboard', 'Aucune activité récente') : '';
+    var feedHtml = feedItems.length === 0 ? emptyStateHTML('clipboard', t('models.no_activity')) : '';
     feedItems.slice(0, 20).forEach(function(item) {
       var timeStr = item.time.toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit'}) + ' ' + item.time.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
       feedHtml += '<div class="cockpit-feed-item"><span style="font-size:16px">' + item.icon + '</span><div style="flex:1">' + item.html + '</div><span class="cockpit-feed-time">' + timeStr + '</span></div>';
