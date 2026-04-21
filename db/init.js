@@ -513,6 +513,24 @@ async function initDB() {
       );
     `).catch(function() {});
 
+    // Notifications table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        link VARCHAR(255),
+        metadata JSONB DEFAULT '{}',
+        read_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read_at)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)').catch(function() {});
+
     // Add email column to users
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT').catch(function() {});
 

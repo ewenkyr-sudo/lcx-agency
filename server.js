@@ -3238,6 +3238,45 @@ app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, 
   res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
 });
 
+// ============ NOTIFICATIONS ============
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const unreadOnly = req.query.unread_only === 'true';
+    const type = req.query.type;
+    let query = 'SELECT * FROM notifications WHERE user_id = $1';
+    const params = [req.user.id];
+    if (unreadOnly) { query += ' AND read_at IS NULL'; }
+    if (type) { params.push(type); query += ' AND type = $' + params.length; }
+    params.push(limit);
+    query += ' ORDER BY created_at DESC LIMIT $' + params.length;
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch(e) { res.json([]); }
+});
+
+app.get('/api/notifications/unread-count', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
+    res.json({ count: parseInt(rows[0].count) });
+  } catch(e) { res.json({ count: 0 }); }
+});
+
+app.patch('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+  await pool.query('UPDATE notifications SET read_at = NOW() WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+app.patch('/api/notifications/mark-all-read', authMiddleware, async (req, res) => {
+  const result = await pool.query('UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
+  res.json({ ok: true, count: result.rowCount });
+});
+
+app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
+  await pool.query('DELETE FROM notifications WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
 // ============ CATCH-ALL (must be last route) ============
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
