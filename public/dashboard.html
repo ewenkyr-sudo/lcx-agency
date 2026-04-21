@@ -1099,38 +1099,8 @@
 </div>
 
 <!-- Modal: Add Model -->
-<div class="modal-overlay" id="modal-add-model">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Ajouter un modèle</div>
-      <button class="modal-close" onclick="closeModal('add-model')">✕</button>
-    </div>
-    <div class="modal-body">
-      <form id="form-add-model">
-        <div class="form-group">
-          <label class="form-label">Nom</label>
-          <input class="form-input" type="text" name="name" placeholder="Ex: Luna" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Plateformes (séparées par des virgules)</label>
-          <input class="form-input" type="text" name="platforms" placeholder="Ex: onlyfans, instagram, tiktok">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-select" name="status" required>
-            <option value="active">Active</option>
-            <option value="onboarding">Onboarding</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('add-model')">Annuler</button>
-      <button class="btn btn-primary" onclick="submitForm('add-model')">Ajouter</button>
-    </div>
-  </div>
-</div>
+<!-- Model onboarding wizard rendered by JS -->
+<div class="modal-overlay" id="modal-add-model"></div>
 
 <!-- Modal: Add Account -->
 <div class="modal-overlay" id="modal-add-account">
@@ -1771,6 +1741,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/tasks.js"></script>
 <script src="/js/modules/models.js"></script>
 <script src="/js/modules/content-planner.js"></script>
+<script src="/js/modules/model-onboarding.js"></script>
 <script src="/js/modules/chatters.js"></script>
 <script src="/js/modules/coaching.js"></script>
 <script src="/js/modules/recruitment.js"></script>

@@ -676,9 +676,27 @@ app.get('/api/models', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
-  const { name, platforms, status } = req.body;
-  const { rows } = await pool.query('INSERT INTO models (name, platforms, status, agency_id) VALUES ($1, $2, $3, $4) RETURNING id', [name, JSON.stringify(platforms || []), status || 'active', req.user.agency_id]);
-  res.json({ id: rows[0].id });
+  const b = req.body;
+  if (!b.name) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO models (name, platforms, status, agency_id, stage_name, birth_date, nationality, city, country, photo_url,
+        ig_handle, ig_followers, tiktok_handle, tiktok_followers, twitter_handle, snapchat_handle, other_socials,
+        has_of_account, of_link, of_subscribers, of_revenue_monthly, of_launch_date,
+        content_types, post_frequency, has_photographer, content_stock,
+        revenue_goal, availability_hours, languages, target_markets,
+        contract_link, gdpr_accepted, internal_notes, onboarding_completed)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34) RETURNING id`,
+      [b.name, JSON.stringify(b.platforms || []), b.status || 'onboarding', req.user.agency_id,
+       b.stage_name || null, b.birth_date || null, b.nationality || null, b.city || null, b.country || null, b.photo_url || null,
+       b.ig_handle || null, b.ig_followers || 0, b.tiktok_handle || null, b.tiktok_followers || 0, b.twitter_handle || null, b.snapchat_handle || null, b.other_socials || null,
+       b.has_of_account || false, b.of_link || null, b.of_subscribers || 0, b.of_revenue_monthly || 0, b.of_launch_date || null,
+       JSON.stringify(b.content_types || []), b.post_frequency || null, b.has_photographer || false, b.content_stock || 0,
+       b.revenue_goal || 0, b.availability_hours || 0, JSON.stringify(b.languages || []), JSON.stringify(b.target_markets || []),
+       b.contract_link || null, b.gdpr_accepted || false, b.internal_notes || null, true]
+    );
+    res.json({ id: rows[0].id });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
