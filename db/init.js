@@ -544,6 +544,66 @@ async function initDB() {
       );
     `).catch(function() {});
 
+    // Model profile (fiche personnelle)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS model_profiles (
+        id SERIAL PRIMARY KEY,
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE UNIQUE,
+        -- Infos de base
+        online_name TEXT, age INTEGER, birth_date DATE, zodiac_sign TEXT,
+        sexual_orientation TEXT, ethnicity TEXT, height TEXT,
+        shoe_size TEXT, bra_size TEXT, location TEXT, hometown TEXT,
+        spoken_languages TEXT, english_level TEXT,
+        -- Profil personnel
+        about TEXT, personality TEXT, hobbies TEXT,
+        fav_color TEXT, fav_food TEXT, fav_music TEXT, fav_singer TEXT,
+        sports TEXT, pets TEXT,
+        university TEXT, specialty TEXT, other_job TEXT,
+        -- Préférences de contenu (JSON array of accepted types)
+        content_prefs JSONB DEFAULT '{}',
+        custom_requests BOOLEAN DEFAULT false, video_calls BOOLEAN DEFAULT false,
+        live_of BOOLEAN DEFAULT false, other_people BOOLEAN DEFAULT false,
+        -- Notes supplémentaires
+        relationship_status TEXT, travel_experience TEXT, sexiest_body_part TEXT,
+        physical_appearance TEXT, work_availability TEXT,
+        of_experience TEXT, current_revenue TEXT, equipment TEXT,
+        current_situation TEXT, blocked_notes TEXT,
+        -- Meta
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+
+    // Model schedule (planning modèle)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS model_schedule (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+        day_date DATE NOT NULL,
+        time_slot TEXT,
+        title TEXT NOT NULL,
+        category TEXT DEFAULT 'task',
+        color TEXT DEFAULT '#22D3EE',
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_model_schedule ON model_schedule(model_id, day_date)').catch(function() {});
+
+    // Tracklinks
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS model_tracklinks (
+        id SERIAL PRIMARY KEY,
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+        agency_id INTEGER REFERENCES agencies(id),
+        platform TEXT NOT NULL,
+        account_name TEXT,
+        link TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+
     // Content posts (content planner)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_posts (

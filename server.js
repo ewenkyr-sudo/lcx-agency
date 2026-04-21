@@ -3262,6 +3262,109 @@ app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, 
   res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
 });
 
+// ============ MODEL PROFILE (FICHE PERSONNELLE) ============
+app.get('/api/model-profile/:modelId', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM model_profiles WHERE model_id = $1', [req.params.modelId]);
+    res.json(rows[0] || {});
+  } catch(e) { res.json({}); }
+});
+
+app.put('/api/model-profile/:modelId', authMiddleware, async (req, res) => {
+  const b = req.body;
+  try {
+    await pool.query(`
+      INSERT INTO model_profiles (model_id, online_name, age, birth_date, zodiac_sign, sexual_orientation, ethnicity,
+        height, shoe_size, bra_size, location, hometown, spoken_languages, english_level,
+        about, personality, hobbies, fav_color, fav_food, fav_music, fav_singer, sports, pets,
+        university, specialty, other_job, content_prefs, custom_requests, video_calls, live_of, other_people,
+        relationship_status, travel_experience, sexiest_body_part, physical_appearance, work_availability,
+        of_experience, current_revenue, equipment, current_situation, blocked_notes, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,NOW())
+      ON CONFLICT (model_id) DO UPDATE SET
+        online_name=EXCLUDED.online_name, age=EXCLUDED.age, birth_date=EXCLUDED.birth_date, zodiac_sign=EXCLUDED.zodiac_sign,
+        sexual_orientation=EXCLUDED.sexual_orientation, ethnicity=EXCLUDED.ethnicity, height=EXCLUDED.height,
+        shoe_size=EXCLUDED.shoe_size, bra_size=EXCLUDED.bra_size, location=EXCLUDED.location, hometown=EXCLUDED.hometown,
+        spoken_languages=EXCLUDED.spoken_languages, english_level=EXCLUDED.english_level,
+        about=EXCLUDED.about, personality=EXCLUDED.personality, hobbies=EXCLUDED.hobbies,
+        fav_color=EXCLUDED.fav_color, fav_food=EXCLUDED.fav_food, fav_music=EXCLUDED.fav_music, fav_singer=EXCLUDED.fav_singer,
+        sports=EXCLUDED.sports, pets=EXCLUDED.pets, university=EXCLUDED.university, specialty=EXCLUDED.specialty, other_job=EXCLUDED.other_job,
+        content_prefs=EXCLUDED.content_prefs, custom_requests=EXCLUDED.custom_requests, video_calls=EXCLUDED.video_calls,
+        live_of=EXCLUDED.live_of, other_people=EXCLUDED.other_people,
+        relationship_status=EXCLUDED.relationship_status, travel_experience=EXCLUDED.travel_experience,
+        sexiest_body_part=EXCLUDED.sexiest_body_part, physical_appearance=EXCLUDED.physical_appearance,
+        work_availability=EXCLUDED.work_availability, of_experience=EXCLUDED.of_experience,
+        current_revenue=EXCLUDED.current_revenue, equipment=EXCLUDED.equipment,
+        current_situation=EXCLUDED.current_situation, blocked_notes=EXCLUDED.blocked_notes, updated_at=NOW()`,
+      [req.params.modelId, b.online_name, b.age, b.birth_date||null, b.zodiac_sign, b.sexual_orientation, b.ethnicity,
+       b.height, b.shoe_size, b.bra_size, b.location, b.hometown, b.spoken_languages, b.english_level,
+       b.about, b.personality, b.hobbies, b.fav_color, b.fav_food, b.fav_music, b.fav_singer, b.sports, b.pets,
+       b.university, b.specialty, b.other_job, JSON.stringify(b.content_prefs||{}), b.custom_requests||false, b.video_calls||false, b.live_of||false, b.other_people||false,
+       b.relationship_status, b.travel_experience, b.sexiest_body_part, b.physical_appearance, b.work_availability,
+       b.of_experience, b.current_revenue, b.equipment, b.current_situation, b.blocked_notes]);
+    res.json({ ok: true });
+  } catch(e) { console.error('Profile save error:', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ============ MODEL SCHEDULE (PLANNING MODÈLE) ============
+app.get('/api/model-schedule/:modelId', authMiddleware, async (req, res) => {
+  const { start, end } = req.query;
+  let query = 'SELECT * FROM model_schedule WHERE model_id = $1';
+  const params = [req.params.modelId];
+  if (start) { params.push(start); query += ' AND day_date >= $' + params.length; }
+  if (end) { params.push(end); query += ' AND day_date <= $' + params.length; }
+  query += ' ORDER BY day_date, time_slot';
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+});
+
+app.post('/api/model-schedule', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, day_date, time_slot, title, category, color, notes } = req.body;
+  if (!model_id || !day_date || !title) return res.status(400).json({ error: 'Champs requis manquants' });
+  const { rows } = await pool.query(
+    'INSERT INTO model_schedule (agency_id, model_id, day_date, time_slot, title, category, color, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+    [req.user.agency_id, model_id, day_date, time_slot||null, title, category||'task', color||'#22D3EE', notes, req.user.id]);
+  res.json(rows[0]);
+});
+
+app.put('/api/model-schedule/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { day_date, time_slot, title, category, color, notes } = req.body;
+  await pool.query('UPDATE model_schedule SET day_date=COALESCE($1,day_date), time_slot=COALESCE($2,time_slot), title=COALESCE($3,title), category=COALESCE($4,category), color=COALESCE($5,color), notes=COALESCE($6,notes) WHERE id=$7',
+    [day_date, time_slot, title, category, color, notes, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/model-schedule/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM model_schedule WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ============ MODEL TRACKLINKS ============
+app.get('/api/model-tracklinks/:modelId', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM model_tracklinks WHERE model_id = $1 ORDER BY created_at', [req.params.modelId]);
+  res.json(rows);
+});
+
+app.post('/api/model-tracklinks', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, platform, account_name, link } = req.body;
+  if (!model_id || !platform) return res.status(400).json({ error: 'Plateforme requise' });
+  const { rows } = await pool.query('INSERT INTO model_tracklinks (model_id, agency_id, platform, account_name, link) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [model_id, req.user.agency_id, platform, account_name, link]);
+  res.json(rows[0]);
+});
+
+app.put('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { platform, account_name, link } = req.body;
+  await pool.query('UPDATE model_tracklinks SET platform=COALESCE($1,platform), account_name=COALESCE($2,account_name), link=COALESCE($3,link) WHERE id=$4',
+    [platform, account_name, link, req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM model_tracklinks WHERE id = $1', [req.params.id]);
+  res.json({ ok: true });
+});
+
 // ============ CONTENT PLANNER ============
 app.get('/api/content-posts', authMiddleware, async (req, res) => {
   try {

@@ -1,6 +1,18 @@
 // MODELS MODULE
 // Extracted from dashboard.html
 
+function switchCockpitTab(tab, btn, modelId) {
+  document.querySelectorAll('#cockpit-content .tab').forEach(function(t2) { t2.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  ['dashboard','profile','schedule','tracklinks'].forEach(function(t) {
+    var el = document.getElementById('cockpit-' + t + '-content');
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'profile') renderModelProfile(modelId);
+  else if (tab === 'schedule') renderModelSchedule(modelId);
+  else if (tab === 'tracklinks') renderModelTracklinks(modelId);
+}
+
 function switchModelsTab(tab, btn) {
   document.querySelectorAll('#section-models .tab').forEach(function(t2) { t2.classList.remove('active'); });
   if (btn) btn.classList.add('active');
@@ -123,6 +135,15 @@ async function renderModelCockpit(modelId) {
         <div style="font-size:12px;color:var(--text3)">${modelIdx+1} / ${allModels.length}</div>
       </div>
 
+      <!-- Cockpit Tabs -->
+      <div class="tabs" style="margin-bottom:16px">
+        <button class="tab active" onclick="switchCockpitTab('dashboard',this,${modelId})">Dashboard</button>
+        <button class="tab" onclick="switchCockpitTab('profile',this,${modelId})">Fiche perso</button>
+        <button class="tab" onclick="switchCockpitTab('schedule',this,${modelId})">Planning</button>
+        <button class="tab" onclick="switchCockpitTab('tracklinks',this,${modelId})">Tracklinks</button>
+      </div>
+
+      <div id="cockpit-dashboard-content">
       <!-- KPIs -->
       <div class="cockpit-kpis">
         <div class="cockpit-kpi">
@@ -235,6 +256,12 @@ async function renderModelCockpit(modelId) {
       objHtml = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Aucun objectif défini pour ce mois</div>';
     }
     document.getElementById('cockpit-objectives').innerHTML = objHtml;
+
+    // Close dashboard content div
+    document.getElementById('cockpit-dashboard-content').insertAdjacentHTML('afterend',
+      '<div id="cockpit-profile-content" style="display:none"></div>'
+      + '<div id="cockpit-schedule-content" style="display:none"></div>'
+      + '<div id="cockpit-tracklinks-content" style="display:none"></div>');
 
     // Render charts
     renderCockpitCharts(d);
