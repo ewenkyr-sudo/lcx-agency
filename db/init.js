@@ -513,6 +513,28 @@ async function initDB() {
       );
     `).catch(function() {});
 
+    // Content posts (content planner)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content_posts (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+        scheduled_at TIMESTAMPTZ,
+        platform VARCHAR(30) DEFAULT 'instagram',
+        content_type VARCHAR(30) DEFAULT 'post_instagram',
+        caption TEXT,
+        media_link VARCHAR(500),
+        status VARCHAR(20) DEFAULT 'draft',
+        assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_content_posts_agency_sched ON content_posts(agency_id, scheduled_at)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_content_posts_model_sched ON content_posts(model_id, scheduled_at)').catch(function() {});
+
     // Notifications table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS notifications (

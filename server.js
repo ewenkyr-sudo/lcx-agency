@@ -3244,6 +3244,66 @@ app.post('/api/admin/refresh-followers', authMiddleware, adminOnly, async (req, 
   res.json({ ok: true, message: 'Mise à jour lancée en arrière-plan' });
 });
 
+// ============ CONTENT PLANNER ============
+app.get('/api/content-posts', authMiddleware, async (req, res) => {
+  try {
+    const { start_date, end_date, model_id, platform, status } = req.query;
+    let query = `SELECT cp.*, m.name as model_name, u.display_name as assigned_name, c.display_name as creator_name
+      FROM content_posts cp
+      JOIN models m ON cp.model_id = m.id
+      LEFT JOIN users u ON cp.assigned_to_id = u.id
+      LEFT JOIN users c ON cp.created_by = c.id
+      WHERE cp.agency_id = $1`;
+    const params = [req.user.agency_id];
+    if (start_date) { params.push(start_date); query += ' AND cp.scheduled_at >= $' + params.length; }
+    if (end_date) { params.push(end_date); query += ' AND cp.scheduled_at <= $' + params.length; }
+    if (model_id) { params.push(model_id); query += ' AND cp.model_id = $' + params.length; }
+    if (platform) { params.push(platform); query += ' AND cp.platform = $' + params.length; }
+    if (status) { params.push(status); query += ' AND cp.status = $' + params.length; }
+    query += ' ORDER BY cp.scheduled_at ASC';
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch(e) { res.json([]); }
+});
+
+app.post('/api/content-posts', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id, notes } = req.body;
+  if (!model_id || !scheduled_at) return res.status(400).json({ error: 'Modèle et date requis' });
+  const validPlatforms = ['instagram', 'tiktok', 'onlyfans', 'twitter'];
+  if (platform && !validPlatforms.includes(platform)) return res.status(400).json({ error: 'Plateforme invalide' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO content_posts (agency_id, model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [req.user.agency_id, model_id, scheduled_at, platform || 'instagram', content_type || 'post_instagram', caption, media_link, status || 'draft', assigned_to_id, notes, req.user.id]
+    );
+    // Notify assigned user
+    if (assigned_to_id && assigned_to_id !== req.user.id) {
+      try { await createNotification(assigned_to_id, req.user.agency_id, 'task_assigned', 'Nouveau post assigné', (caption || 'Post ' + (platform || '')).substring(0, 80), '/models', { content_post_id: rows[0].id }); } catch(e2) {}
+    }
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.put('/api/content-posts/:id', authMiddleware, adminOnly, async (req, res) => {
+  const { model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id, notes } = req.body;
+  try {
+    await pool.query(
+      `UPDATE content_posts SET model_id=COALESCE($1,model_id), scheduled_at=COALESCE($2,scheduled_at), platform=COALESCE($3,platform),
+       content_type=COALESCE($4,content_type), caption=COALESCE($5,caption), media_link=COALESCE($6,media_link),
+       status=COALESCE($7,status), assigned_to_id=$8, notes=COALESCE($9,notes), updated_at=NOW()
+       WHERE id=$10 AND agency_id=$11`,
+      [model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id || null, notes, req.params.id, req.user.agency_id]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+app.delete('/api/content-posts/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM content_posts WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
 // ============ NOTIFICATIONS ============
 app.get('/api/notifications', authMiddleware, async (req, res) => {
   try {
