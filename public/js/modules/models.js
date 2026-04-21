@@ -202,6 +202,7 @@ async function renderModelCockpit(modelId) {
         <div class="cockpit-panel-title">🎯 Objectifs du mois</div>
         <div id="cockpit-objectives"></div>
       </div>
+      </div><!-- /cockpit-dashboard-content -->
     `;
 
     // Render team
