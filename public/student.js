@@ -592,7 +592,7 @@ async function renderStudentModels() {
   if (!c) return;
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mes modèles</div><div class="page-subtitle">Gestion de mes modèles OnlyFans</div></div>
+    <div class="page-header"><div><div class="page-title">Mes modèles</div><div class="page-subtitle">Gestion de mes créatrices</div></div>
       <div class="header-actions"><button class="btn btn-primary" onclick="showStudentModelForm()">+ Ajouter un modèle</button></div></div>
     <div id="smodel-form-wrap"></div>
     <div id="smodel-cards"></div>
@@ -630,7 +630,7 @@ function showStudentModelForm() {
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
       <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nom *</label><input type="text" id="sm-name" class="form-input" placeholder="Nom du modèle"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Profil OnlyFans</label><input type="text" id="sm-handle" class="form-input" placeholder="@handle_of"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Profil plateforme</label><input type="text" id="sm-handle" class="form-input" placeholder="@handle"></div>
       <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nombre de fans</label><input type="number" id="sm-fans" class="form-input" placeholder="0" min="0"></div>
       <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Commission (%)</label><input type="number" id="sm-commission" class="form-input" placeholder="15" min="0" max="100" step="0.5"></div>
     </div>
@@ -670,7 +670,7 @@ async function renderStudentRevenue() {
   const totalAll = studentData.revenue.reduce((s, r) => s + parseFloat(r.revenue), 0);
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mes revenus</div><div class="page-subtitle">OnlyFans — Suivi financier</div></div></div>
+    <div class="page-header"><div><div class="page-title">Mes revenus</div><div class="page-subtitle">Suivi financier</div></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${totalMonth.toFixed(2)}</div><div class="stat-label">Revenue ce mois</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--accent)">$${totalCommission.toFixed(2)}</div><div class="stat-label">Commission ce mois</div></div>

@@ -683,14 +683,20 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
       `INSERT INTO models (name, platforms, status, agency_id, stage_name, birth_date, nationality, city, country, photo_url,
         ig_handle, ig_followers, tiktok_handle, tiktok_followers, twitter_handle, snapchat_handle, other_socials,
         has_of_account, of_link, of_subscribers, of_revenue_monthly, of_launch_date,
+        has_fansly_account, fansly_link, fansly_subscribers, fansly_revenue_monthly,
+        has_fanvue_account, fanvue_link, fanvue_subscribers, fanvue_revenue_monthly,
+        has_mym_account, mym_link, mym_subscribers, mym_revenue_monthly,
         content_types, post_frequency, has_photographer, content_stock,
         revenue_goal, availability_hours, languages, target_markets,
         contract_link, gdpr_accepted, internal_notes, onboarding_completed)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34) RETURNING id`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46) RETURNING id`,
       [b.name, JSON.stringify(b.platforms || []), b.status || 'onboarding', req.user.agency_id,
        b.stage_name || null, b.birth_date || null, b.nationality || null, b.city || null, b.country || null, b.photo_url || null,
        b.ig_handle || null, b.ig_followers || 0, b.tiktok_handle || null, b.tiktok_followers || 0, b.twitter_handle || null, b.snapchat_handle || null, b.other_socials || null,
        b.has_of_account || false, b.of_link || null, b.of_subscribers || 0, b.of_revenue_monthly || 0, b.of_launch_date || null,
+       b.has_fansly_account || false, b.fansly_link || null, b.fansly_subscribers || 0, b.fansly_revenue_monthly || 0,
+       b.has_fanvue_account || false, b.fanvue_link || null, b.fanvue_subscribers || 0, b.fanvue_revenue_monthly || 0,
+       b.has_mym_account || false, b.mym_link || null, b.mym_subscribers || 0, b.mym_revenue_monthly || 0,
        JSON.stringify(b.content_types || []), b.post_frequency || null, b.has_photographer || false, b.content_stock || 0,
        b.revenue_goal || 0, b.availability_hours || 0, JSON.stringify(b.languages || []), JSON.stringify(b.target_markets || []),
        b.contract_link || null, b.gdpr_accepted || false, b.internal_notes || null, true]
@@ -3390,7 +3396,7 @@ app.get('/api/content-posts', authMiddleware, async (req, res) => {
 app.post('/api/content-posts', authMiddleware, adminOnly, async (req, res) => {
   const { model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id, notes } = req.body;
   if (!model_id || !scheduled_at) return res.status(400).json({ error: 'Modèle et date requis' });
-  const validPlatforms = ['instagram', 'tiktok', 'onlyfans', 'twitter'];
+  const validPlatforms = ['instagram', 'tiktok', 'onlyfans', 'fansly', 'fanvue', 'mym', 'twitter'];
   if (platform && !validPlatforms.includes(platform)) return res.status(400).json({ error: 'Plateforme invalide' });
   try {
     const { rows } = await pool.query(

@@ -673,5 +673,20 @@
   "cp.platform.instagram": "Instagram",
   "cp.platform.tiktok": "TikTok",
   "cp.platform.onlyfans": "OnlyFans",
-  "cp.platform.twitter": "Twitter"
+  "cp.platform.twitter": "Twitter",
+  "cp.platform.fansly": "Fansly",
+  "cp.platform.fanvue": "Fanvue",
+  "cp.platform.mym": "MYM",
+  "cp.types.postFansly": "Post Fansly",
+  "cp.types.storyFansly": "Story Fansly",
+  "cp.types.ppvFansly": "PPV Fansly",
+  "cp.types.postFanvue": "Post Fanvue",
+  "cp.types.videoFanvue": "Vidéo Fanvue",
+  "cp.types.postMym": "Post MYM",
+  "cp.types.mediaMym": "Média MYM",
+  "service.fansly": "Fansly Management",
+  "service.mym": "MYM Management",
+  "service.multiplatform": "Multi-plateforme",
+  "ob.platforms_title": "Plateformes adultes",
+  "ob.platforms_desc": "Sur quelles plateformes la créatrice est-elle active ?"
 }

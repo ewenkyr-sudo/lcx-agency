@@ -10,6 +10,9 @@ var CP_PLATFORMS = {
   instagram: { label: 'Instagram', icon: '📸', cls: 'ig' },
   tiktok: { label: 'TikTok', icon: '🎵', cls: 'tt' },
   onlyfans: { label: 'OnlyFans', icon: '💎', cls: 'of' },
+  fansly: { label: 'Fansly', icon: '🌸', cls: 'fansly' },
+  fanvue: { label: 'Fanvue', icon: '💚', cls: 'fanvue' },
+  mym: { label: 'MYM', icon: '🔥', cls: 'mym' },
   twitter: { label: 'Twitter', icon: '🐦', cls: 'tw' }
 };
 
@@ -17,13 +20,20 @@ var CP_TYPES = {
   instagram: ['post_instagram', 'story', 'reel'],
   tiktok: ['post_tiktok', 'live_tiktok'],
   onlyfans: ['post_onlyfans'],
+  fansly: ['post_fansly', 'story_fansly', 'ppv_fansly'],
+  fanvue: ['post_fanvue', 'video_fanvue'],
+  mym: ['post_mym', 'media_mym'],
   twitter: ['post_twitter']
 };
 
 var CP_TYPE_LABELS = {
   post_instagram: 'Post', story: 'Story', reel: 'Reel',
   post_tiktok: 'Post', live_tiktok: 'Live',
-  post_onlyfans: 'Post OF', post_twitter: 'Post'
+  post_onlyfans: 'Post OF',
+  post_fansly: 'Post', story_fansly: 'Story', ppv_fansly: 'PPV',
+  post_fanvue: 'Post', video_fanvue: 'Vidéo',
+  post_mym: 'Post', media_mym: 'Média',
+  post_twitter: 'Post'
 };
 
 var CP_STATUS = { draft: 'Brouillon', scheduled: 'Planifié', published: 'Publié', cancelled: 'Annulé' };
@@ -227,7 +237,7 @@ function openCPModal(postId, defaultDateTime) {
     + '<div class="form-group"><label class="form-label">Heure *</label><input type="time" id="cp-time" class="form-input" value="' + timeVal + '"' + (isReadOnly?' disabled':'') + '></div>'
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div class="form-group"><label class="form-label">Plateforme</label><select id="cp-platform" class="form-input" onchange="updateCPTypes()"' + (isReadOnly?' disabled':'') + '><option value="instagram"' + (plat==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (plat==='tiktok'?' selected':'') + '>🎵 TikTok</option><option value="onlyfans"' + (plat==='onlyfans'?' selected':'') + '>💎 OnlyFans</option><option value="twitter"' + (plat==='twitter'?' selected':'') + '>🐦 Twitter</option></select></div>'
+    + '<div class="form-group"><label class="form-label">Plateforme</label><select id="cp-platform" class="form-input" onchange="updateCPTypes()"' + (isReadOnly?' disabled':'') + '><option value="instagram"' + (plat==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (plat==='tiktok'?' selected':'') + '>🎵 TikTok</option><option value="onlyfans"' + (plat==='onlyfans'?' selected':'') + '>💎 OnlyFans</option><option value="fansly"' + (plat==='fansly'?' selected':'') + '>🌸 Fansly</option><option value="fanvue"' + (plat==='fanvue'?' selected':'') + '>💚 Fanvue</option><option value="mym"' + (plat==='mym'?' selected':'') + '>🔥 MYM</option><option value="twitter"' + (plat==='twitter'?' selected':'') + '>🐦 Twitter</option></select></div>'
     + '<div class="form-group"><label class="form-label">Type</label><select id="cp-type" class="form-input"' + (isReadOnly?' disabled':'') + '></select></div>'
     + '</div>'
     + '<div class="form-group"><label class="form-label">Caption</label><textarea id="cp-caption" class="form-input" rows="3" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.caption || '') : '') + '</textarea></div>'

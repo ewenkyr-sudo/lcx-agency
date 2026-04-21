@@ -67,18 +67,37 @@ function renderMOStep() {
       + moField('Snapchat', 'text', 'mo-snapchat', '@handle')
       + moField('Autres réseaux', 'text', 'mo-other-socials', 'Reddit, Telegram...');
   } else if (moStep === 3) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">OnlyFans</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Situation actuelle sur OnlyFans</p>'
-      + '<div class="form-group"><label class="form-label">A déjà un compte OnlyFans ?</label>'
-      + '<div style="display:flex;gap:10px">'
-      + '<button class="filter-chip" id="mo-of-yes" onclick="moSetOF(true)">Oui</button>'
-      + '<button class="filter-chip" id="mo-of-no" onclick="moSetOF(false)">Non</button>'
-      + '</div></div>'
-      + '<div id="mo-of-details"></div>';
-    // Restore state
-    var hasOF = document.getElementById('mo-of-yes');
-    if (moData.has_of_account) { setTimeout(function() { moSetOF(true); }, 50); }
-    else { setTimeout(function() { moSetOF(false); }, 50); }
+    var platforms = [
+      { key: 'of', label: '💎 OnlyFans', icon: '💎', color: '#0080FF' },
+      { key: 'fansly', label: '🌸 Fansly', icon: '🌸', color: '#E040FB' },
+      { key: 'fanvue', label: '💚 Fanvue', icon: '💚', color: '#10B981' },
+      { key: 'mym', label: '🔥 MYM', icon: '🔥', color: '#F97316' }
+    ];
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Plateformes adultes</h3>'
+      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Sur quelles plateformes la créatrice est-elle active ?</p>'
+      + platforms.map(function(p) {
+        var hasAccount = moData['has_' + p.key + '_account'];
+        return '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:10px;border-left:3px solid ' + p.color + '">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+          + '<strong style="font-size:14px">' + p.label + '</strong>'
+          + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mo-has-' + p.key + '" onchange="moTogglePlatform(\'' + p.key + '\')" ' + (hasAccount ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer"><span style="font-size:12px">' + (hasAccount ? 'Actif' : 'Non') + '</span></label>'
+          + '</div>'
+          + '<div id="mo-plat-details-' + p.key + '" style="' + (hasAccount ? '' : 'display:none') + '">'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+          + moField('Lien', 'url', 'mo-' + p.key + '-link', 'https://...')
+          + moField('Abonnés', 'number', 'mo-' + p.key + '-subs', '0')
+          + moField('Revenu mensuel ($)', 'number', 'mo-' + p.key + '-rev', '0')
+          + '</div></div></div>';
+      }).join('');
+    // Restore values
+    setTimeout(function() {
+      platforms.forEach(function(p) {
+        var s = function(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
+        s('mo-' + p.key + '-link', moData[p.key + '_link'] || moData[p.key === 'of' ? 'of_link' : p.key + '_link']);
+        s('mo-' + p.key + '-subs', moData[p.key + '_subscribers'] || moData[p.key === 'of' ? 'of_subscribers' : p.key + '_subscribers']);
+        s('mo-' + p.key + '-rev', moData[p.key + '_revenue_monthly'] || moData[p.key === 'of' ? 'of_revenue_monthly' : p.key + '_revenue_monthly']);
+      });
+    }, 20);
   } else if (moStep === 4) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Contenu</h3>'
       + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Quel type de contenu elle produit</p>'
@@ -148,14 +167,22 @@ function saveMOStep() {
     if (moData.twitter_handle) plats.push('twitter');
     moData.platforms = plats;
   } else if (moStep === 3) {
-    moData.has_of_account = !!document.getElementById('mo-of-yes')?.classList.contains('active');
-    if (moData.has_of_account) {
-      moData.of_link = g('mo-of-link'); moData.of_subscribers = gn('mo-of-subs');
-      moData.of_revenue_monthly = parseFloat(g('mo-of-revenue')) || 0;
-      if (moData.of_link) moData.platforms = (moData.platforms || []).concat(['onlyfans']);
-    } else {
-      moData.of_launch_date = g('mo-of-launch') || null;
-    }
+    var platKeys = ['of', 'fansly', 'fanvue', 'mym'];
+    var platNames = { of: 'onlyfans', fansly: 'fansly', fanvue: 'fanvue', mym: 'mym' };
+    platKeys.forEach(function(k) {
+      var cb = document.getElementById('mo-has-' + k);
+      moData['has_' + k + '_account'] = cb ? cb.checked : false;
+      if (moData['has_' + k + '_account']) {
+        moData[k + '_link'] = g('mo-' + k + '-link');
+        moData[k + '_subscribers'] = gn('mo-' + k + '-subs');
+        moData[k + '_revenue_monthly'] = parseFloat(g('mo-' + k + '-rev')) || 0;
+        if (moData[k + '_link'] && !(moData.platforms || []).includes(platNames[k])) {
+          moData.platforms = (moData.platforms || []).concat([platNames[k]]);
+        }
+      }
+    });
+    // Backward compat: copy of_ fields
+    moData.of_link = moData.of_link; moData.of_subscribers = moData.of_subscribers; moData.of_revenue_monthly = moData.of_revenue_monthly;
   } else if (moStep === 4) {
     moData.content_types = Array.from(document.querySelectorAll('#mo-content-types .selected')).map(function(b) { return b.dataset.val; });
     moData.post_frequency = g('mo-frequency');
@@ -207,27 +234,12 @@ function moBack() {
   if (moStep > 1) { moStep--; renderMOStep(); }
 }
 
-function moSetOF(hasAccount) {
-  var yes = document.getElementById('mo-of-yes');
-  var no = document.getElementById('mo-of-no');
-  if (yes) { yes.classList.toggle('active', hasAccount); yes.style.background = hasAccount ? 'var(--accent)' : ''; yes.style.color = hasAccount ? 'white' : ''; }
-  if (no) { no.classList.toggle('active', !hasAccount); no.style.background = !hasAccount ? 'var(--accent)' : ''; no.style.color = !hasAccount ? 'white' : ''; }
-  moData.has_of_account = hasAccount;
-  var details = document.getElementById('mo-of-details');
-  if (details) {
-    if (hasAccount) {
-      details.innerHTML = moField('Lien OnlyFans', 'url', 'mo-of-link', 'https://onlyfans.com/...')
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-        + moField('Abonnés actuels', 'number', 'mo-of-subs', '0')
-        + moField('Revenu mensuel actuel ($)', 'number', 'mo-of-revenue', '0')
-        + '</div>';
-      var sl = function(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; };
-      sl('mo-of-link', moData.of_link); sl('mo-of-subs', moData.of_subscribers); sl('mo-of-revenue', moData.of_revenue_monthly);
-    } else {
-      details.innerHTML = moField('Date de lancement prévue', 'date', 'mo-of-launch', '');
-      if (moData.of_launch_date) { var el = document.getElementById('mo-of-launch'); if (el) el.value = moData.of_launch_date; }
-    }
-  }
+function moTogglePlatform(key) {
+  var cb = document.getElementById('mo-has-' + key);
+  var details = document.getElementById('mo-plat-details-' + key);
+  var label = cb?.parentElement?.querySelector('span');
+  if (details) details.style.display = cb?.checked ? '' : 'none';
+  if (label) label.textContent = cb?.checked ? 'Actif' : 'Non';
 }
 
 async function submitModelOnboarding() {

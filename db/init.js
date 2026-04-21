@@ -107,6 +107,21 @@ async function initDB() {
       ALTER TABLE models ADD COLUMN IF NOT EXISTS of_subscribers INTEGER DEFAULT 0;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS of_revenue_monthly DECIMAL(10,2) DEFAULT 0;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS of_launch_date DATE;
+      -- Fansly
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS has_fansly_account BOOLEAN DEFAULT false;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fansly_link TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fansly_subscribers INTEGER DEFAULT 0;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fansly_revenue_monthly DECIMAL(10,2) DEFAULT 0;
+      -- Fanvue
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS has_fanvue_account BOOLEAN DEFAULT false;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fanvue_link TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fanvue_subscribers INTEGER DEFAULT 0;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS fanvue_revenue_monthly DECIMAL(10,2) DEFAULT 0;
+      -- MYM
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS has_mym_account BOOLEAN DEFAULT false;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS mym_link TEXT;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS mym_subscribers INTEGER DEFAULT 0;
+      ALTER TABLE models ADD COLUMN IF NOT EXISTS mym_revenue_monthly DECIMAL(10,2) DEFAULT 0;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS content_types TEXT DEFAULT '[]';
       ALTER TABLE models ADD COLUMN IF NOT EXISTS post_frequency TEXT;
       ALTER TABLE models ADD COLUMN IF NOT EXISTS has_photographer BOOLEAN DEFAULT false;

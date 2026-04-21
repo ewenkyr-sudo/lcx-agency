@@ -61,7 +61,7 @@ async function renderModelProfile(modelId) {
     + pf('Partie du corps la plus sexy', 'sexiest_body_part', p.sexiest_body_part)
     + pf('Apparence physique', 'physical_appearance', p.physical_appearance)
     + pf('Disponibilité de travail', 'work_availability', p.work_availability)
-    + pf('Expérience sur OF', 'of_experience', p.of_experience)
+    + pf('Expérience plateformes adultes', 'of_experience', p.of_experience)
     + pf('Revenus', 'current_revenue', p.current_revenue)
     + pf('Équipement', 'equipment', p.equipment)
     + '</div>'

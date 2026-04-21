@@ -31,8 +31,8 @@ function renderTeamTable(tableId, members) {
 }
 
 function renderStats() {
-  const platformIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', telegram: '✈️' };
-  const platformColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#00AFF0', telegram: '#229ED9' };
+  const platformIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥', telegram: '✈️' };
+  const platformColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#00AFF0', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316', telegram: '#229ED9' };
 
   // KPIs globaux
   const totalFollowers = allAccounts.reduce((sum, a) => sum + (a.current_followers || 0), 0);

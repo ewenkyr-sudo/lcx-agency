@@ -228,6 +228,9 @@
   .cp-post-tt { background: linear-gradient(135deg, #000, #25F4EE); }
   .cp-post-of { background: #0080FF; }
   .cp-post-tw { background: #1DA1F2; }
+  .cp-post-fansly { background: linear-gradient(135deg, #9C27B0, #E040FB); }
+  .cp-post-fanvue { background: #10B981; }
+  .cp-post-mym { background: linear-gradient(135deg, #F97316, #EF4444); }
   .cp-post-draft { opacity: 0.5; border: 1px dashed rgba(255,255,255,0.3); }
   .cp-post-cancelled { opacity: 0.3; text-decoration: line-through; }
   @media (max-width: 768px) {
