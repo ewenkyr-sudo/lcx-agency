@@ -207,3 +207,31 @@
   .star:nth-child(8) { top: 45%; left: 88%; animation-delay: 1.2s; }
   .star:nth-child(9) { top: 92%; left: 35%; animation-delay: 0.6s; }
   .star:nth-child(10) { top: 5%; left: 55%; animation-delay: 2.0s; width: 3px; height: 3px; }
+
+  /* ===== CONTENT PLANNER ===== */
+  .cp-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .cp-toolbar-title { font-size: 14px; font-weight: 700; min-width: 220px; text-align: center; }
+  .cp-nav-btn { background: rgba(168,85,247,0.08); border: 1px solid var(--border); color: var(--text2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+  .cp-nav-btn:hover { background: rgba(168,85,247,0.15); color: var(--text); }
+  .cp-view-btn { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; background: rgba(168,85,247,0.06); color: var(--text3); border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .cp-view-btn.active { background: var(--accent); color: white; }
+  .cp-week { display: grid; grid-template-columns: 60px repeat(7, 1fr); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .cp-week-header { background: rgba(19,13,33,0.8); padding: 10px 6px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  .cp-week-header.today { color: var(--accent2); }
+  .cp-time-label { padding: 0 6px; font-size: 10px; color: var(--text3); text-align: right; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; border-right: 1px solid var(--border); }
+  .cp-week-cell { min-height: 48px; border-right: 1px solid var(--border); border-bottom: 1px solid rgba(168,85,247,0.03); padding: 2px; cursor: pointer; position: relative; transition: background 0.15s; }
+  .cp-week-cell:last-child { border-right: none; }
+  .cp-week-cell:hover { background: rgba(168,85,247,0.04); }
+  .cp-post { padding: 3px 6px; border-radius: 6px; font-size: 10px; font-weight: 600; margin: 1px 0; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: white; display: flex; align-items: center; gap: 4px; transition: opacity 0.2s; }
+  .cp-post:hover { opacity: 0.85; }
+  .cp-post-ig { background: linear-gradient(135deg, #833AB4, #E1306C); }
+  .cp-post-tt { background: linear-gradient(135deg, #000, #25F4EE); }
+  .cp-post-of { background: #0080FF; }
+  .cp-post-tw { background: #1DA1F2; }
+  .cp-post-draft { opacity: 0.5; border: 1px dashed rgba(255,255,255,0.3); }
+  .cp-post-cancelled { opacity: 0.3; text-decoration: line-through; }
+  @media (max-width: 768px) {
+    .cp-week { grid-template-columns: 40px repeat(7, 1fr); }
+    .cp-toolbar { gap: 6px; }
+    .cp-toolbar-title { min-width: auto; font-size: 12px; }
+  }

@@ -1,6 +1,14 @@
 // MODELS MODULE
 // Extracted from dashboard.html
 
+function switchModelsTab(tab, btn) {
+  document.querySelectorAll('#section-models .tab').forEach(function(t2) { t2.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  document.getElementById('models-content').style.display = tab === 'models' ? '' : 'none';
+  document.getElementById('content-planner-content').style.display = tab === 'planner' ? '' : 'none';
+  if (tab === 'planner') renderContentPlanner();
+}
+
 function renderModels() {
   const container = document.getElementById('models-content');
   const actions = document.getElementById('models-actions');

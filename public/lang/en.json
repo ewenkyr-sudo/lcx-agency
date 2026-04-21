@@ -658,5 +658,20 @@
   "notifications.title": "Notifications",
   "notifications.markAllRead": "Mark all as read",
   "notifications.viewAll": "View all",
-  "notifications.empty": "No notifications"
+  "notifications.empty": "No notifications",
+  "cp.title": "Content Planner",
+  "cp.newPost": "+ New post",
+  "cp.noPostsYet": "No posts scheduled",
+  "cp.week": "Week",
+  "cp.month": "Month",
+  "cp.list": "List",
+  "cp.today": "Today",
+  "cp.status.draft": "Draft",
+  "cp.status.scheduled": "Scheduled",
+  "cp.status.published": "Published",
+  "cp.status.cancelled": "Cancelled",
+  "cp.platform.instagram": "Instagram",
+  "cp.platform.tiktok": "TikTok",
+  "cp.platform.onlyfans": "OnlyFans",
+  "cp.platform.twitter": "Twitter"
 }

@@ -274,7 +274,12 @@
       </div>
       <div class="header-actions" id="models-actions"></div>
     </div>
+    <div class="tabs" style="margin-bottom:20px">
+      <button class="tab active" onclick="switchModelsTab('models',this)">Modèles</button>
+      <button class="tab" onclick="switchModelsTab('planner',this)">Content Planner</button>
+    </div>
     <div id="models-content"></div>
+    <div id="content-planner-content" style="display:none"></div>
   </div>
 
   <!-- MODEL COCKPIT SECTION -->
@@ -1765,6 +1770,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/planning.js"></script>
 <script src="/js/modules/tasks.js"></script>
 <script src="/js/modules/models.js"></script>
+<script src="/js/modules/content-planner.js"></script>
 <script src="/js/modules/chatters.js"></script>
 <script src="/js/modules/coaching.js"></script>
 <script src="/js/modules/recruitment.js"></script>
