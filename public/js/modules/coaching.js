@@ -324,14 +324,14 @@ function renderCoachingLeadTable() {
       + '<td data-label="Notes" class="mc-full"><input type="text" value="' + (l.notes||'').replace(/"/g,'&quot;') + '" onchange="updateCoachingLead(' + l.id + ',{notes:this.value})" style="background:var(--bg);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;font-size:12px;width:100%;font-family:inherit"></td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteCoachingLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  }).join('') || '<tr><td colspan="10">' + emptyStateHTML('search', t('outreach.no_lead_found')) + '</td></tr>';
 }
 
 function updateCoachingLead(id, data) {
   var lead = coachingOutreachLeads.find(function(l) { return l.id === id; });
   if (lead) Object.assign(lead, data);
   fetch('/api/student-leads/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) })
-    .catch(function() { showToast('Erreur de connexion', 'error'); });
+    .catch(function() { showToast(t('toast.error_network'), 'error'); });
 }
 
 async function deleteCoachingLead(id) {
@@ -339,7 +339,7 @@ async function deleteCoachingLead(id) {
   coachingOutreachLeads = coachingOutreachLeads.filter(function(l) { return l.id !== id; });
   renderCoachingLeadTable();
   fetch('/api/student-leads/' + id, { method: 'DELETE', credentials: 'include' })
-    .catch(function() { showToast('Erreur de suppression', 'error'); });
+    .catch(function() { showToast(t('toast.error_delete'), 'error'); });
 }
 
 async function deleteAllCoachingLeads() {
@@ -386,10 +386,10 @@ async function addCoachingLead() {
     coachingOutreachLeads.unshift(newLead);
     document.getElementById('coaching-lead-form-wrap').innerHTML = '';
     renderCoachingLeadTable();
-    showToast('Lead ajouté', 'success');
+    showToast(t('toast.lead_added'), 'success');
   } else {
-    try { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
-    catch(err) { showToast('Erreur serveur', 'error'); }
+    try { var e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
+    catch(err) { showToast(t('toast.error_server'), 'error'); }
   }
 }
 
@@ -546,11 +546,11 @@ async function coachingQuickAddShift(dateStr) {
 }
 
 async function coachingQuickAddTask(dateStr) {
-  const desc = prompt('Description de la tâche :');
+  const desc = prompt(t('coaching.task_desc_prompt'));
   if (!desc) return;
-  const start = prompt('Heure de début (HH:MM) :', '18:00') || '18:00';
-  const end = prompt('Heure de fin (HH:MM) :', '19:00') || '19:00';
-  const isUrgent = confirm('Tâche urgente ?');
+  const start = prompt(t('coaching.start_time'), '18:00') || '18:00';
+  const end = prompt(t('coaching.end_time'), '19:00') || '19:00';
+  const isUrgent = confirm(t('coaching.task_urgent'));
   await fetch('/api/planning-shifts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -586,7 +586,7 @@ async function renderCoachingTasks() {
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
 
   const tasks = await fetch('/api/tasks?student_user_id=' + coachingTasksStudentId, { credentials: 'include' }).then(r => r.ok ? r.json() : []);
-  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'En attente' }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'En cours' }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Terminée' } };
+  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('planning.pending') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Terminée' } };
 
   const pending = tasks.filter(t => t.status !== 'completed');
   const completed = tasks.filter(t => t.status === 'completed');
@@ -617,7 +617,7 @@ async function renderCoachingTasks() {
   container.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="coachingShowTaskForm()">+ Nouvelle tâche</button></div>'
     + '<div id="coaching-task-form-wrap"></div>'
     + '<div style="margin-bottom:12px"><h4 style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:8px">À faire (' + pending.length + ')</h4>'
-    + (pending.length === 0 ? emptyStateHTML('clipboard', 'Aucune tâche en cours') : '<div style="display:grid;gap:8px">' + pending.map(card).join('') + '</div>')
+    + (pending.length === 0 ? emptyStateHTML('clipboard', t('student.no_task')) : '<div style="display:grid;gap:8px">' + pending.map(card).join('') + '</div>')
     + '</div>'
     + (completed.length > 0 ? '<div><h4 style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">Terminées (' + completed.length + ')</h4><div style="display:grid;gap:8px">' + completed.map(card).join('') + '</div></div>' : '');
 }
@@ -685,7 +685,7 @@ async function addOutreachPair(studentAId, studentBId) {
   if (!studentBId) return;
   const res = await fetch('/api/student-outreach-pairs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_a_id: parseInt(studentAId), student_b_id: parseInt(studentBId) }) });
   if (res.ok) { showToast(t('coaching.paired_toast'), 'success'); renderCoaching(); }
-  else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  else { const e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
 }
 
 async function removeOutreachPair(id) {
@@ -698,7 +698,7 @@ async function assignOutreach(studentUserId, outreachUserId) {
   if (!outreachUserId) return;
   const res = await fetch('/api/student-outreach-assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ student_user_id: studentUserId, outreach_user_id: parseInt(outreachUserId) }) });
   if (res.ok) { showToast(t('coaching.assistant_assigned_toast'), 'success'); renderCoaching(); }
-  else { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  else { const e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
 }
 
 async function removeOutreachAssignment(id) {
@@ -715,7 +715,7 @@ async function updateStudentProgression(studentId, step) {
 async function handleCallRequest(id, status) {
   let scheduled_at = null;
   if (status === 'accepted') {
-    scheduled_at = prompt('Date et heure du call (ex: 2026-03-28 15:00)');
+    scheduled_at = prompt(t('coaching.date_time_call'));
     if (!scheduled_at) return;
   }
   await fetch('/api/call-requests/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ status, scheduled_at }) });

@@ -36,7 +36,7 @@ var CP_TYPE_LABELS = {
   post_twitter: 'Post'
 };
 
-var CP_STATUS = { draft: 'Brouillon', scheduled: 'Planifié', published: 'Publié', cancelled: 'Annulé' };
+var CP_STATUS = { draft: t('cp.status_draft'), scheduled: t('cp.status_scheduled'), published: t('cp.status_published'), cancelled: t('cp.status_cancelled') };
 
 // ========== RENDERING ==========
 
@@ -229,7 +229,7 @@ function openCPModal(postId, defaultDateTime) {
 
   var html = '<div class="modal-overlay show" id="cp-modal-overlay" onclick="if(event.target===this)closeCPModal()">'
     + '<div class="modal" style="width:520px">'
-    + '<div class="modal-header"><div class="modal-title">' + (post ? (isReadOnly ? 'Détails du post' : 'Modifier le post') : 'Nouveau post') + '</div><button class="modal-close" onclick="closeCPModal()">✕</button></div>'
+    + '<div class="modal-header"><div class="modal-title">' + (post ? (isReadOnly ? t('cp.post_details_title') : t('cp.edit_post_title')) : t('cp.new_post_title')) + '</div><button class="modal-close" onclick="closeCPModal()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">Modèle *</label><select id="cp-model" class="form-input"' + (isReadOnly?' disabled':'') + '>' + modelOpts + '</select></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
@@ -252,7 +252,7 @@ function openCPModal(postId, defaultDateTime) {
       + (post ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteCPPost(' + post.id + ');closeCPModal()">Supprimer</button>' : '')
       + '<div style="flex:1"></div>'
       + '<button class="btn btn-secondary" onclick="closeCPModal()">Annuler</button>'
-      + '<button class="btn btn-primary" onclick="saveCPPost(' + (post ? post.id : 'null') + ')">' + (post ? 'Enregistrer' : 'Créer') + '</button>'
+      + '<button class="btn btn-primary" onclick="saveCPPost(' + (post ? post.id : 'null') + ')">' + (post ? t('common.save_btn') : t('common.create_btn')) + '</button>'
       + '</div>')
     + '</div></div>';
 
@@ -284,7 +284,7 @@ async function saveCPPost(postId) {
     assigned_to_id: document.getElementById('cp-assign').value ? parseInt(document.getElementById('cp-assign').value) : null,
     notes: document.getElementById('cp-notes').value
   };
-  if (!data.model_id || !data.scheduled_at) return showToast('Modèle et date requis', 'error');
+  if (!data.model_id || !data.scheduled_at) return showToast(t('cp.model_date_required'), 'error');
   var url = postId ? '/api/content-posts/' + postId : '/api/content-posts';
   var method = postId ? 'PUT' : 'POST';
   var res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });

@@ -181,7 +181,7 @@ async function saveAgencyInfo() {
     }
   } else {
     const err = await res.json();
-    showToast(err.error || 'Erreur', 'error');
+    showToast(err.error || t('common.error'), 'error');
   }
 }
 
@@ -210,7 +210,7 @@ async function saveUserEmail() {
     body: JSON.stringify({ email: email })
   });
   if (res.ok) showToast(t('settings.email_saved_toast'), 'success');
-  else showToast('Erreur', 'error');
+  else showToast(t('common.error'), 'error');
 }
 
 async function resetPasswords(role, inputId) {
@@ -247,7 +247,7 @@ async function addUser() {
     renderSettings();
   } else {
     const err = await res.json();
-    showToast(err.error || 'Erreur', 'error');
+    showToast(err.error || t('common.error'), 'error');
   }
 }
 
@@ -307,7 +307,7 @@ async function saveUserEmailAdmin(userId) {
     credentials: 'include', body: JSON.stringify({ email: email })
   });
   if (res.ok) { showToast('Email sauvegardé !', 'success'); loadAllData(); }
-  else { var d = await res.json(); showToast(d.error || 'Erreur', 'error'); }
+  else { var d = await res.json(); showToast(d.error || t('common.error'), 'error'); }
 }
 
 async function changeUserPassword(userId) {
@@ -348,21 +348,21 @@ async function saveWhatsAppSettings() {
 }
 
 async function testWhatsApp() {
-  showToast('Envoi du test...', 'info');
+  showToast(t('settings.test_sending'), 'info');
   await fetch('/api/admin/test-whatsapp', { method: 'POST', credentials: 'include' });
-  showToast('Message test envoyé !', 'success');
+  showToast(t('settings.test_sent'), 'success');
 }
 
 async function testDailyReport() {
-  showToast('Envoi du rapport quotidien...', 'info');
+  showToast(t('settings.daily_sending'), 'info');
   await fetch('/api/admin/test-daily-report', { method: 'POST', credentials: 'include' });
-  showToast('Rapport quotidien envoyé !', 'success');
+  showToast(t('settings.daily_sent'), 'success');
 }
 
 async function testWeeklyReport() {
-  showToast('Envoi du rapport hebdomadaire...', 'info');
+  showToast(t('settings.weekly_sending'), 'info');
   await fetch('/api/admin/test-weekly-report', { method: 'POST', credentials: 'include' });
-  showToast('Rapport hebdomadaire envoyé !', 'success');
+  showToast(t('settings.weekly_sent'), 'success');
 }
 
 async function saveNotifSettings() {
@@ -380,7 +380,7 @@ async function saveNotifSettings() {
     })
   });
   if (res.ok) showToast(t('settings.notif_saved_toast'), 'success');
-  else showToast('Erreur lors de la sauvegarde', 'error');
+  else showToast(t('settings.save_error'), 'error');
 }
 
 function loadWhatsAppSettings() {

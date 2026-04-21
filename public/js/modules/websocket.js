@@ -131,7 +131,7 @@ function connectWebSocket() {
       allTasks = await fetch('/api/tasks', { credentials: 'include' }).then(r => r.json());
       renderTasks();
       if (msg.event === 'task-new' && msg.data) {
-        sendNotification('Nouvelle tâche', msg.data.title || 'Une tâche a été créée', 'info');
+        sendNotification(t('tasks.new_task_title'), msg.data.title || 'Une tâche a été créée', 'info');
       }
     }
     if (msg.event === 'new-message') {
@@ -151,13 +151,13 @@ function connectWebSocket() {
     if (msg.event === 'call-request-new' || msg.event === 'call-request-updated') {
       if (currentUser.role === 'student') renderStudentHome();
       if (msg.event === 'call-request-new') {
-        sendNotification('Demande de call', 'Un élève demande un call', 'alert');
+        sendNotification('Demande de call', t('coaching.call_pending_label'), 'alert');
       }
     }
     if (msg.event === 'planning-updated' || msg.event === 'leave-request-new' || msg.event === 'leave-request-updated') {
       renderPlanning();
       if (msg.event === 'leave-request-new') {
-        sendNotification('Demande de congé', 'Nouvelle demande de congé à valider', 'info');
+        sendNotification('Demande de congé', t('planning.leave_request_title'), 'info');
       }
     }
   });

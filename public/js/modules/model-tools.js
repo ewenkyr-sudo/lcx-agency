@@ -22,24 +22,24 @@ async function renderModelProfile(modelId) {
     // Section 1: Infos de base
     + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Informations de base</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + pf('Nom en ligne', 'online_name', p.online_name) + pf('Âge', 'age', p.age, 'number')
-    + pf('Date de naissance', 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf('Signe astrologique', 'zodiac_sign', p.zodiac_sign)
-    + pf('Orientation sexuelle', 'sexual_orientation', p.sexual_orientation) + pf('Origine ethnique', 'ethnicity', p.ethnicity)
-    + pf('Taille', 'height', p.height) + pf('Pointure', 'shoe_size', p.shoe_size)
-    + pf('Taille soutien-gorge', 'bra_size', p.bra_size) + pf('Localisation', 'location', p.location)
-    + pf('Originaire de', 'hometown', p.hometown) + pf('Langues parlées', 'spoken_languages', p.spoken_languages)
-    + pf('Niveau d\'anglais', 'english_level', p.english_level)
+    + pf(t('mp.online_name'), 'online_name', p.online_name) + pf(t('mp.age'), 'age', p.age, 'number')
+    + pf('Date de naissance', 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf(t('mp.zodiac'), 'zodiac_sign', p.zodiac_sign)
+    + pf(t('mp.orientation'), 'sexual_orientation', p.sexual_orientation) + pf(t('mp.ethnicity'), 'ethnicity', p.ethnicity)
+    + pf(t('mp.height'), 'height', p.height) + pf(t('mp.shoe_size'), 'shoe_size', p.shoe_size)
+    + pf(t('mp.bra_size'), 'bra_size', p.bra_size) + pf(t('mp.location'), 'location', p.location)
+    + pf(t('mp.hometown'), 'hometown', p.hometown) + pf('Langues parlées', 'spoken_languages', p.spoken_languages)
+    + pf(t('mp.english_level'), 'english_level', p.english_level)
     + '</div></div>'
     // Section 2: Profil personnel
     + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Profil personnel</h4>'
-    + pfArea('À propos', 'about', p.about)
-    + pfArea('Personnalité & style de discussion', 'personality', p.personality)
+    + pfArea(t('mp.about'), 'about', p.about)
+    + pfArea(t('mp.personality'), 'personality', p.personality)
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + pf('Loisirs', 'hobbies', p.hobbies) + pf('Couleur préférée', 'fav_color', p.fav_color)
-    + pf('Plat préféré', 'fav_food', p.fav_food) + pf('Musique préférée', 'fav_music', p.fav_music)
-    + pf('Chanteuse préférée', 'fav_singer', p.fav_singer) + pf('Sports', 'sports', p.sports)
-    + pf('Animaux', 'pets', p.pets) + pf('Université', 'university', p.university)
-    + pf('Spécialité', 'specialty', p.specialty) + pf('Autre emploi', 'other_job', p.other_job)
+    + pf(t('mp.hobbies'), 'hobbies', p.hobbies) + pf(t('mp.fav_color'), 'fav_color', p.fav_color)
+    + pf(t('mp.fav_food'), 'fav_food', p.fav_food) + pf(t('mp.fav_music'), 'fav_music', p.fav_music)
+    + pf(t('mp.fav_singer'), 'fav_singer', p.fav_singer) + pf(t('mp.sports'), 'sports', p.sports)
+    + pf(t('mp.pets'), 'pets', p.pets) + pf(t('mp.university'), 'university', p.university)
+    + pf(t('mp.specialty'), 'specialty', p.specialty) + pf(t('mp.other_job'), 'other_job', p.other_job)
     + '</div></div>'
     // Section 3: Préférences de contenu
     + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Préférences de contenu</h4>'
@@ -50,23 +50,23 @@ async function renderModelProfile(modelId) {
     }).join('')
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">'
-    + pfBool('Demandes personnalisées', 'custom_requests', p.custom_requests) + pfBool('Appels vidéo', 'video_calls', p.video_calls)
-    + pfBool('Live sur OF', 'live_of', p.live_of) + pfBool('Autres personnes présentes', 'other_people', p.other_people)
+    + pfBool(t('mp.custom_requests'), 'custom_requests', p.custom_requests) + pfBool(t('mp.video_calls'), 'video_calls', p.video_calls)
+    + pfBool(t('mp.live_of'), 'live_of', p.live_of) + pfBool(t('mp.other_people'), 'other_people', p.other_people)
     + '</div></div>'
     // Section 4: Notes supplémentaires
     + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Notes supplémentaires</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + pf('Statut relationnel public', 'relationship_status', p.relationship_status)
-    + pf('Expérience de voyage', 'travel_experience', p.travel_experience)
-    + pf('Partie du corps la plus sexy', 'sexiest_body_part', p.sexiest_body_part)
-    + pf('Apparence physique', 'physical_appearance', p.physical_appearance)
-    + pf('Disponibilité de travail', 'work_availability', p.work_availability)
+    + pf(t('mp.relationship'), 'relationship_status', p.relationship_status)
+    + pf(t('mp.travel'), 'travel_experience', p.travel_experience)
+    + pf(t('mp.sexiest_part'), 'sexiest_body_part', p.sexiest_body_part)
+    + pf(t('mp.appearance'), 'physical_appearance', p.physical_appearance)
+    + pf(t('mp.work_avail'), 'work_availability', p.work_availability)
     + pf(t('mp.platform_experience'), 'of_experience', p.of_experience)
-    + pf('Revenus', 'current_revenue', p.current_revenue)
-    + pf('Équipement', 'equipment', p.equipment)
+    + pf(t('mp.revenue_label'), 'current_revenue', p.current_revenue)
+    + pf(t('mp.equipment'), 'equipment', p.equipment)
     + '</div>'
-    + pfArea('Situation actuelle', 'current_situation', p.current_situation)
-    + pfArea('Bloqué / Remarques', 'blocked_notes', p.blocked_notes)
+    + pfArea(t('mp.current_situation'), 'current_situation', p.current_situation)
+    + pfArea(t('mp.blocked'), 'blocked_notes', p.blocked_notes)
     + '</div>'
     + (canEdit ? '<button type="button" class="btn btn-primary" onclick="saveModelProfile(' + modelId + ')" style="width:fit-content">Sauvegarder la fiche</button>' : '')
     + '</form>';

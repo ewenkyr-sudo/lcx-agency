@@ -59,7 +59,7 @@ function renderFollowersChart(data, days) {
   chartFollowers = new Chart(ctx, {
     type: 'line',
     data: { labels: dates.map(d => formatChartDate(d, days)), datasets },
-    options: chartOptions('Nouveaux followers cumulés')
+    options: chartOptions(t('perf.new_followers_cumul'))
   });
 }
 
@@ -110,20 +110,20 @@ function renderLeadsChart(data, days) {
       labels: dates,
       datasets: [
         {
-          label: 'DMs envoyés',
+          label: t('perf.dms_sent_label'),
           data: data.map(d => parseInt(d.dm_sent)),
           backgroundColor: '#3b82f6cc',
           borderRadius: 4
         },
         {
-          label: 'Réponses',
+          label: t('perf.replies_label'),
           data: data.map(d => parseInt(d.replies)),
           backgroundColor: '#A855F7cc',
           borderRadius: 4
         }
       ]
     },
-    options: chartOptions('Nombre de leads')
+    options: chartOptions(t('perf.leads_count_label'))
   });
 }
 

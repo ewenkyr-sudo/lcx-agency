@@ -21,10 +21,10 @@ async function renderActivityLog(page) {
     'lead-talking-warm': { label: t('misc.lead_warm'), color: 'var(--yellow)', icon: '🔥' },
     'lead-call-booked': { label: t('misc.lead_call_booked'), color: 'var(--accent)', icon: '📞' },
     'lead-signed': { label: t('misc.lead_signed'), color: 'var(--green)', icon: '✅' },
-    'call-request': { label: 'Demande de call', color: 'var(--blue)', icon: '📞' },
+    'call-request': { label: t('log.call_request'), color: 'var(--blue)', icon: '📞' },
     'clock-in': { label: t('misc.clock_in_action'), color: 'var(--green)', icon: '🟢' },
     'clock-out': { label: t('misc.clock_out_action'), color: 'var(--red)', icon: '🔴' },
-    'inactive-chatter-alert': { label: 'Alerte chatter inactif', color: 'var(--yellow)', icon: '⚠️' }
+    'inactive-chatter-alert': { label: t('log.chatter_inactive'), color: 'var(--yellow)', icon: '⚠️' }
   };
 
   container.innerHTML = '<div class="panel" style="padding:20px">'

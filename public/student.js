@@ -173,7 +173,7 @@ async function renderStudentHome() {
             ${avatarHTML(c, 32)}
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">${c.display_name}</div>
-              <div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${c.last_message || 'Pas de message'}</div>
+              <div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${c.last_message || t('student.no_message')}</div>
             </div>
             ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + c.unread + '</span>' : ''}
           </div>
@@ -317,7 +317,7 @@ function renderStudentLeadTable() {
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', 'Aucun lead', '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
+  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', t('student.no_lead'), '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
   renderStudentBulkBar();
 }
 
@@ -550,7 +550,7 @@ async function renderStudentRecruits() {
       + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (r.notes || '-') + '</td>'
       + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteRecruit(' + r.id + ')">✕</button></td></tr>';
-  }).join('') || '<tr><td colspan="5">' + emptyStateHTML('users', 'Aucune modèle en recrutement') + '</td></tr>';
+  }).join('') || '<tr><td colspan="5">' + emptyStateHTML('users', t('student.no_recruit')) + '</td></tr>';
 }
 
 function showRecruitForm() {
@@ -621,7 +621,7 @@ async function renderStudentModels() {
         <div><span style="color:var(--text3)">Commission due:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
       </div>
     </div>`;
-  }).join('') || '<div class="panel">' + emptyStateHTML('users', 'Aucun modèle', '+ Ajouter un modèle', 'showStudentModelForm()') + '</div>';
+  }).join('') || '<div class="panel">' + emptyStateHTML('users', t('student.no_model'), t('student.add_model'), 'showStudentModelForm()') + '</div>';
 }
 
 function showStudentModelForm() {
@@ -694,7 +694,7 @@ async function renderStudentRevenue() {
       ${studentData.revenue.map(r => {
         const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
         return '<tr><td data-label="Mois" class="mc-half">' + r.month + '</td><td data-label="Modèle" class="mc-half"><strong>' + r.model_name + '</strong></td><td data-label="Revenue" class="mc-half" style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td><td data-label="Commission" class="mc-half" style="color:var(--accent)">$' + comm + ' (' + r.commission_rate + '%)</td></tr>';
-      }).join('') || '<tr><td colspan="4">' + emptyStateHTML('dollar', 'Aucun revenu enregistré') + '</td></tr>'}
+      }).join('') || '<tr><td colspan="4">' + emptyStateHTML('dollar', t('student.no_revenue')) + '</td></tr>'}
     </tbody></table></div>
   `;
 
@@ -825,7 +825,7 @@ async function renderStudentResources() {
           </div>`).join('')}
         </div>
       </div>
-    `).join('') || '<div class="panel">' + emptyStateHTML('book', 'Aucune ressource disponible') + '</div>'}
+    `).join('') || '<div class="panel">' + emptyStateHTML('book', t('student.no_resource')) + '</div>'}
   `;
 }
 
@@ -1081,7 +1081,7 @@ async function renderStudentTasks() {
     + '<div id="student-task-form-wrap"></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:16px">'
     + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">À faire</h3>'
-    + (pending.length === 0 ? emptyStateHTML('clipboard', 'Aucune tâche en cours', '+ Créer une tâche', 'showStudentTaskForm()') : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
+    + (pending.length === 0 ? emptyStateHTML('clipboard', t('student.no_task'), '+ Créer une tâche', 'showStudentTaskForm()') : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
     + '</div>'
     + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">Terminées</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
 }

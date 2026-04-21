@@ -243,7 +243,7 @@ function renderLeads() {
       <td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">${date}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteLead(${l.id})" title="Supprimer">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', 'Aucun lead trouvé') + '</td></tr>';
+  }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', t('outreach.no_lead_found')) + '</td></tr>';
   renderLeadsBulkBar();
 }
 
@@ -286,7 +286,7 @@ function showAddLeadForm() {
   if (form.style.display === 'block') {
     document.getElementById('lead-type-wrap').innerHTML = '<select id="lead-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select>';
     document.getElementById('lead-script-wrap').innerHTML = outreachFormSelect('lead-script', 'script', 'Script utilisé');
-    document.getElementById('lead-account-wrap').innerHTML = outreachFormSelect('lead-ig-account', 'account', 'Compte Instagram');
+    document.getElementById('lead-account-wrap').innerHTML = outreachFormSelect('lead-ig-account', 'account', t('outreach.ig_account_label'));
   }
 }
 
@@ -326,7 +326,7 @@ async function addLead() {
       showToast(t('outreach.lead_added_toast'), 'success');
     } else {
       const err = await res.json().catch(function() { return {}; });
-      showToast(err.error || 'Erreur serveur', 'error');
+      showToast(err.error || t('toast.error_server'), 'error');
     }
   } catch(e) {
     showToast('Erreur de connexion', 'error');
@@ -364,9 +364,9 @@ function filterLeads(filter, btn) {
 }
 
 async function importCSV() {
-  if (!(await confirmDelete('Importer tous les leads du fichier CSV ? Les leads existants seront mis à jour.'))) return;
+  if (!(await confirmDelete(t('outreach.import_confirm')))) return;
   const btn = document.getElementById('btn-import-csv');
-  btn.textContent = 'Import en cours...';
+  btn.textContent = t('outreach.import_progress');
   btn.disabled = true;
   try {
     const res = await fetch('/api/admin/import-csv', { method: 'POST', credentials: 'include' });
@@ -380,16 +380,16 @@ async function importCSV() {
       showToast(data.error || 'Erreur inconnue', 'error');
     }
   } catch (e) {
-    showToast('Erreur réseau', 'error');
+    showToast(t('toast.error_network'), 'error');
   }
-  btn.textContent = 'Importer CSV';
+  btn.textContent = t('outreach.import_csv');
   btn.disabled = false;
 }
 
 function showOutreachOptionsManager() {
   const existing = document.getElementById('outreach-options-mgr');
   if (existing) { existing.remove(); return; }
-  const labels = { type: 'Types de lead', script: 'Scripts', account: 'Comptes Instagram' };
+  const labels = { type: 'Types de lead', script: 'Scripts', account: t('outreach.ig_account_label') };
   const panel = document.createElement('div');
   panel.id = 'outreach-options-mgr';
   panel.className = 'panel';
@@ -424,7 +424,7 @@ async function addOutreachOption(optType) {
     renderLeads();
   } else {
     var e = await res.json();
-    showToast(e.error || 'Erreur', 'error');
+    showToast(e.error || t('common.error'), 'error');
   }
 }
 

@@ -36,36 +36,36 @@ function renderMOStep() {
   document.getElementById('mo-step-num').textContent = moStep;
   document.getElementById('mo-progress').style.width = (moStep / moTotalSteps * 100) + '%';
   document.getElementById('mo-back').style.display = moStep > 1 ? '' : 'none';
-  document.getElementById('mo-next').textContent = moStep === moTotalSteps ? 'Ajouter la créatrice' : 'Continuer';
+  document.getElementById('mo-next').textContent = moStep === moTotalSteps ? t('mo.add_creator_btn') : t('common.continue');
 
   if (moStep === 1) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Identité</h3>'
       + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Informations de base sur la créatrice</p>'
-      + moField('Prénom / Nom de scène *', 'text', 'mo-name', 'Ex: Luna')
-      + moField('Nom de scène (si différent)', 'text', 'mo-stage-name', 'Ex: Luna_exclusive')
+      + moField(t('mo.firstname') + ' *', 'text', 'mo-name', 'Ex: Luna')
+      + moField(t('mo.stage_name_alt'), 'text', 'mo-stage-name', 'Ex: Luna_exclusive')
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-      + moField('Date de naissance', 'date', 'mo-birth')
-      + moField('Nationalité', 'text', 'mo-nationality', 'Ex: Française')
+      + moField(t('mo.birth_date'), 'date', 'mo-birth')
+      + moField(t('mo.nationality'), 'text', 'mo-nationality', 'Ex: Française')
       + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-      + moField('Ville', 'text', 'mo-city', 'Ex: Paris')
-      + moField('Pays', 'text', 'mo-country', 'Ex: France')
+      + moField(t('mo.city'), 'text', 'mo-city', 'Ex: Paris')
+      + moField(t('mo.country'), 'text', 'mo-country', 'Ex: France')
       + '</div>'
-      + moField('Photo de profil (URL)', 'url', 'mo-photo', 'https://...');
+      + moField(t('mo.photo_url'), 'url', 'mo-photo', 'https://...');
   } else if (moStep === 2) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Réseaux sociaux</h3>'
       + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Ses comptes actuels sur les réseaux</p>'
       + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
-      + moField('Instagram', 'text', 'mo-ig', '@handle')
-      + moField('Followers IG', 'number', 'mo-ig-followers', '0')
+      + moField(t('mo.ig_label'), 'text', 'mo-ig', '@handle')
+      + moField(t('mo.followers_ig'), 'number', 'mo-ig-followers', '0')
       + '</div>'
       + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
-      + moField('TikTok', 'text', 'mo-tiktok', '@handle')
-      + moField('Followers TT', 'number', 'mo-tiktok-followers', '0')
+      + moField(t('mo.tiktok_label'), 'text', 'mo-tiktok', '@handle')
+      + moField(t('mo.followers_tt'), 'number', 'mo-tiktok-followers', '0')
       + '</div>'
-      + moField('Twitter / X', 'text', 'mo-twitter', '@handle')
-      + moField('Snapchat', 'text', 'mo-snapchat', '@handle')
-      + moField('Autres réseaux', 'text', 'mo-other-socials', 'Reddit, Telegram...');
+      + moField(t('mo.twitter_label'), 'text', 'mo-twitter', '@handle')
+      + moField(t('mo.snapchat_label'), 'text', 'mo-snapchat', '@handle')
+      + moField(t('mo.other_socials'), 'text', 'mo-other-socials', 'Reddit, Telegram...');
   } else if (moStep === 3) {
     var platforms = [
       { key: 'of', label: '💎 OnlyFans', icon: '💎', color: '#0080FF' },
@@ -84,9 +84,9 @@ function renderMOStep() {
           + '</div>'
           + '<div id="mo-plat-details-' + p.key + '" style="' + (hasAccount ? '' : 'display:none') + '">'
           + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-          + moField('Lien', 'url', 'mo-' + p.key + '-link', 'https://...')
-          + moField('Abonnés', 'number', 'mo-' + p.key + '-subs', '0')
-          + moField('Revenu mensuel ($)', 'number', 'mo-' + p.key + '-rev', '0')
+          + moField(t('mo.link'), 'url', 'mo-' + p.key + '-link', 'https://...')
+          + moField(t('mo.subscribers'), 'number', 'mo-' + p.key + '-subs', '0')
+          + moField(t('mo.monthly_revenue'), 'number', 'mo-' + p.key + '-rev', '0')
           + '</div></div></div>';
       }).join('');
     // Restore values
@@ -107,20 +107,20 @@ function renderMOStep() {
         var sel = (moData.content_types || []).includes(t) ? ' selected' : '';
         return '<button class="filter-chip' + sel + '" onclick="this.classList.toggle(\'selected\')" data-val="' + t + '">' + t + '</button>';
       }).join('') + '</div></div>'
-      + moField('Fréquence de publication souhaitée', 'text', 'mo-frequency', 'Ex: 3 posts/jour')
+      + moField(t('mo.post_frequency'), 'text', 'mo-frequency', 'Ex: 3 posts/jour')
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
       + '<div class="form-group"><label class="form-label">A un photographe/vidéaste ?</label>'
       + '<select class="form-input" id="mo-photographer"><option value="false">Non</option><option value="true"' + (moData.has_photographer ? ' selected' : '') + '>Oui</option></select></div>'
-      + moField('Stock de contenu (photos+vidéos prêtes)', 'number', 'mo-stock', '0')
+      + moField(t('mo.content_stock'), 'number', 'mo-stock', '0')
       + '</div>';
   } else if (moStep === 5) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Objectifs</h3>'
       + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Ses ambitions et disponibilités</p>'
-      + moField('Objectif de revenu mensuel ($)', 'number', 'mo-revenue-goal', 'Ex: 5000')
-      + moField('Disponibilité (heures/semaine)', 'number', 'mo-availability', 'Ex: 20')
+      + moField(t('mo.revenue_goal'), 'number', 'mo-revenue-goal', 'Ex: 5000')
+      + moField(t('mo.availability'), 'number', 'mo-availability', 'Ex: 20')
       + '<div class="form-group"><label class="form-label">Langues parlées</label>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px" id="mo-languages">'
-      + ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien', 'Portugais', 'Arabe'].map(function(l) {
+      + ['Français', 'English', 'Español', 'Deutsch', 'Italiano', 'Português', 'عربي'].map(function(l) {
         var sel = (moData.languages || []).includes(l) ? ' selected' : '';
         return '<button class="filter-chip' + sel + '" onclick="this.classList.toggle(\'selected\')" data-val="' + l + '">' + l + '</button>';
       }).join('') + '</div></div>'
@@ -133,7 +133,7 @@ function renderMOStep() {
   } else if (moStep === 6) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Légal & admin</h3>'
       + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Documents et notes internes</p>'
-      + moField('Lien vers le contrat signé (Drive)', 'url', 'mo-contract', 'https://drive.google.com/...')
+      + moField(t('mo.contract_link'), 'url', 'mo-contract', 'https://drive.google.com/...')
       + '<div class="form-group"><label class="form-label">Accord RGPD / Conditions acceptées</label>'
       + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
       + '<input type="checkbox" id="mo-gdpr" style="width:18px;height:18px;cursor:pointer"' + (moData.gdpr_accepted ? ' checked' : '') + '>'
@@ -259,11 +259,11 @@ async function submitModelOnboarding() {
     } else {
       var err = await res.json().catch(function() { return {}; });
       showToast(err.error || 'Erreur', 'error');
-      btn.disabled = false; btn.textContent = 'Ajouter la créatrice';
+      btn.disabled = false; btn.textContent = t('mo.add_creator_btn');
     }
   } catch(e) {
     showToast(t('toast.error_network'), 'error');
-    btn.disabled = false; btn.textContent = 'Ajouter la créatrice';
+    btn.disabled = false; btn.textContent = t('mo.add_creator_btn');
   }
 }
 
