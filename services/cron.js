@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const pool = require('../db/pool');
 const { sendWhatsApp, getNotifSetting, isNotifEnabled } = require('./whatsapp');
 const { notifyAdmins } = require('./notifications');
+const { updateProfilePictures } = require('./scraping');
 
 
 async function sendDailyReport() {
@@ -238,7 +239,12 @@ async function setupCronJobs() {
     checkInactiveChatters();
   }, { timezone: 'Europe/Paris' });
 
-  console.log(`Cron jobs configured: daily report at ${dailyHour} (Paris), weekly Monday 9h, inactive check every 30min`);
+  // Profile picture refresh - daily at 4:00 AM Paris
+  cron.schedule('0 4 * * *', () => {
+    updateProfilePictures();
+  }, { timezone: 'Europe/Paris' });
+
+  console.log(`Cron jobs configured: daily report at ${dailyHour} (Paris), weekly Monday 9h, inactive check every 30min, avatar refresh 4h`);
 }
 
 

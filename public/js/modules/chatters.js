@@ -88,8 +88,7 @@ function renderStats() {
 
           return '<div style="background:var(--bg3);border-radius:10px;padding:14px;border-left:3px solid ' + (platformColors[acc.platform] || 'var(--accent)') + '">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-            + '<span style="font-size:13px;font-weight:600">' + (platformIcons[acc.platform] || '📱') + ' ' + acc.platform + '</span>'
-            + '<span style="font-size:11px;color:var(--text3)">' + acc.handle + '</span>'
+            + accountAvatarHTML(acc.id, acc.handle, acc.platform, 32)
             + '</div>'
             + '<div style="font-size:24px;font-weight:800;margin-bottom:4px">' + curr.toLocaleString() + '</div>'
             + '<div style="display:flex;justify-content:space-between;align-items:center">'

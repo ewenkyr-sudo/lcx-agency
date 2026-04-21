@@ -137,3 +137,17 @@ function extractUsernameFromUrl(url) {
   const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
   return match ? '@' + match[1] : url;
 }
+
+// Account avatar helper
+function accountAvatarHTML(accountId, handle, platform, size) {
+  size = size || 36;
+  var platColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#0080FF', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316' };
+  var platIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
+  var color = platColors[platform] || '#A855F7';
+  var initial = (handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
+  return '<div style="display:flex;align-items:center;gap:8px">'
+    + '<img src="/api/accounts/' + accountId + '/avatar" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;border:2px solid ' + color + '30;background:' + color + '20" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+    + '<div style="display:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color + ';align-items:center;justify-content:center;font-size:' + Math.round(size*0.4) + 'px;font-weight:700;color:white;flex-shrink:0">' + initial + '</div>'
+    + '<div style="min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (handle || '') + '</div>'
+    + '<div style="font-size:10px;color:var(--text3)">' + (platIcons[platform] || '') + ' ' + (platform || '') + '</div></div></div>';
+}

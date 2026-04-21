@@ -103,6 +103,89 @@ async function updateAllFollowers() {
   }
 }
 
-module.exports = { updateAllFollowers, setBroadcast };
+// ========== PROFILE PICTURE SCRAPING ==========
+
+function scrapeOgImage(html) {
+  // Try og:image meta tag
+  var match = html.match(/property="og:image"\s+content="([^"]+)"/);
+  if (match) return match[1];
+  match = html.match(/content="([^"]+)"\s+property="og:image"/);
+  if (match) return match[1];
+  // Try profile_pic_url in JSON
+  match = html.match(/"profile_pic_url(?:_hd)?":"([^"]+)"/);
+  if (match) return match[1].replace(/\\u0026/g, '&');
+  return null;
+}
+
+function downloadImage(url) {
+  return new Promise(function(resolve, reject) {
+    var mod = url.startsWith('https') ? https : require('http');
+    var req = mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, function(res) {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadImage(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) { reject(new Error('HTTP ' + res.statusCode)); return; }
+      var chunks = [];
+      res.on('data', function(c) { chunks.push(c); });
+      res.on('end', function() {
+        var buf = Buffer.concat(chunks);
+        // Limit to 200 KB
+        if (buf.length > 200 * 1024) { resolve(null); return; }
+        resolve(buf.toString('base64'));
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, function() { req.destroy(); reject(new Error('timeout')); });
+  });
+}
+
+async function updateProfilePictures() {
+  try {
+    // Get accounts that need avatar refresh (NULL or > 24h old), max 50
+    var { rows: accounts } = await pool.query(
+      "SELECT id, platform, handle FROM accounts WHERE platform IN ('instagram','tiktok') AND (profile_picture_updated_at IS NULL OR profile_picture_updated_at < NOW() - INTERVAL '24 hours') LIMIT 50"
+    );
+    if (accounts.length === 0) return;
+    console.log('[AVATAR] Refreshing', accounts.length, 'profile pictures...');
+
+    var updated = 0;
+    for (var acc of accounts) {
+      try {
+        var username = acc.handle.replace(/^@/, '');
+        var url;
+        if (acc.platform === 'instagram') {
+          url = 'https://www.instagram.com/' + username + '/';
+        } else if (acc.platform === 'tiktok') {
+          url = 'https://www.tiktok.com/@' + username;
+        } else continue;
+
+        var html = await httpGet(url);
+        var ogUrl = scrapeOgImage(html);
+        if (!ogUrl) {
+          await pool.query('UPDATE accounts SET profile_picture_updated_at = NOW() WHERE id = $1', [acc.id]);
+          continue;
+        }
+
+        var base64 = await downloadImage(ogUrl);
+        if (base64) {
+          await pool.query('UPDATE accounts SET profile_picture_data = $1, profile_picture_url = $2, profile_picture_updated_at = NOW() WHERE id = $3', [base64, ogUrl, acc.id]);
+          updated++;
+        } else {
+          await pool.query('UPDATE accounts SET profile_picture_url = $1, profile_picture_updated_at = NOW() WHERE id = $2', [ogUrl, acc.id]);
+        }
+      } catch(e) {
+        console.log('[AVATAR] Failed for', acc.handle + ':', e.message);
+        await pool.query('UPDATE accounts SET profile_picture_updated_at = NOW() WHERE id = $1', [acc.id]);
+      }
+      // Rate limit
+      await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+    if (updated > 0) console.log('[AVATAR] Updated', updated, 'profile pictures');
+  } catch(e) {
+    console.error('[AVATAR] Error:', e.message);
+  }
+}
+
+module.exports = { updateAllFollowers, updateProfilePictures, setBroadcast };
 
 

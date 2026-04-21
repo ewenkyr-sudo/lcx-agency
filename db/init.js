@@ -702,6 +702,11 @@ async function initDB() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read_at)').catch(function() {});
     await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)').catch(function() {});
 
+    // Account profile pictures
+    await pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture_data TEXT').catch(function() {});
+    await pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT').catch(function() {});
+    await pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture_updated_at TIMESTAMPTZ').catch(function() {});
+
     // Add email column to users
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT').catch(function() {});
 

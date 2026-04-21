@@ -3371,6 +3371,29 @@ app.delete('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, r
   res.json({ ok: true });
 });
 
+// ============ ACCOUNT AVATAR ============
+app.get('/api/accounts/:id/avatar', authMiddleware, async (req, res) => {
+  try {
+    var { rows } = await pool.query('SELECT profile_picture_data, handle, platform FROM accounts WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).send('Not found');
+    var acc = rows[0];
+    if (acc.profile_picture_data) {
+      var buf = Buffer.from(acc.profile_picture_data, 'base64');
+      res.set('Content-Type', 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(buf);
+    }
+    // Placeholder SVG
+    var initial = (acc.handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
+    var colors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#0080FF', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316', twitter: '#1DA1F2', telegram: '#229ED9' };
+    var color = colors[acc.platform] || '#A855F7';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" fill="' + color + '"/><text x="40" y="52" text-anchor="middle" fill="white" font-family="sans-serif" font-size="32" font-weight="700">' + initial + '</text></svg>';
+    res.set('Content-Type', 'image/svg+xml');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(svg);
+  } catch(e) { res.status(500).send('Error'); }
+});
+
 // ============ FAN CRM ============
 
 // Segment thresholds (hardcoded for MVP, configurable later)
@@ -3696,6 +3719,8 @@ async function start() {
   setTimeout(() => updateAllFollowers(), 10000);
   // Puis toutes les 15 minutes
   setInterval(() => updateAllFollowers(), 15 * 60 * 1000);
+  // Premier refresh avatars après 30 secondes
+  setTimeout(() => { const { updateProfilePictures } = require('./services/scraping'); updateProfilePictures(); }, 30000);
 
   server.listen(PORT, () => {
     console.log(`
