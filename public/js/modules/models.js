@@ -58,15 +58,6 @@ function renderModels() {
                 ${m.drive_contract ? '<a href="' + m.drive_contract + '" target="_blank" style="padding:6px 10px;background:var(--accent-glow);color:var(--accent);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Voir contrat</a>' : ''}
               </div>
             </div>
-            <!-- Planning contenu -->
-            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span style="font-size:11px;font-weight:600;color:var(--text2)">Planning contenu</span>
-                <button onclick="showPlanningForm(${m.id})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600">+ Ajouter</button>
-              </div>
-              <div id="planning-form-${m.id}"></div>
-              <div id="planning-list-${m.id}" style="display:grid;gap:4px"></div>
-            </div>
             <button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">Supprimer</button>
             ` : ''}
           </div>
@@ -74,10 +65,6 @@ function renderModels() {
       </div>
     </div>
   `;
-  // Charger les plannings contenu
-  if (isAdmin()) {
-    allModels.forEach(m => loadModelPlanning(m.id));
-  }
 }
 
 // ========== MODEL COCKPIT ==========
