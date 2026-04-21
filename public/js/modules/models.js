@@ -45,36 +45,36 @@ function renderModels() {
                 <div class="model-platform">${(m.platforms || []).join(' + ')}</div>
               </div>
               <select onchange="updateModelDrive(${m.id},'lifecycle_status',this.value);this.style.background=this.options[this.selectedIndex].getAttribute('data-bg')" style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:8px;border:none;font-weight:600;cursor:pointer;font-family:inherit;background:${m.lifecycle_status==='recruited'?'var(--blue-bg)':m.lifecycle_status==='onboarding'?'var(--yellow-bg)':m.lifecycle_status==='revenue'?'var(--green-bg)':'var(--green-bg)'};color:${m.lifecycle_status==='recruited'?'var(--blue)':m.lifecycle_status==='onboarding'?'var(--yellow)':m.lifecycle_status==='revenue'?'var(--accent)':'var(--green)'}">
-                <option value="recruited" ${m.lifecycle_status==='recruited'?'selected':''} data-bg="var(--blue-bg)">Recrutée</option>
-                <option value="onboarding" ${m.lifecycle_status==='onboarding'?'selected':''} data-bg="var(--yellow-bg)">Onboarding</option>
-                <option value="active" ${(m.lifecycle_status==='active'||!m.lifecycle_status)?'selected':''} data-bg="var(--green-bg)">Active</option>
-                <option value="revenue" ${m.lifecycle_status==='revenue'?'selected':''} data-bg="var(--green-bg)">Revenus</option>
+                <option value="recruited" ${m.lifecycle_status==='recruited'?'selected':''} data-bg="var(--blue-bg)">${t('models.recruited')}</option>
+                <option value="onboarding" ${m.lifecycle_status==='onboarding'?'selected':''} data-bg="var(--yellow-bg)">${t('models.onboarding')}</option>
+                <option value="active" ${(m.lifecycle_status==='active'||!m.lifecycle_status)?'selected':''} data-bg="var(--green-bg)">${t('models.active_status')}</option>
+                <option value="revenue" ${m.lifecycle_status==='revenue'?'selected':''} data-bg="var(--green-bg)">${t('models.revenue_label')}</option>
               </select>
             </div>
             <div class="model-stats">
               <div class="model-stat">
-                <div class="model-stat-label">Comptes</div>
+                <div class="model-stat-label">${t('models.accounts')}</div>
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).length}</div>
               </div>
               <div class="model-stat">
-                <div class="model-stat-label">Followers total</div>
+                <div class="model-stat-label">${t('models.followers_total')}</div>
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).reduce((s, a) => s + a.current_followers, 0)}</div>
               </div>
             </div>
-            <button class="btn btn-primary" onclick="event.stopPropagation();openModelCockpit(${m.id})" style="width:100%;margin-top:12px;justify-content:center;font-size:12px">Voir le cockpit</button>
+            <button class="btn btn-primary" onclick="event.stopPropagation();openModelCockpit(${m.id})" style="width:100%;margin-top:12px;justify-content:center;font-size:12px">${t('models.view_cockpit')}</button>
             ${isAdmin() ? `
             <!-- Drive & Contrat -->
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;gap:8px">
               <div style="display:flex;gap:6px;align-items:center">
-                <input type="text" placeholder="Lien dossier Drive..." value="${m.drive_folder||''}" onchange="updateModelDrive(${m.id},'drive_folder',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
-                ${m.drive_folder ? '<a href="' + m.drive_folder + '" target="_blank" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Dossier Drive</a>' : ''}
+                <input type="text" placeholder="${t('models.drive_folder_placeholder')}" value="${m.drive_folder||''}" onchange="updateModelDrive(${m.id},'drive_folder',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
+                ${m.drive_folder ? '<a href="' + m.drive_folder + '" target="_blank" style="padding:6px 10px;background:var(--green-bg);color:var(--green);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">' + t('models.drive_folder') + '</a>' : ''}
               </div>
               <div style="display:flex;gap:6px;align-items:center">
-                <input type="text" placeholder="Lien contrat Drive..." value="${m.drive_contract||''}" onchange="updateModelDrive(${m.id},'drive_contract',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
-                ${m.drive_contract ? '<a href="' + m.drive_contract + '" target="_blank" style="padding:6px 10px;background:var(--accent-glow);color:var(--accent);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">Voir contrat</a>' : ''}
+                <input type="text" placeholder="${t('models.contract_placeholder')}" value="${m.drive_contract||''}" onchange="updateModelDrive(${m.id},'drive_contract',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit">
+                ${m.drive_contract ? '<a href="' + m.drive_contract + '" target="_blank" style="padding:6px 10px;background:var(--accent-glow);color:var(--accent);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">' + t('models.drive_contract') + '</a>' : ''}
               </div>
             </div>
-            <button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">Supprimer</button>
+            <button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">${t('common.delete')}</button>
             ` : ''}
           </div>
         `).join('')}
@@ -111,7 +111,7 @@ function closeCockpit() {
 
 async function renderModelCockpit(modelId) {
   const container = document.getElementById('cockpit-content');
-  container.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><div style="color:var(--text3);margin-top:12px">Chargement du cockpit...</div></div>';
+  container.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><div style="color:var(--text3);margin-top:12px">' + t('models.cockpit_loading') + '</div></div>';
 
   // Destroy old charts
   Object.values(cockpitCharts).forEach(c => c.destroy());
@@ -142,70 +142,70 @@ async function renderModelCockpit(modelId) {
 
       <!-- Cockpit Tabs -->
       <div class="tabs" style="margin-bottom:16px">
-        <button class="tab active" onclick="switchCockpitTab('dashboard',this,${modelId})">Dashboard</button>
-        <button class="tab" onclick="switchCockpitTab('profile',this,${modelId})">Fiche perso</button>
-        <button class="tab" onclick="switchCockpitTab('schedule',this,${modelId})">Planning</button>
-        <button class="tab" onclick="switchCockpitTab('tracklinks',this,${modelId})">Tracklinks</button>
-        <button class="tab" onclick="switchCockpitTab('fans',this,${modelId})">Fans</button>
+        <button class="tab active" onclick="switchCockpitTab('dashboard',this,${modelId})">${t('models.tab_dashboard')}</button>
+        <button class="tab" onclick="switchCockpitTab('profile',this,${modelId})">${t('models.tab_profile')}</button>
+        <button class="tab" onclick="switchCockpitTab('schedule',this,${modelId})">${t('models.tab_schedule')}</button>
+        <button class="tab" onclick="switchCockpitTab('tracklinks',this,${modelId})">${t('models.tab_tracklinks')}</button>
+        <button class="tab" onclick="switchCockpitTab('fans',this,${modelId})">${t('models.tab_fans')}</button>
       </div>
 
       <div id="cockpit-dashboard-content">
       <!-- KPIs -->
       <div class="cockpit-kpis">
         <div class="cockpit-kpi">
-          <div class="cockpit-kpi-label">Revenus aujourd'hui</div>
+          <div class="cockpit-kpi-label">${t('models.revenue_today')}</div>
           <div class="cockpit-kpi-value" style="color:var(--green)">$${d.revenueToday.toFixed(2)}</div>
           <div class="cockpit-kpi-sub">PPV $${d.ppvToday.toFixed(2)} · Tips $${d.tipsToday.toFixed(2)}</div>
         </div>
         <div class="cockpit-kpi">
-          <div class="cockpit-kpi-label">Revenus du mois</div>
+          <div class="cockpit-kpi-label">${t('models.revenue_month')}</div>
           <div class="cockpit-kpi-value">$${d.revenueMonth.toFixed(2)}</div>
-          <div class="cockpit-kpi-sub">${d.objective.target > 0 ? 'Objectif: $' + d.objective.target.toFixed(0) + ' (' + objPct + '%)' : 'Pas d\'objectif défini'}</div>
+          <div class="cockpit-kpi-sub">${d.objective.target > 0 ? t('models.objective_prefix') + ' $' + d.objective.target.toFixed(0) + ' (' + objPct + '%)' : t('models.no_objective')}</div>
           ${d.objective.target > 0 ? '<div class="cockpit-progress"><div class="cockpit-progress-bar" style="width:'+objPct+'%;background:'+objColor+'"></div></div>' : ''}
         </div>
         <div class="cockpit-kpi">
-          <div class="cockpit-kpi-label">Followers</div>
+          <div class="cockpit-kpi-label">${t('models.followers')}</div>
           <div class="cockpit-kpi-value">${d.totalFollowers.toLocaleString('fr-FR')}</div>
           <div class="cockpit-kpi-sub">${d.accounts.map(a => a.platform + ': ' + (a.current_followers||0).toLocaleString('fr-FR')).join(' · ')}</div>
         </div>
         <div class="cockpit-kpi">
-          <div class="cockpit-kpi-label">Chatters assignés</div>
+          <div class="cockpit-kpi-label">${t('models.chatters_assigned')}</div>
           <div class="cockpit-kpi-value">${d.assignedTeam.length}</div>
-          <div class="cockpit-kpi-sub">${d.assignedTeam.filter(t => t.online).length} en ligne</div>
+          <div class="cockpit-kpi-sub">${d.assignedTeam.filter(t2 => t2.online).length} ${t('models.online_label')}</div>
         </div>
       </div>
 
       <!-- Charts -->
       <div class="cockpit-charts">
         <div class="cockpit-panel">
-          <div class="cockpit-panel-title">📈 Revenus (30 derniers jours)</div>
+          <div class="cockpit-panel-title">${t('models.revenue_30d')}</div>
           <canvas id="cockpit-chart-revenue" height="200"></canvas>
         </div>
         <div class="cockpit-panel">
-          <div class="cockpit-panel-title">🍩 Répartition revenus du mois</div>
+          <div class="cockpit-panel-title">${t('models.revenue_breakdown')}</div>
           <canvas id="cockpit-chart-donut" height="200"></canvas>
         </div>
       </div>
       <div class="cockpit-panel">
-        <div class="cockpit-panel-title">📊 Revenus par semaine (3 mois)</div>
+        <div class="cockpit-panel-title">${t('models.revenue_weekly')}</div>
         <canvas id="cockpit-chart-weekly" height="160"></canvas>
       </div>
 
       <!-- Team + Activity -->
       <div class="two-col" style="margin-bottom:16px">
         <div class="cockpit-panel" style="margin-bottom:0">
-          <div class="cockpit-panel-title">👥 Équipe assignée</div>
+          <div class="cockpit-panel-title">${t('models.assigned_team')}</div>
           <div id="cockpit-team"></div>
         </div>
         <div class="cockpit-panel" style="margin-bottom:0">
-          <div class="cockpit-panel-title">🕐 Activité récente</div>
+          <div class="cockpit-panel-title">${t('models.recent_activity')}</div>
           <div id="cockpit-activity" style="max-height:340px;overflow-y:auto"></div>
         </div>
       </div>
 
       <!-- Objectives -->
       <div class="cockpit-panel">
-        <div class="cockpit-panel-title">🎯 Objectifs du mois</div>
+        <div class="cockpit-panel-title">${t('models.monthly_objectives')}</div>
         <div id="cockpit-objectives"></div>
       </div>
       </div><!-- /cockpit-dashboard-content -->
@@ -218,7 +218,7 @@ async function renderModelCockpit(modelId) {
       if (t.todayClocks.length > 0) {
         var last = t.todayClocks[t.todayClocks.length - 1];
         var inTime = new Date(last.clock_in).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
-        clockInfo = last.clock_out ? inTime + ' - ' + new Date(last.clock_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : 'Depuis ' + inTime;
+        clockInfo = last.clock_out ? inTime + ' - ' + new Date(last.clock_out).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : t('models.since').replace('{time}', inTime);
       }
       teamHtml += '<div class="cockpit-team-row">'
         + '<div class="cockpit-online-dot" style="background:' + (t.online ? 'var(--green)' : 'var(--text3)') + '"></div>'
@@ -226,7 +226,7 @@ async function renderModelCockpit(modelId) {
         + (clockInfo ? '<div style="font-size:11px;color:var(--text3)">' + clockInfo + '</div>' : '')
         + '</div>'
         + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">$' + t.monthRevenue.toFixed(2) + '</div>'
-        + '<div style="font-size:10px;color:var(--text3)">' + t.monthShifts + ' shifts ce mois</div></div>'
+        + '<div style="font-size:10px;color:var(--text3)">' + t.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
         + '</div>';
     });
     document.getElementById('cockpit-team').innerHTML = teamHtml;
@@ -234,7 +234,7 @@ async function renderModelCockpit(modelId) {
     // Render activity feed
     var feedItems = [];
     d.recentShifts.forEach(function(s) {
-      feedItems.push({ time: new Date(s.created_at), html: '<strong>' + s.chatter_name + '</strong> a enregistré $' + (parseFloat(s.ppv_total)+parseFloat(s.tips_total)).toFixed(2) + ' (PPV + Tips)', icon: '💰' });
+      feedItems.push({ time: new Date(s.created_at), html: '<strong>' + s.chatter_name + '</strong> ' + t('models.recorded_revenue') + ' $' + (parseFloat(s.ppv_total)+parseFloat(s.tips_total)).toFixed(2) + ' ' + t('models.ppv_tips_suffix'), icon: '💰' });
     });
     d.activity.forEach(function(a) {
       var icons = {'lead-signed':'🎉','lead-call-booked':'📞','lead-talking-warm':'🔥','clock-in':'🟢','clock-out':'🔴'};
@@ -252,15 +252,15 @@ async function renderModelCockpit(modelId) {
     var objHtml = '';
     if (d.objective.target > 0) {
       var pct = Math.min(100, d.revenueMonth / d.objective.target * 100).toFixed(0);
-      var status = pct >= 100 ? '✅ Atteint' : pct >= 60 ? '⏳ En cours' : '⚠️ En retard';
+      var status = pct >= 100 ? t('models.reached') : pct >= 60 ? t('models.in_progress') : t('models.behind');
       var statusColor = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
       objHtml += '<div style="display:flex;align-items:center;gap:16px;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:8px">'
-        + '<div style="flex:1"><div style="font-size:14px;font-weight:600">Revenu mensuel</div>'
+        + '<div style="flex:1"><div style="font-size:14px;font-weight:600">' + t('models.revenue_monthly_label') + '</div>'
         + '<div style="font-size:12px;color:var(--text3);margin-top:2px">$' + d.revenueMonth.toFixed(2) + ' / $' + d.objective.target.toFixed(0) + '</div>'
         + '<div class="cockpit-progress" style="margin-top:8px"><div class="cockpit-progress-bar" style="width:' + pct + '%;background:' + statusColor + '"></div></div></div>'
         + '<div style="text-align:right"><div style="font-size:20px;font-weight:800">' + pct + '%</div><div style="font-size:11px;color:' + statusColor + ';font-weight:600">' + status + '</div></div></div>';
     } else {
-      objHtml = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Aucun objectif défini pour ce mois</div>';
+      objHtml = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('models.no_objective_month') + '</div>';
     }
     document.getElementById('cockpit-objectives').innerHTML = objHtml;
 
@@ -276,7 +276,7 @@ async function renderModelCockpit(modelId) {
 
   } catch(e) {
     console.error('Cockpit render error:', e);
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Erreur de chargement du cockpit</div>';
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">' + t('models.cockpit_error') + '</div>';
   }
 }
 

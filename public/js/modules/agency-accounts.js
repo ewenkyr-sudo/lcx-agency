@@ -5,7 +5,7 @@ var ACCOUNT_CATEGORIES = [
   { key: 'personal_brand', label: 'Personal Brand', icon: '👤', color: '#A855F7' },
   { key: 'fake_models', label: 'Fake Models', icon: '🎭', color: '#F472B6' },
   { key: 'assistantes', label: 'Assistantes', icon: '💬', color: '#22D3EE' },
-  { key: 'agency', label: 'Agence', icon: '🏢', color: '#10B981' }
+  { key: 'agency', get label() { return t('acc.agency_label'); }, icon: '🏢', color: '#10B981' }
 ];
 
 var agencyAccounts = [];
@@ -15,10 +15,10 @@ async function renderAgencyAccounts() {
   var actions = document.getElementById('accounts-actions');
   if (!container) return;
   if (isAdmin()) {
-    actions.innerHTML = '<button class="btn btn-primary" onclick="openAddAccountModal()">+ Ajouter un compte</button>';
+    actions.innerHTML = '<button class="btn btn-primary" onclick="openAddAccountModal()">' + t('acc.add_btn') + '</button>';
   }
 
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
   var res = await fetch('/api/agency-accounts', { credentials: 'include' });
   agencyAccounts = await res.json();
 
@@ -30,7 +30,7 @@ async function renderAgencyAccounts() {
   var declining = agencyAccounts.filter(function(a) { return a.current_followers < a.previous_followers && a.previous_followers > 0; }).length;
 
   var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(6,1fr);margin-bottom:20px">'
-    + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + total + '</div><div class="coaching-kpi-label">Total comptes</div></div>'
+    + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + total + '</div><div class="coaching-kpi-label">' + t('acc.total') + '</div></div>'
     + ACCOUNT_CATEGORIES.map(function(c) {
       return '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:' + c.color + '">' + (byCat[c.key] || 0) + '</div><div class="coaching-kpi-label">' + c.icon + ' ' + c.label + '</div></div>';
     }).join('')
@@ -38,7 +38,7 @@ async function renderAgencyAccounts() {
 
   // Tabs by category
   html += '<div class="tabs" style="margin-bottom:16px">'
-    + '<button class="tab active" onclick="filterAccountsCat(null,this)">Tous (' + total + ')</button>'
+    + '<button class="tab active" onclick="filterAccountsCat(null,this)">' + t('acc.all_tab', { count: total }) + '</button>'
     + ACCOUNT_CATEGORIES.map(function(c) { return '<button class="tab" onclick="filterAccountsCat(\'' + c.key + '\',this)">' + c.icon + ' ' + c.label + ' (' + (byCat[c.key]||0) + ')</button>'; }).join('')
     + '</div>';
 
@@ -60,7 +60,7 @@ function filterAccountsCat(cat, btn) {
 function renderAccountsList(accounts) {
   var el = document.getElementById('accounts-list');
   if (!el) return;
-  if (accounts.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">Aucun compte dans cette catégorie</div>'; return; }
+  if (accounts.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">' + t('acc.no_accounts_cat') + '</div>'; return; }
 
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">'
     + accounts.map(function(a) {
@@ -83,12 +83,12 @@ function renderAccountsList(accounts) {
         // Stats
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
         + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">Followers</div></div>'
-        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">Évolution</div></div>'
+        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + t('acc.evolution') + '</div></div>'
         + '</div>'
         // Actions
         + (isAdmin() ? '<div style="display:flex;gap:6px;margin-top:10px">'
-          + '<a href="https://instagram.com/' + a.handle.replace(/^@/,'') + '" target="_blank" class="btn btn-secondary" style="font-size:11px;padding:5px 10px;text-decoration:none;flex:1;text-align:center">Voir le profil</a>'
-          + '<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="editAgencyAccount(' + a.id + ')">Éditer</button>'
+          + '<a href="https://instagram.com/' + a.handle.replace(/^@/,'') + '" target="_blank" class="btn btn-secondary" style="font-size:11px;padding:5px 10px;text-decoration:none;flex:1;text-align:center">' + t('acc.view_profile') + '</a>'
+          + '<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="editAgencyAccount(' + a.id + ')">' + t('acc.edit_btn') + '</button>'
           + '<button class="btn-delete-small" onclick="deleteAgencyAccount(' + a.id + ')">✕</button>'
           + '</div>' : '')
         + '</div>';
@@ -107,12 +107,12 @@ function openAddAccountModal(editId) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + '<div class="form-group"><label class="form-label">Plateforme</label><select class="form-input" id="acc-platform"><option value="instagram"' + (acc && acc.platform==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (acc && acc.platform==='tiktok'?' selected':'') + '>🎵 TikTok</option></select></div>'
     + '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-input" id="acc-category">' + catOpts + '</select></div></div>'
-    + '<div class="form-group"><label class="form-label">Assigné à</label><select class="form-input" id="acc-assigned">' + teamOpts + '</select></div>'
-    + '<div class="form-group"><label class="form-label">Description</label><input class="form-input" id="acc-purpose" value="' + (acc ? (acc.purpose||'') : '') + '" placeholder="Ex: Recrutement France"></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select class="form-input" id="acc-assigned">' + teamOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('common.description') + '</label><input class="form-input" id="acc-purpose" value="' + (acc ? (acc.purpose||'') : '') + '" placeholder="' + t('acc.description_placeholder') + '"></div>'
     + '</div><div class="modal-footer">'
-    + (acc ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteAgencyAccount(' + acc.id + ');document.getElementById(\'acc-modal\').remove()">Supprimer</button>' : '')
-    + '<div style="flex:1"></div><button class="btn btn-secondary" onclick="document.getElementById(\'acc-modal\').remove()">Annuler</button>'
-    + '<button class="btn btn-primary" onclick="saveAgencyAccount(' + (editId || 'null') + ')">' + (acc ? 'Enregistrer' : 'Ajouter') + '</button>'
+    + (acc ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteAgencyAccount(' + acc.id + ');document.getElementById(\'acc-modal\').remove()">' + t('common.delete') + '</button>' : '')
+    + '<div style="flex:1"></div><button class="btn btn-secondary" onclick="document.getElementById(\'acc-modal\').remove()">' + t('common.cancel') + '</button>'
+    + '<button class="btn btn-primary" onclick="saveAgencyAccount(' + (editId || 'null') + ')">' + (acc ? t('common.save_btn') : t('common.add')) + '</button>'
     + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
@@ -127,7 +127,7 @@ async function saveAgencyAccount(editId) {
   var method = editId ? 'PUT' : 'POST';
   var res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   if (res.ok) { document.getElementById('acc-modal')?.remove(); showToast(editId ? t('acc.account_modified') : t('acc.account_added'), 'success'); renderAgencyAccounts(); }
-  else showToast('Erreur', 'error');
+  else showToast(t('common.error'), 'error');
 }
 
 async function deleteAgencyAccount(id) {

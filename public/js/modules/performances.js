@@ -88,7 +88,7 @@ function renderRevenueChart(data, days) {
       ]
     },
     options: {
-      ...chartOptions('Montant ($)'),
+      ...chartOptions(t('perf.amount_label')),
       plugins: {
         ...chartOptions('').plugins,
         tooltip: {
@@ -152,14 +152,15 @@ function chartOptions(yTitle) {
 
 function formatChartDate(dateStr, days) {
   const d = new Date(dateStr);
-  if (days <= 7) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-  if (days <= 60) return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-  return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+  const locale = window.currentLang === 'en' ? 'en-US' : 'fr-FR';
+  if (days <= 7) return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
+  if (days <= 60) return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(locale, { month: 'short', year: '2-digit' });
 }
 
 // ========== DELETE OPERATIONS ==========
 async function deleteStudent(id) {
-  if (!(await confirmDelete('Supprimer cet élève ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_student')))) return;
   const res = await fetch(`/api/students/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -168,7 +169,7 @@ async function deleteStudent(id) {
 }
 
 async function deleteTeamMember(id) {
-  if (!(await confirmDelete('Supprimer ce membre ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_member')))) return;
   const res = await fetch(`/api/team/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -177,7 +178,7 @@ async function deleteTeamMember(id) {
 }
 
 async function deleteTask(id) {
-  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_task')))) return;
   const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -186,7 +187,7 @@ async function deleteTask(id) {
 }
 
 async function deleteModel(id) {
-  if (!(await confirmDelete('Supprimer ce modèle ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_model')))) return;
   const res = await fetch(`/api/models/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -209,8 +210,8 @@ function showPlanningForm(modelId) {
   var wrap = document.getElementById('planning-form-' + modelId);
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px">'
-    + '<input type="text" id="plan-label-' + modelId + '" placeholder="Ex: Semaine 14, Mars 2026..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
-    + '<input type="text" id="plan-link-' + modelId + '" placeholder="Lien Drive..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<input type="text" id="plan-label-' + modelId + '" placeholder="' + t('perf.planning_placeholder') + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<input type="text" id="plan-link-' + modelId + '" placeholder="' + t('perf.drive_placeholder') + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
     + '<button onclick="addPlanning(' + modelId + ')" style="background:var(--accent);color:white;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">OK</button>'
     + '</div>';
 }
@@ -221,7 +222,7 @@ async function addPlanning(modelId) {
   if (!label || !link) return showToast(t('toast.label_link_required'), 'error');
   var res = await fetch('/api/models/' + modelId + '/planning', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ label: label, drive_link: link }) });
   if (res.ok) { showToast(t('toast.planning_added'), 'success'); document.getElementById('planning-form-' + modelId).innerHTML = ''; loadModelPlanning(modelId); }
-  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  else { var e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
 }
 
 async function loadModelPlanning(modelId) {
@@ -233,10 +234,10 @@ async function loadModelPlanning(modelId) {
   container.innerHTML = items.map(function(p) {
     return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:11px">'
       + '<span style="flex:1;font-weight:600">' + p.label + '</span>'
-      + '<a href="' + p.drive_link + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">Ouvrir</a>'
+      + '<a href="' + p.drive_link + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">' + t('perf.open_link') + '</a>'
       + '<button onclick="deletePlanning(' + p.id + ',' + modelId + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px">✕</button>'
       + '</div>';
-  }).join('') || '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text3)">' + emptyStateSVG.calendar.replace('width="28"','width="20"') + ' Aucun planning</div>';
+  }).join('') || '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text3)">' + emptyStateSVG.calendar.replace('width="28"','width="20"') + ' ' + t('perf.no_planning') + '</div>';
 }
 
 async function deletePlanning(id, modelId) {
@@ -245,7 +246,7 @@ async function deletePlanning(id, modelId) {
 }
 
 async function deleteAccount(id) {
-  if (!(await confirmDelete('Supprimer ce compte ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_account')))) return;
   const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -254,7 +255,7 @@ async function deleteAccount(id) {
 }
 
 async function deleteCall(id) {
-  if (!(await confirmDelete('Supprimer cet appel ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_call')))) return;
   const res = await fetch(`/api/calls/${id}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadAllData();
@@ -296,11 +297,11 @@ async function loadChatterKPIs() {
       if (res.ok) {
         const s = await res.json();
         kpisDiv.innerHTML = `
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.today.revenue.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">$${s.today.ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${s.today.tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.week.revenue.toFixed(2)}</div><div class="stat-label">Revenue semaine</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${s.total.revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.today.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_today')}</div></div>
+          <div class="stat-card"><div class="stat-value">$${s.today.ppv.toFixed(2)}</div><div class="stat-label">${t('chatters.ppv_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${s.today.tips.toFixed(2)}</div><div class="stat-label">${t('chatters.tips_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.week.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_week')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${s.total.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
           <div class="stat-card"><div class="stat-value">${s.total.shifts}</div><div class="stat-label">Total shifts</div></div>
         `;
       }
@@ -324,11 +325,11 @@ async function loadChatterKPIs() {
         const todayRev = totals.today_ppv + totals.today_tips;
         const weekRev = totals.week_ppv + totals.week_tips;
         kpisDiv.innerHTML = `
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">Revenue aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">PPV aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">Tips aujourd'hui</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${weekRev.toFixed(2)}</div><div class="stat-label">Revenue semaine</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${todayRev.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_today')}</div></div>
+          <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">${t('chatters.ppv_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">${t('chatters.tips_today')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${weekRev.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_week')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
           <div class="stat-card"><div class="stat-value">${totals.total_shifts}</div><div class="stat-label">Total shifts</div></div>
         `;
 
@@ -338,11 +339,11 @@ async function loadChatterKPIs() {
         tbody.innerHTML = chatters.map(c => {
           return `<tr>
             <td data-label="" class="mc-title"><strong>${c.chatter_name}</strong></td>
-            <td data-label="PPV auj." class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
-            <td data-label="Tips auj." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
-            <td data-label="PPV sem." class="mc-half">$${parseFloat(c.week_ppv).toFixed(2)}</td>
-            <td data-label="Tips sem." class="mc-half" style="color:var(--yellow)">$${parseFloat(c.week_tips).toFixed(2)}</td>
-            <td data-label="Revenue totale" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
+            <td data-label="${t('chatters.ppv_short')}" class="mc-half">$${parseFloat(c.today_ppv).toFixed(2)}</td>
+            <td data-label="${t('chatters.tips_short')}" class="mc-half" style="color:var(--yellow)">$${parseFloat(c.today_tips).toFixed(2)}</td>
+            <td data-label="${t('chatters.ppv_week')}" class="mc-half">$${parseFloat(c.week_ppv).toFixed(2)}</td>
+            <td data-label="${t('chatters.tips_week')}" class="mc-half" style="color:var(--yellow)">$${parseFloat(c.week_tips).toFixed(2)}</td>
+            <td data-label="${t('chatters.revenue_total')}" class="mc-half" style="color:var(--green)"><strong>$${parseFloat(c.total_revenue).toFixed(2)}</strong></td>
             <td data-label="Shifts" class="mc-half">${c.total_shifts}</td>
           </tr>`;
         }).join('');
@@ -370,9 +371,9 @@ function renderShifts() {
       <td data-label="Revenue" class="mc-half" style="color:var(--green)"><strong>$${revenue}</strong></td>
       ${userIsAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent2)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
       <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${s.shift_notes || '-'}</td>
-      <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="Supprimer">✕</button></td>
+      <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="${t('common.delete')}">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="9">' + emptyStateHTML('clock', 'Aucun rapport de shift') + '</td></tr>';
+  }).join('') || '<tr><td colspan="9">' + emptyStateHTML('clock', t('chatters.no_shift_report')) + '</td></tr>';
   // Pagination
   var paginEl = document.getElementById('shifts-pagination');
   if (!paginEl) {
@@ -386,7 +387,7 @@ function renderShifts() {
 function showAddShiftForm() {
   // Remplir le select des modèles
   const select = document.getElementById('shift-model');
-  select.innerHTML = '<option value="">-- Choisir un modèle --</option>' +
+  select.innerHTML = '<option value="">' + t('chatters.choose_model') + '</option>' +
     allModels.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
   // Date du jour par défaut
   document.getElementById('shift-date').value = new Date().toISOString().split('T')[0];
@@ -396,7 +397,7 @@ function showAddShiftForm() {
 
 async function addShift() {
   const model = document.getElementById('shift-model').value;
-  if (!model) return showToast('Choisis un modèle', 'error');
+  if (!model) return showToast(t('toast.choose_model'), 'error');
   const res = await fetch('/api/shifts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -410,7 +411,7 @@ async function addShift() {
     })
   });
   if (res.ok) {
-    showToast('Rapport de shift envoyé !', 'success');
+    showToast(t('toast.shift_report_sent'), 'success');
     document.getElementById('shift-ppv').value = '';
     document.getElementById('shift-tips').value = '';
     document.getElementById('shift-notes').value = '';
@@ -422,7 +423,7 @@ async function addShift() {
 }
 
 async function deleteShift(id) {
-  if (!(await confirmDelete('Supprimer ce rapport ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_shift_report')))) return;
   await fetch('/api/shifts/' + id, { method: 'DELETE', credentials: 'include' });
   await loadShifts();
   renderShifts();

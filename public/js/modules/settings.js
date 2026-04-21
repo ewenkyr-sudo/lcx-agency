@@ -31,8 +31,8 @@ function renderSettings() {
   var withoutEmail = allUsers.length - withEmail;
   var badge = document.getElementById('email-stats-badge');
   if (badge) {
-    badge.innerHTML = '<span style="color:var(--green)">' + withEmail + ' avec email</span> · '
-      + (withoutEmail > 0 ? '<span style="color:var(--red)">' + withoutEmail + ' sans email</span>' : '<span style="color:var(--green)">tous ont un email</span>');
+    badge.innerHTML = '<span style="color:var(--green)">' + withEmail + t('settings.with_email') + '</span> · '
+      + (withoutEmail > 0 ? '<span style="color:var(--red)">' + withoutEmail + t('settings.without_email') + '</span>' : '<span style="color:var(--green)">' + t('settings.all_have_email') + '</span>');
   }
 
   // Agency settings
@@ -44,7 +44,7 @@ function renderSettings() {
 
   // Users table
   const tbody = document.getElementById('settings-users-table');
-  const roleLabels = { platform_admin: 'Platform', super_admin: 'Super Admin', admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: 'Modèle', student: 'Élève' };
+  const roleLabels = { platform_admin: 'Platform', super_admin: 'Super Admin', admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: t('settings.role_model'), student: t('settings.role_student') };
   const roleColors = { admin: 'var(--pink)', chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', model: 'var(--accent)', student: 'var(--text3)' };
 
   tbody.innerHTML = allUsers.map(u => `
@@ -60,29 +60,29 @@ function renderSettings() {
         </div>
         <strong>${u.display_name}</strong> <span style="color:var(--text3);font-size:12px">@${u.username}</span>
       </td>
-      <td data-label="Mdp actuel" class="mc-half">
+      <td data-label="${t('settings.current_password_col')}" class="mc-half">
         <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--text3)">••••••</code>
       </td>
-      <td data-label="Rôle" class="mc-half">
+      <td data-label="${t('settings.role_col')}" class="mc-half">
         <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </td>
-      <td data-label="Email" class="mc-half">
+      <td data-label="${t('settings.email_col')}" class="mc-half">
         <div style="display:flex;gap:4px;align-items:center;width:100%">
           <input type="email" id="email-user-${u.id}" class="form-input" style="padding:5px 8px;font-size:11px;flex:1" placeholder="email@..." value="${u.email || ''}">
           <button class="btn btn-primary" style="padding:5px 8px;font-size:10px" onclick="saveUserEmailAdmin(${u.id})">OK</button>
         </div>
-        ${!u.email ? '<span style="font-size:10px;color:var(--red);display:block;margin-top:2px">Email manquant</span>' : ''}
+        ${!u.email ? '<span style="font-size:10px;color:var(--red);display:block;margin-top:2px">' + t('settings.email_missing') + '</span>' : ''}
       </td>
-      <td data-label="Nouveau mdp" class="mc-half">
+      <td data-label="${t('settings.new_password_col')}" class="mc-half">
         <div style="display:flex;gap:6px;align-items:center;width:100%">
-          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;flex:1" placeholder="Changer le mdp">
+          <input type="text" id="pwd-user-${u.id}" class="form-input" style="padding:6px 10px;font-size:12px;flex:1" placeholder="${t('settings.change_password_placeholder')}">
           <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="changeUserPassword(${u.id})">OK</button>
         </div>
       </td>
       <td data-label="" class="mc-actions">
-        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="Supprimer">✕</button>` : '<span style="color:var(--text3);font-size:11px">Toi</span>'}
+        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="Supprimer">✕</button>` : '<span style="color:var(--text3);font-size:11px">' + t('settings.you_label') + '</span>'}
       </td>
     </tr>
   `).join('');
@@ -101,10 +101,10 @@ function renderSettings() {
         </div>
         <button class="btn-delete-small" onclick="deleteModel(${m.id})">✕</button>
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Plateformes: ${platforms.join(', ') || 'Aucune'}</div>
-      <div style="font-size:12px;color:var(--text3)">Comptes: ${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' followers)').join(', ') || 'Aucun compte'}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${t('settings.platforms_label')}${platforms.join(', ') || t('settings.no_platform')}</div>
+      <div style="font-size:12px;color:var(--text3)">${t('settings.accounts_label')}${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' ' + t('settings.followers_count') + ')').join(', ') || t('settings.no_account')}</div>
     </div>`;
-  }).join('') || '<p style="color:var(--text3)">Aucun modèle</p>';
+  }).join('') || '<p style="color:var(--text3)">' + t('settings.no_model') + '</p>';
 
   // Outreach status preview
   var statusPreview = document.getElementById('outreach-status-preview');
@@ -217,7 +217,7 @@ async function resetPasswords(role, inputId) {
   const input = document.getElementById(inputId);
   const pwd = input.value.trim();
   if (!pwd || pwd.length < 4) { showToast(t('settings.password_too_short'), 'error'); return; }
-  if (!(await confirmDelete(`Réinitialiser le mot de passe de tous les ${role}s ? Cette action est irréversible.`))) return;
+  if (!(await confirmDelete(t('confirm.reset_passwords', { role: role })))) return;
   const res = await fetch('/api/admin/reset-passwords', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -226,7 +226,7 @@ async function resetPasswords(role, inputId) {
   });
   if (res.ok) {
     const data = await res.json();
-    showToast(`${data.updated} utilisateur(s) mis à jour !`, 'success');
+    showToast(data.updated + ' ' + t('settings.users_updated'), 'success');
     input.value = '';
   }
 }
@@ -301,19 +301,19 @@ async function changeUserRole(userId, newRole) {
 
 async function saveUserEmailAdmin(userId) {
   var email = document.getElementById('email-user-' + userId).value.trim();
-  if (!email) return showToast('Email requis', 'error');
+  if (!email) return showToast(t('settings.email_required'), 'error');
   var res = await fetch('/api/users/' + userId + '/email', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     credentials: 'include', body: JSON.stringify({ email: email })
   });
-  if (res.ok) { showToast('Email sauvegardé !', 'success'); loadAllData(); }
+  if (res.ok) { showToast(t('settings.email_saved_toast'), 'success'); loadAllData(); }
   else { var d = await res.json(); showToast(d.error || t('common.error'), 'error'); }
 }
 
 async function changeUserPassword(userId) {
   const input = document.getElementById(`pwd-user-${userId}`);
   const pwd = input.value.trim();
-  if (!pwd || pwd.length < 4) { showToast('Mot de passe trop court (min 4 caractères)', 'error'); return; }
+  if (!pwd || pwd.length < 4) { showToast(t('settings.password_too_short'), 'error'); return; }
   const res = await fetch(`/api/users/${userId}/password`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -327,7 +327,7 @@ async function changeUserPassword(userId) {
 }
 
 async function deleteUser(userId) {
-  if (!(await confirmDelete('Supprimer cet utilisateur ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_user')))) return;
   const res = await fetch(`/api/users/${userId}`, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     await loadSettings();
@@ -403,10 +403,10 @@ async function loadDbSize() {
   if (!res.ok) return;
   var data = await res.json();
   var sizeMB = (data.total_bytes / 1024 / 1024).toFixed(2);
-  var html = '<strong>Espace total : ' + sizeMB + ' Mo</strong><br>';
+  var html = '<strong>' + t('settings.total_space') + sizeMB + t('settings.mb_unit') + '</strong><br>';
   html += '<div style="margin-top:8px;display:grid;gap:4px">';
-  (data.tables || []).forEach(function(t) {
-    html += '<div style="font-size:12px"><span style="color:var(--text)">' + t.table_name + '</span> — <span style="color:var(--accent)">' + t.row_count + ' lignes</span></div>';
+  (data.tables || []).forEach(function(tbl) {
+    html += '<div style="font-size:12px"><span style="color:var(--text)">' + tbl.table_name + '</span> — <span style="color:var(--accent)">' + tbl.row_count + t('settings.rows_label') + '</span></div>';
   });
   html += '</div>';
   document.getElementById('db-size-info').innerHTML = html;

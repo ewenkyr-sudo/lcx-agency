@@ -45,7 +45,7 @@ function renderTaskCard(t) {
   const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('tasks.pending_label') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: t('tasks.completed_label') } };
   const st = statusColors[t.status] || statusColors['pending'];
   const dl = t.deadline || '';
-  const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">En retard</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">Bientôt</span>' : dl ? '<span style="color:var(--text3)">' + dl + '</span>' : '<span style="color:var(--text3)">Pas de deadline</span>';
+  const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">' + t('tasks.overdue') + '</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">' + t('tasks.soon') + '</span>' : dl ? '<span style="color:var(--text3)">' + dl + '</span>' : '<span style="color:var(--text3)">' + t('tasks.no_deadline') + '</span>';
 
   return '<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
     + (isUrgent ? '<span style="position:absolute;top:10px;right:40px;background:var(--red);color:white;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">URGENT</span>' : '')
@@ -56,9 +56,9 @@ function renderTaskCard(t) {
     + (t.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + t.description + '</div>' : '')
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
     + '<select onchange="updateTaskStatus(' + t.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
-    + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En attente</option>'
-    + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En cours</option>'
-    + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">Terminée</option></select>'
+    + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.pending_label') + '</option>'
+    + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.in_progress_label') + '</option>'
+    + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.completed_label') + '</option></select>'
     + '<div>📅 ' + dlLabel + '</div>'
     + (t.assigned_name ? '<div>👤 <span style="color:var(--accent2)">' + t.assigned_name + '</span></div>' : '')
     + (t.notes ? '<div style="color:var(--text3)">' + t.notes + '</div>' : '')
@@ -77,7 +77,7 @@ function renderTaskWeek(container, tasks) {
     d.setDate(monday.getDate() + i);
     days.push(d.toISOString().split('T')[0]);
   }
-  const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const dayNames = [t('days.mon'), t('days.tue'), t('days.wed'), t('days.thu'), t('days.fri'), t('days.sat'), t('days.sun')];
   const todayStr = today.toISOString().split('T')[0];
 
   const noDeadline = tasks.filter(function(t) { return !t.deadline; });
@@ -100,8 +100,8 @@ function renderTaskWeek(container, tasks) {
         + '</div>';
     }).join('')
     + '</div>'
-    + (noDeadline.length > 0 ? '<div class="panel" style="padding:14px;margin-bottom:10px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">Sans deadline</strong><div style="display:grid;gap:6px">' + noDeadline.map(function(t) { return renderTaskCard(t); }).join('') + '</div></div>' : '')
-    + (otherWeek.length > 0 ? '<div class="panel" style="padding:14px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">Autres semaines</strong><div style="display:grid;gap:6px">' + otherWeek.map(function(t) { return renderTaskCard(t); }).join('') + '</div></div>' : '');
+    + (noDeadline.length > 0 ? '<div class="panel" style="padding:14px;margin-bottom:10px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">' + t('tasks.without_deadline') + '</strong><div style="display:grid;gap:6px">' + noDeadline.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '')
+    + (otherWeek.length > 0 ? '<div class="panel" style="padding:14px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">' + t('tasks.other_weeks') + '</strong><div style="display:grid;gap:6px">' + otherWeek.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '');
 }
 
 function filterTasks(filter, btn) {
@@ -125,22 +125,22 @@ function showTaskForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   var assignSelect = '';
   if (isAdmin()) {
-    assignSelect = '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Assigner à</label>'
-      + '<select id="tf-assign" class="form-input"><option value="">Moi-même</option>'
+    assignSelect = '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('cp.form_assigned') + '</label>'
+      + '<select id="tf-assign" class="form-input"><option value="">—</option>'
       + allUsers.map(function(u) { return '<option value="' + u.id + '">' + u.display_name + ' (' + u.role + ')</option>'; }).join('')
       + '</select></div>';
   }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('tasks.new_task') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
-    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Titre *</label><input type="text" id="tf-title" class="form-input" placeholder="Titre de la tâche"></div>'
-    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Description</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="Description..."></textarea></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.title_required') + '</label><input type="text" id="tf-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.description') + '</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="' + t('student.description_placeholder') + '"></textarea></div>'
     + assignSelect
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Priorité</label><select id="tf-priority" class="form-input"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Deadline</label><input type="date" id="tf-deadline" class="form-input"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="tf-notes" class="form-input" placeholder="Notes..."></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.priority') + '</label><select id="tf-priority" class="form-input"><option value="normal">' + t('common.normal') + '</option><option value="urgent">' + t('common.urgent') + '</option></select></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.deadline') + '</label><input type="date" id="tf-deadline" class="form-input"></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="tf-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addTask()">Créer la tâche</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'task-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addTask()">' + t('tasks.create') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 

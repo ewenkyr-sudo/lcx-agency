@@ -124,7 +124,7 @@ function connectWebSocket() {
     }
     if (msg.event === 'followers-updated') {
       await reloadAccounts();
-      showToast(`Followers mis à jour (${msg.data.updated} comptes)`, 'success');
+      showToast(t('ws.followers_updated_count') + ' (' + msg.data.updated + ' ' + t('ws.accounts_count') + ')', 'success');
       playNotifSound('info');
     }
     if (msg.event === 'task-new' || msg.event === 'task-updated' || msg.event === 'task-deleted') {
@@ -136,8 +136,8 @@ function connectWebSocket() {
     }
     if (msg.event === 'new-message') {
       if (msg.data.to_user_id === currentUser.id) {
-        showToast('Nouveau message de ' + (msg.data.from_name || 'quelqu\'un'), 'info');
-        sendNotification('Message de ' + (msg.data.from_name || 'quelqu\'un'), (msg.data.content || '').substring(0, 80), 'alert');
+        showToast(t('ws.new_message') + ' ' + (msg.data.from_name || t('ws.someone')), 'info');
+        sendNotification(t('ws.message_title') + ' ' + (msg.data.from_name || t('ws.someone')), (msg.data.content || '').substring(0, 80), 'alert');
         if (currentChatUserId === msg.data.from_user_id) {
           const res = await fetch('/api/messages/' + currentChatUserId, { credentials: 'include' });
           if (res.ok) { studentData.messages = await res.json(); renderChatMessages(); }

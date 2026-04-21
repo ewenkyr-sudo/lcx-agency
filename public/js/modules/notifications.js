@@ -27,7 +27,7 @@ async function loadNotifications() {
     var res = await fetch('/api/notifications?limit=20', { credentials: 'include' });
     var notifs = await res.json();
     if (notifs.length === 0) {
-      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px" data-i18n="notifications.empty">Aucune notification</div>';
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px" data-i18n="notifications.empty">' + t('notifications.empty') + '</div>';
       return;
     }
     list.innerHTML = notifs.map(function(n) {

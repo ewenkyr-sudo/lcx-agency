@@ -53,34 +53,34 @@ async function renderShiftClock() {
   if (!clockBtn) return;
   if (status.clocked_in) {
     var since = new Date(status.since).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    clockBtn.innerHTML = '<span style="color:var(--green);font-weight:700">En shift depuis ' + since + '</span> <button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer;font-size:11px;padding:4px 12px" onclick="clockOut()">Fin du shift</button>';
+    clockBtn.innerHTML = '<span style="color:var(--green);font-weight:700">' + t('misc.shift_since') + ' ' + since + '</span> <button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer;font-size:11px;padding:4px 12px" onclick="clockOut()">' + t('misc.clock_out') + '</button>';
   } else {
-    clockBtn.innerHTML = '<button class="btn btn-primary" style="font-size:12px;padding:6px 16px" onclick="clockIn()">Commencer mon shift</button>';
+    clockBtn.innerHTML = '<button class="btn btn-primary" style="font-size:12px;padding:6px 16px" onclick="clockIn()">' + t('misc.clock_in') + '</button>';
   }
 }
 
 async function clockIn() {
   var res = await fetch('/api/shift-clock/in', { method: 'POST', credentials: 'include' });
-  if (res.ok) { showToast('Shift commencé !', 'success'); renderShiftClock(); }
-  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  if (res.ok) { showToast(t('misc.shift_started'), 'success'); renderShiftClock(); }
+  else { var e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
 }
 
 async function clockOut() {
   var res = await fetch('/api/shift-clock/out', { method: 'POST', credentials: 'include' });
-  if (res.ok) { var data = await res.json(); showToast('Shift terminé (' + data.duration + ' min)', 'success'); renderShiftClock(); }
-  else { var e = await res.json(); showToast(e.error || 'Erreur', 'error'); }
+  if (res.ok) { var data = await res.json(); showToast(t('misc.shift_ended') + ' (' + data.duration + ' ' + t('misc.min_label') + ')', 'success'); renderShiftClock(); }
+  else { var e = await res.json(); showToast(e.error || t('common.error'), 'error'); }
 }
 
 // ============ ACCESS CONTROL ============
 async function renderAccessControl() {
   var container = document.getElementById('access-control-content');
   if (!container) return;
-  container.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Rôle</th><th>Lecture seule</th><th>Expire le</th><th></th></tr></thead><tbody>'
+  container.innerHTML = '<table class="table mobile-cards"><thead><tr><th>' + t('misc.name_col') + '</th><th>' + t('misc.role_col') + '</th><th>' + t('misc.read_only_col') + '</th><th>' + t('misc.expires_col') + '</th><th></th></tr></thead><tbody>'
     + allUsers.filter(function(u) { return u.role !== 'admin' && u.role !== 'super_admin' && u.role !== 'platform_admin'; }).map(function(u) {
       return '<tr><td data-label="" class="mc-title"><strong>' + u.display_name + '</strong></td>'
-        + '<td data-label="Rôle" class="mc-half">' + u.role + '</td>'
-        + '<td data-label="Lecture seule" class="mc-half"><input type="checkbox" ' + (u.read_only ? 'checked' : '') + ' onchange="updateUserAccess(' + u.id + ',{read_only:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>'
-        + '<td data-label="Expire le" class="mc-half"><input type="date" value="' + (u.expires_at ? u.expires_at.slice(0,10) : '') + '" onchange="updateUserAccess(' + u.id + ',{expires_at:this.value||null})" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;font-family:inherit"></td>'
+        + '<td data-label="' + t('misc.role_col') + '" class="mc-half">' + u.role + '</td>'
+        + '<td data-label="' + t('misc.read_only_col') + '" class="mc-half"><input type="checkbox" ' + (u.read_only ? 'checked' : '') + ' onchange="updateUserAccess(' + u.id + ',{read_only:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>'
+        + '<td data-label="' + t('misc.expires_col') + '" class="mc-half"><input type="date" value="' + (u.expires_at ? u.expires_at.slice(0,10) : '') + '" onchange="updateUserAccess(' + u.id + ',{expires_at:this.value||null})" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;font-family:inherit"></td>'
         + '<td data-label=""></td></tr>';
     }).join('')
     + '</tbody></table>';
@@ -88,7 +88,7 @@ async function renderAccessControl() {
 
 async function updateUserAccess(userId, data) {
   await fetch('/api/users/' + userId + '/access', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
-  showToast('Accès mis à jour', 'success');
+  showToast(t('misc.access_updated'), 'success');
   await loadSettings();
 }
 

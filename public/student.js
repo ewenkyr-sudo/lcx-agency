@@ -2,19 +2,21 @@
 // Handles all student-specific functionality
 
 const STEPS = [
-  { key: 'onboarding', label: 'Onboarding', icon: '📋' },
-  { key: 'accounts-setup', label: 'Comptes', icon: '🔧' },
-  { key: 'outreach', label: 'Outreach', icon: '📨' },
-  { key: 'model-setup', label: 'Modèle', icon: '👤' },
-  { key: 'traffic', label: 'Trafic', icon: '🚀' }
+  { key: 'onboarding', labelKey: 'models.onboarding', icon: '📋' },
+  { key: 'accounts-setup', labelKey: 'models.accounts', icon: '🔧' },
+  { key: 'outreach', labelKey: 'nav.outreach', icon: '📨' },
+  { key: 'model-setup', labelKey: 'student.step_model', icon: '👤' },
+  { key: 'traffic', labelKey: 'resource.traffic', icon: '🚀' }
 ];
+function getStepLabel(s) { return s.labelKey ? t(s.labelKey) : ''; }
 
 const RECRUIT_STATUSES = {
-  'interested': { label: 'Intéressée', color: 'var(--blue)', bg: 'var(--blue-bg)' },
-  'whatsapp': { label: 'WhatsApp créé', color: 'var(--yellow)', bg: 'var(--yellow-bg)' },
-  'call-planned': { label: 'Call planifié', color: 'var(--accent)', bg: 'var(--accent-glow)' },
-  'signed': { label: 'Signée', color: 'var(--green)', bg: 'var(--green-bg)' }
+  'interested': { labelKey: 'student.recruit_status_interested', color: 'var(--blue)', bg: 'var(--blue-bg)' },
+  'whatsapp': { labelKey: 'student.recruit_status_whatsapp', color: 'var(--yellow)', bg: 'var(--yellow-bg)' },
+  'call-planned': { labelKey: 'student.recruit_status_call', color: 'var(--accent)', bg: 'var(--accent-glow)' },
+  'signed': { labelKey: 'student.recruit_status_signed', color: 'var(--green)', bg: 'var(--green-bg)' }
 };
+function getRecruitStatusLabel(rs) { return rs.labelKey ? t(rs.labelKey) : ''; }
 
 let studentData = { leads: [], recruits: [], models: [], revenue: [], callRequests: [], objectives: [], conversations: [], messages: [] };
 let userOptions = { script: [], account: [], type: [] };
@@ -50,18 +52,18 @@ function renderStudentBulkBar() {
   if (n === 0) { bar.style.display = 'none'; return; }
   const existing = bar.querySelector('strong');
   if (existing && bar.style.display === 'block') {
-    existing.textContent = n + ' lead' + (n>1?'s':'') + ' sélectionné' + (n>1?'s':'');
+    existing.textContent = t('outreach.leads_selected').replace('{n}', n);
     return;
   }
   const scriptOpts = (userOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   const accountOpts = (userOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   bar.style.display = 'block';
   bar.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">
-    <strong style="color:var(--accent);font-size:13px">${n} lead${n>1?'s':''} sélectionné${n>1?'s':''}</strong>
-    <select id="student-bulk-script" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer script...</option>${scriptOpts}</select>
-    <select id="student-bulk-account" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">Appliquer compte IG...</option>${accountOpts}</select>
-    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyStudentLeadsBulk()">Appliquer</button>
-    <button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearStudentLeadsSelection()">Désélectionner</button>
+    <strong style="color:var(--accent);font-size:13px">${t('outreach.leads_selected').replace('{n}', n)}</strong>
+    <select id="student-bulk-script" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">${t('outreach.apply_script')}</option>${scriptOpts}</select>
+    <select id="student-bulk-account" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">${t('outreach.apply_ig')}</option>${accountOpts}</select>
+    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyStudentLeadsBulk()">${t('common.apply')}</button>
+    <button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearStudentLeadsSelection()">${t('common.deselect')}</button>
   </div>`;
 }
 
@@ -74,10 +76,10 @@ async function applyStudentLeadsBulk() {
   if (script) body.script_used = script;
   if (account) body.ig_account_used = account;
   const btn = document.querySelector('#student-leads-bulk-bar .btn-primary');
-  if (btn) { btn.disabled = true; btn.textContent = 'Mise à jour...'; }
+  if (btn) { btn.disabled = true; btn.textContent = t('common.update'); }
   await fetch('/api/student-leads/bulk-update', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
   ids.forEach(id => { const l = studentData.leads.find(x => x.id === id); if (l) { if (script) l.script_used = script; if (account) l.ig_account_used = account; } });
-  showToast(ids.length + ' lead' + (ids.length>1?'s':'') + ' mis à jour', 'success');
+  showToast(t('student.leads_updated').replace('{n}', ids.length), 'success');
   clearStudentLeadsSelection();
   renderStudentLeadTable();
 }
@@ -114,11 +116,11 @@ async function renderStudentHome() {
   const unreadMsgs = studentData.conversations.reduce((s, c) => s + parseInt(c.unread || 0), 0);
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mon tableau de bord</div><div class="page-subtitle">Bienvenue ${currentUser.display_name}</div></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.my_dashboard')}</div><div class="page-subtitle">${t('student.welcome')} ${currentUser.display_name}</div></div></div>
 
     <!-- Progression -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Ma progression — ${pct}%</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.my_progression')} — ${pct}%</h3>
       <div style="display:flex;gap:4px;margin-bottom:16px;height:8px;border-radius:4px;overflow:hidden;background:var(--bg3)">
         <div style="width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width 0.5s"></div>
       </div>
@@ -128,7 +130,7 @@ async function renderStudentHome() {
           const active = i === stepIdx;
           return `<div style="flex:1;min-width:80px;text-align:center;padding:10px 6px;border-radius:8px;background:${active ? 'var(--accent-glow)' : done ? 'var(--green-bg)' : 'var(--bg3)'};border:1px solid ${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--border)'}">
             <div style="font-size:20px;margin-bottom:4px">${s.icon}</div>
-            <div style="font-size:11px;font-weight:600;color:${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--text3)'}">${s.label}</div>
+            <div style="font-size:11px;font-weight:600;color:${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--text3)'}">${getStepLabel(s)}</div>
           </div>`;
         }).join('')}
       </div>
@@ -136,15 +138,15 @@ async function renderStudentHome() {
 
     <!-- KPIs -->
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-value">${leadStats.dm_sent || 0}</div><div class="stat-label">DMs envoyés</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${leadStats.reply_rate || 0}%</div><div class="stat-label">Taux de réponse</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--green)">${studentData.recruits.filter(r => r.status === 'signed').length}</div><div class="stat-label">Modèles signées</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${studentData.models.length}</div><div class="stat-label">Modèles gérées</div></div>
+      <div class="stat-card"><div class="stat-value">${leadStats.dm_sent || 0}</div><div class="stat-label">${t('student.dms_sent')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${leadStats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">${studentData.recruits.filter(r => r.status === 'signed').length}</div><div class="stat-label">${t('student.signed_models')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${studentData.models.length}</div><div class="stat-label">${t('student.managed_models')}</div></div>
     </div>
 
     <!-- Daily leads & DMs chart -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Leads & DMs par jour</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.leads_dms_daily')}</h3>
       <div style="position:relative;height:220px"><canvas id="chart-student-daily"></canvas></div>
     </div>
 
@@ -152,22 +154,22 @@ async function renderStudentHome() {
       <!-- Calls -->
       <div class="panel" style="padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <strong style="font-size:14px">Demandes de call</strong>
-          <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="showCallRequestForm()">Demander un call</button>
+          <strong style="font-size:14px">${t('student.call_request_label')}</strong>
+          <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="showCallRequestForm()">${t('student.request_call')}</button>
         </div>
-        ${studentData.callRequests.length === 0 ? '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Aucune demande</div>' :
+        ${studentData.callRequests.length === 0 ? '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('student.no_request') + '</div>' :
           studentData.callRequests.slice(0, 5).map(c => {
             const stColor = c.status === 'pending' ? 'var(--yellow)' : c.status === 'accepted' ? 'var(--green)' : 'var(--red)';
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-              <span>${c.message?.substring(0, 40) || 'Demande de call'}${c.message?.length > 40 ? '...' : ''}</span>
-              <span style="color:${stColor};font-weight:600;font-size:11px">${c.status === 'pending' ? 'En attente' : c.status === 'accepted' ? 'Accepté — ' + (c.scheduled_at || '') : 'Refusé'}</span>
+              <span>${c.message?.substring(0, 40) || t('student.request_call')}${c.message?.length > 40 ? '...' : ''}</span>
+              <span style="color:${stColor};font-weight:600;font-size:11px">${c.status === 'pending' ? t('student.call_pending') : c.status === 'accepted' ? t('student.call_accepted') + ' — ' + (c.scheduled_at || '') : t('student.call_refused')}</span>
             </div>`;
           }).join('')}
       </div>
 
       <!-- Messages -->
       <div class="panel" style="padding:16px">
-        <strong style="font-size:14px;display:block;margin-bottom:12px">Messages ${unreadMsgs > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + unreadMsgs + ' non lu(s)</span>' : ''}</strong>
+        <strong style="font-size:14px;display:block;margin-bottom:12px">${t('student.messages_label')} ${unreadMsgs > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + unreadMsgs + ' ' + t('student.unread') + '</span>' : ''}</strong>
         ${studentData.conversations.map(c => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="document.querySelector('[data-section=student-messages]').click()">
             ${avatarHTML(c, 32)}
@@ -177,7 +179,7 @@ async function renderStudentHome() {
             </div>
             ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + c.unread + '</span>' : ''}
           </div>
-        `).join('') || '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Aucun message</div>'}
+        `).join('') || '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('student.no_message') + '</div>'}
       </div>
     </div>
   `;
@@ -217,13 +219,13 @@ function showCallRequestForm() {
   form.className = 'panel';
   form.style.cssText = 'padding:20px;margin-bottom:20px';
   form.innerHTML = `
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Demander un call</h3>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">${t('student.request_call')}</h3>
     <div style="display:grid;gap:12px;max-width:500px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Message / Sujet</label>
-        <textarea id="cr-message" class="form-input" rows="2" placeholder="De quoi veux-tu parler ?"></textarea></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Disponibilités</label>
-        <input type="text" id="cr-avail" class="form-input" placeholder="Ex: Lundi 14h-18h, Mardi matin..."></div>
-      <button class="btn btn-primary" onclick="submitCallRequest()">Envoyer la demande</button>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.call_subject')}</label>
+        <textarea id="cr-message" class="form-input" rows="2" placeholder="${t('student.call_subject_placeholder')}"></textarea></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.call_availability')}</label>
+        <input type="text" id="cr-avail" class="form-input" placeholder="${t('student.call_availability_placeholder')}"></div>
+      <button class="btn btn-primary" onclick="submitCallRequest()">${t('student.send_request')}</button>
     </div>`;
   section.querySelector('.page-header').after(form);
 }
@@ -255,22 +257,22 @@ async function renderStudentOutreach() {
   var marketLabel = currentStudentMarket === 'us' ? 'US' : 'FR';
   c.innerHTML = `
     ${usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="switchStudentMarket(\'fr\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='fr'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='fr'?'white':'var(--text2)') + '">Outreach FR</button><button onclick="switchStudentMarket(\'us\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='us'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='us'?'white':'var(--text2)') + '">Outreach US</button></div>' : ''}
-    <div class="page-header"><div><div class="page-title">Mon Outreach ${marketLabel}</div><div class="page-subtitle">Gestion de mes leads ${marketLabel}</div></div>
-      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="showStudentLeadForm()">+ Nouveau Lead</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">Mes options</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">Importer CSV</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.outreach_title')} ${marketLabel}</div><div class="page-subtitle">${t('student.outreach_subtitle')} ${marketLabel}</div></div>
+      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="showStudentLeadForm()">${t('common.new_lead')}</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">${t('outreach.my_options')}</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">${t('outreach.import_csv')}</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">Leads aujourd'hui</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">DMs aujourd'hui</div></div>
-      <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">DMs total</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">Talking Warm</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--green)">${stats.call_booked || 0}</div><div class="stat-label">Call Booked</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${stats.reply_rate || 0}%</div><div class="stat-label">Taux de réponse</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">${t('student.leads_today')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">${t('student.dms_today')}</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">${t('student.dms_total')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">${t('dash.talking_warm')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">${stats.call_booked || 0}</div><div class="stat-label">${t('dash.call_booked')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${stats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
     </div>
-    ${stats.shared && stats.contributions ? '<div class="panel" style="padding:14px;margin-bottom:20px"><strong style="font-size:13px;color:var(--accent2);display:block;margin-bottom:10px">Contributions</strong><div style="display:flex;gap:16px;flex-wrap:wrap">' + stats.contributions.map(function(c) { return '<div style="background:var(--bg3);padding:10px 14px;border-radius:8px;flex:1;min-width:150px"><strong style="font-size:13px">' + c.name + '</strong><div style="font-size:12px;color:var(--text2);margin-top:4px">' + c.leads_added + ' leads ajoutés</div><div style="font-size:12px;color:var(--blue)">' + c.dms_today + ' DMs auj.</div><div style="font-size:12px;color:var(--text3)">' + c.dms_total + ' DMs total</div></div>'; }).join('') + '</div></div>' : ''}
+    ${stats.shared && stats.contributions ? '<div class="panel" style="padding:14px;margin-bottom:20px"><strong style="font-size:13px;color:var(--accent2);display:block;margin-bottom:10px">' + t('student.contributions') + '</strong><div style="display:flex;gap:16px;flex-wrap:wrap">' + stats.contributions.map(function(c) { return '<div style="background:var(--bg3);padding:10px 14px;border-radius:8px;flex:1;min-width:150px"><strong style="font-size:13px">' + c.name + '</strong><div style="font-size:12px;color:var(--text2);margin-top:4px">' + c.leads_added + ' ' + t('student.leads_added') + '</div><div style="font-size:12px;color:var(--blue)">' + c.dms_today + ' ' + t('student.dms_short') + '</div><div style="font-size:12px;color:var(--text3)">' + c.dms_total + ' ' + t('student.dms_total') + '</div></div>'; }).join('') + '</div></div>' : ''}
     <div id="student-lead-form-wrap"></div>
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
-    <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderStudentLeadTable()" style="max-width:350px"></div>
+    <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="${t('outreach.search_placeholder')}" oninput="debouncedRenderStudentLeadTable()" style="max-width:350px"></div>
     <div id="student-leads-bulk-bar" style="display:none"></div>
     <div class="panel"><table class="table mobile-cards" id="student-leads-table"><thead><tr><th style="width:30px"><input type="checkbox" id="student-leads-master-cb" onclick="toggleAllStudentLeads(this.checked)" title="Tout sélectionner"></th><th>#</th><th>Username</th><th>Type</th><th>Script</th><th>Compte</th><th>Statut</th><th>Ajouté par</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
@@ -343,22 +345,22 @@ function showStudentLeadForm() {
   const wrap = document.getElementById('student-lead-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Ajouter un lead</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('student.add_lead_title') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Username *</label><input type="text" id="sl-username" class="form-input" placeholder="@username"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien Instagram</label><input type="text" id="sl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label><select id="sl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Script</label>' + optionSelect('sl-script', 'script', 'Script utilisé') + '</div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Compte utilisé</label>' + optionSelect('sl-account', 'account', 'Compte Instagram') + '</div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="sl-notes" class="form-input" placeholder="Notes..."></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.username_label') + '</label><input type="text" id="sl-username" class="form-input" placeholder="' + t('student.username_placeholder') + '"></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('outreach.ig_link') + '</label><input type="text" id="sl-iglink" class="form-input" placeholder="' + t('student.ig_link_placeholder') + '" oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="sl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('outreach.script') + '</label>' + optionSelect('sl-script', 'script', t('student.script_placeholder')) + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.account_label') + '</label>' + optionSelect('sl-account', 'account', t('student.account_placeholder')) + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="sl-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 
 async function addNewOption(optType, selectId) {
   const labels = { script: 'script', account: 'compte Instagram', type: 'type de lead' };
-  const value = await showPromptModal('Nouveau ' + (labels[optType] || optType), 'Ex: ' + (optType === 'script' ? 'Script DM v2' : optType === 'account' ? '@moncompte' : 'Model'));
+  const value = await showPromptModal(t('common.new_prefix') + ' ' + (labels[optType] || optType), t('common.example_prefix') + ' ' + (optType === 'script' ? 'Script DM v2' : optType === 'account' ? '@moncompte' : 'Model'));
   if (!value || !value.trim()) return;
   const res = await fetch('/api/user-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ option_type: optType, value: value.trim() }) });
   if (res.ok) {
@@ -371,10 +373,10 @@ async function addNewOption(optType, selectId) {
     newOpt.textContent = opt.value;
     newOpt.selected = true;
     select.appendChild(newOpt);
-    showToast('"' + opt.value + '" ajouté', 'success');
+    showToast('"' + opt.value + '" ' + t('toast.option_added'), 'success');
   } else {
     const e = await res.json();
-    showToast(e.error || 'Erreur', 'error');
+    showToast(e.error || t('common.error'), 'error');
   }
 }
 
@@ -385,11 +387,11 @@ function autoFillUsername(url, targetId) {
 
 async function deleteAllStudentLeads() {
   var label = currentStudentMarket === 'us' ? 'US' : 'FR';
-  if (!(await confirmDelete('Supprimer TOUS les leads ' + label + ' ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_all_leads')))) return;
   var res = await fetch('/api/student-leads/all?market=' + currentStudentMarket, { method: 'DELETE', credentials: 'include' });
   if (res.ok) {
     var data = await res.json();
-    showToast(data.deleted + ' leads supprimés', 'success');
+    showToast(data.deleted + ' ' + t('toast.leads_deleted'), 'success');
     await loadStudentData();
     renderStudentOutreach();
   }
@@ -405,7 +407,7 @@ async function addStudentLead() {
   const username = document.getElementById('sl-username').value.trim();
   if (!username) return showToast(t('toast.username_required'), 'error');
   const dup = studentData.leads.find(l => l.username.replace(/^@/,'').toLowerCase() === username.replace(/^@/,'').toLowerCase());
-  if (dup) return showToast('Ce lead existe déjà (' + dup.status + ')', 'error');
+  if (dup) return showToast(t('student.lead_exists') + ' (' + dup.status + ')', 'error');
   const res = await fetch('/api/student-leads', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({
     username, ig_link: document.getElementById('sl-iglink').value.trim(), lead_type: document.getElementById('sl-type').value,
     script_used: document.getElementById('sl-script').value, ig_account_used: document.getElementById('sl-account')?.value || '', notes: document.getElementById('sl-notes').value.trim(),
@@ -418,7 +420,7 @@ async function addStudentLead() {
     renderStudentLeadTable();
     showToast(t('toast.lead_added_ex'), 'success');
   } else {
-    try { const e = await res.json(); showToast(e.error || 'Erreur', 'error'); } catch(err) { showToast(t('toast.error_server'), 'error'); }
+    try { const e = await res.json(); showToast(e.error || t('common.error'), 'error'); } catch(err) { showToast(t('toast.error_server'), 'error'); }
   }
 }
 
@@ -435,11 +437,11 @@ function updateStudentLeadField(id, field, value) {
   const body = {};
   body[field] = value;
   fetch('/api/student-leads/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) })
-    .catch(() => showToast('Erreur de connexion', 'error'));
+    .catch(() => showToast(t('toast.error_network'), 'error'));
 }
 
 async function deleteStudentLead(id) {
-  if (!(await confirmDelete('Supprimer ce lead ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_lead')))) return;
   studentData.leads = studentData.leads.filter(l => l.id !== id);
   renderStudentLeadTable();
   fetch('/api/student-leads/' + id, { method:'DELETE', credentials:'include' })
@@ -449,21 +451,21 @@ async function deleteStudentLead(id) {
 function showOptionsManager() {
   const wrap = document.getElementById('student-lead-form-wrap');
   if (wrap.querySelector('#options-manager')) { wrap.innerHTML = ''; return; }
-  const labels = { type: 'Types de lead', script: 'Scripts', account: 'Comptes Instagram' };
+  const labels = { type: t('student.leads_types'), script: t('student.scripts'), account: t('student.ig_accounts') };
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px" id="options-manager">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Gérer mes options</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('outreach.manage_options') + '</h3>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">'
     + Object.entries(labels).map(([key, label]) => {
       const opts = userOptions[key] || [];
       return '<div style="background:var(--bg3);padding:14px;border-radius:10px">'
         + '<strong style="font-size:13px;display:block;margin-bottom:10px">' + label + '</strong>'
-        + (opts.length === 0 ? '<div style="color:var(--text3);font-size:12px">Aucune option</div>' : '')
+        + (opts.length === 0 ? '<div style="color:var(--text3);font-size:12px">' + t('student.no_option') + '</div>' : '')
         + opts.map(o => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px"><span>' + o.value + '</span><button class="btn-delete-small" onclick="deleteOption(' + o.id + ')" style="font-size:10px">✕</button></div>').join('')
-        + '<div style="display:flex;gap:6px;margin-top:10px"><input type="text" id="new-opt-' + key + '" class="form-input" style="font-size:12px;padding:6px 8px;flex:1" placeholder="Ajouter..."><button class="btn btn-primary" style="padding:6px 10px;font-size:11px" onclick="addOptionFromManager(\'' + key + '\')">+</button></div>'
+        + '<div style="display:flex;gap:6px;margin-top:10px"><input type="text" id="new-opt-' + key + '" class="form-input" style="font-size:12px;padding:6px 8px;flex:1" placeholder="' + t('student.add_option_placeholder') + '"><button class="btn btn-primary" style="padding:6px 10px;font-size:11px" onclick="addOptionFromManager(\'' + key + '\')">+</button></div>'
         + '</div>';
     }).join('')
     + '</div>'
-    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">Fermer</button></div>'
+    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.close') + '</button></div>'
     + '</div>';
 }
 
@@ -475,11 +477,11 @@ async function addOptionFromManager(optType) {
   if (res.ok) {
     const opt = await res.json();
     userOptions[optType].push(opt);
-    showToast('"' + value + '" ajouté', 'success');
+    showToast('"' + value + '" ' + t('toast.option_added'), 'success');
     showOptionsManager(); // Re-render
   } else {
     const e = await res.json();
-    showToast(e.error || 'Erreur', 'error');
+    showToast(e.error || t('common.error'), 'error');
   }
 }
 
@@ -505,7 +507,7 @@ async function importStudentCSV(input) {
     var lines = content.split('\n').filter(function(l) { return l.trim(); });
     if (lines.length < 2) return showToast(t('toast.file_empty'), 'error');
 
-    showToast('Import en cours... (' + (lines.length - 1) + ' lignes)', 'info');
+    showToast(t('toast.import_progress') + ' (' + (lines.length - 1) + ' ' + t('student.lines_label') + ')', 'info');
 
     var res = await fetch('/api/student-leads/import-csv', {
       method: 'POST',
@@ -516,10 +518,10 @@ async function importStudentCSV(input) {
 
     if (res.ok) {
       var data = await res.json();
-      showToast(data.imported + ' importés, ' + data.updated + ' mis à jour sur ' + data.total + ' lignes', 'success');
+      showToast(data.imported + ' ' + t('student.imported') + ', ' + data.updated + ' ' + t('student.updated_of') + ' ' + data.total + ' ' + t('student.lines_label'), 'success');
     } else {
       var err = await res.json();
-      showToast(err.error || 'Erreur import', 'error');
+      showToast(err.error || t('student.import_error'), 'error');
     }
     await loadStudentData();
     renderStudentLeadTable();
@@ -534,8 +536,8 @@ async function renderStudentRecruits() {
   if (!c) return;
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Recrutement modèles</div><div class="page-subtitle">Modèles trouvées en outreach</div></div>
-      <div class="header-actions"><button class="btn btn-primary" onclick="showRecruitForm()">+ Nouvelle modèle</button></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.recruits_title')}</div><div class="page-subtitle">${t('student.recruits_subtitle')}</div></div>
+      <div class="header-actions"><button class="btn btn-primary" onclick="showRecruitForm()">${t('student.add_recruit')}</button></div></div>
     <div id="recruit-form-wrap"></div>
     <div class="panel"><table class="table mobile-cards" id="recruits-table"><thead><tr><th>Instagram</th><th>Statut</th><th>Notes</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
   `;
@@ -558,11 +560,11 @@ function showRecruitForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Instagram *</label><input type="text" id="rec-name" class="form-input" placeholder="@username"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Lien profil</label><input type="text" id="rec-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,'rec-name')"></div>
-      <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Notes</label><input type="text" id="rec-notes" class="form-input" placeholder="Notes..."></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.ig_name_label')}</label><input type="text" id="rec-name" class="form-input" placeholder="@username"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.profile_link')}</label><input type="text" id="rec-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,'rec-name')"></div>
+      <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('common.notes')}</label><input type="text" id="rec-notes" class="form-input" placeholder="${t('student.notes_placeholder')}"></div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addRecruit()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('recruit-form-wrap').innerHTML=''">Annuler</button></div>
+    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addRecruit()">${t('common.add')}</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('recruit-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
   </div>`;
 }
 
@@ -580,7 +582,7 @@ async function updateRecruit(id, status) {
 }
 
 async function deleteRecruit(id) {
-  if (!(await confirmDelete('Supprimer cette recrue ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_recruit')))) return;
   await fetch('/api/student-recruits/' + id, { method:'DELETE', credentials:'include' });
   renderStudentRecruits();
 }
@@ -592,8 +594,8 @@ async function renderStudentModels() {
   if (!c) return;
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mes modèles</div><div class="page-subtitle">Gestion de mes créatrices</div></div>
-      <div class="header-actions"><button class="btn btn-primary" onclick="showStudentModelForm()">+ Ajouter un modèle</button></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.models_title')}</div><div class="page-subtitle">${t('student.my_models_subtitle')}</div></div>
+      <div class="header-actions"><button class="btn btn-primary" onclick="showStudentModelForm()">${t('student.add_model')}</button></div></div>
     <div id="smodel-form-wrap"></div>
     <div id="smodel-cards"></div>
   `;
@@ -609,7 +611,7 @@ async function renderStudentModels() {
         <div><strong style="font-size:16px">${m.name}</strong> <span style="font-size:12px;color:var(--text3)">${m.of_handle || ''}</span></div>
         <div style="display:flex;gap:8px;align-items:center">
           <select onchange="updateStudentModel(${m.id},{status:this.value})" style="background:var(--bg3);color:${stColors[m.status]||'var(--text)'};border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
-            <option value="active" ${m.status==='active'?'selected':''}>Active</option><option value="onboarding" ${m.status==='onboarding'?'selected':''}>Onboarding</option><option value="pause" ${m.status==='pause'?'selected':''}>Pause</option>
+            <option value="active" ${m.status==='active'?'selected':''}>${t('models.active_status')}</option><option value="onboarding" ${m.status==='onboarding'?'selected':''}>${t('models.onboarding')}</option><option value="pause" ${m.status==='pause'?'selected':''}>${t('model.status_pause')}</option>
           </select>
           <button class="btn-delete-small" onclick="deleteStudentModel(${m.id})">✕</button>
         </div>
@@ -617,8 +619,8 @@ async function renderStudentModels() {
       <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
         <div><span style="color:var(--text3)">Fans:</span> <strong>${m.fans_count}</strong></div>
         <div><span style="color:var(--text3)">Commission:</span> <strong>${m.commission_rate}%</strong></div>
-        <div><span style="color:var(--text3)">Revenue totale:</span> <strong style="color:var(--green)">$${totalRev.toFixed(2)}</strong></div>
-        <div><span style="color:var(--text3)">Commission due:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
+        <div><span style="color:var(--text3)">${t('student.revenue_total_label')}:</span> <strong style="color:var(--green)">$${totalRev.toFixed(2)}</strong></div>
+        <div><span style="color:var(--text3)">${t('student.commission_due')}:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
       </div>
     </div>`;
   }).join('') || '<div class="panel">' + emptyStateHTML('users', t('student.no_model'), t('student.add_model'), 'showStudentModelForm()') + '</div>';
@@ -629,12 +631,12 @@ function showStudentModelForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nom *</label><input type="text" id="sm-name" class="form-input" placeholder="Nom du modèle"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Profil plateforme</label><input type="text" id="sm-handle" class="form-input" placeholder="@handle"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nombre de fans</label><input type="number" id="sm-fans" class="form-input" placeholder="0" min="0"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Commission (%)</label><input type="number" id="sm-commission" class="form-input" placeholder="15" min="0" max="100" step="0.5"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.model_name_label')}</label><input type="text" id="sm-name" class="form-input" placeholder="${t('student.model_name_placeholder')}"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.profile_handle')}</label><input type="text" id="sm-handle" class="form-input" placeholder="${t('student.handle_placeholder')}"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.fans_count')}</label><input type="number" id="sm-fans" class="form-input" placeholder="0" min="0"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.commission_rate')}</label><input type="number" id="sm-commission" class="form-input" placeholder="15" min="0" max="100" step="0.5"></div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentModel()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('smodel-form-wrap').innerHTML=''">Annuler</button></div>
+    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentModel()">${t('common.add')}</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('smodel-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
   </div>`;
 }
 
@@ -652,7 +654,7 @@ async function updateStudentModel(id, data) {
 }
 
 async function deleteStudentModel(id) {
-  if (!(await confirmDelete('Supprimer ce modèle et tous ses revenus ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('student.delete_model_revenues')))) return;
   await fetch('/api/student-models/' + id, { method:'DELETE', credentials:'include' });
   renderStudentModels();
 }
@@ -670,26 +672,26 @@ async function renderStudentRevenue() {
   const totalAll = studentData.revenue.reduce((s, r) => s + parseFloat(r.revenue), 0);
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Mes revenus</div><div class="page-subtitle">Suivi financier</div></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.revenue_title')}</div><div class="page-subtitle">${t('student.financial_tracking')}</div></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${totalMonth.toFixed(2)}</div><div class="stat-label">Revenue ce mois</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--accent)">$${totalCommission.toFixed(2)}</div><div class="stat-label">Commission ce mois</div></div>
-      <div class="stat-card"><div class="stat-value">$${totalAll.toFixed(2)}</div><div class="stat-label">Revenue totale</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${totalMonth.toFixed(2)}</div><div class="stat-label">${t('student.revenue_month')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent)">$${totalCommission.toFixed(2)}</div><div class="stat-label">${t('student.commission_month')}</div></div>
+      <div class="stat-card"><div class="stat-value">$${totalAll.toFixed(2)}</div><div class="stat-label">${t('student.revenue_total_label')}</div></div>
       <div class="stat-card"><div class="stat-value">${studentData.models.length}</div><div class="stat-label">Modèles</div></div>
     </div>
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">Ajouter un revenu</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">${t('student.add_revenue')}</h3>
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Modèle</label>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.model_select')}</label>
           <select id="rev-model" class="form-input">${studentData.models.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('')}</select></div>
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Mois</label>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.month_select')}</label>
           <input type="month" id="rev-month" class="form-input" value="${currentMonth}"></div>
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Revenue ($)</label>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.amount_label')}</label>
           <input type="number" id="rev-amount" class="form-input" placeholder="0.00" step="0.01" min="0"></div>
-        <button class="btn btn-primary" onclick="addStudentRevenue()">Ajouter</button>
+        <button class="btn btn-primary" onclick="addStudentRevenue()">${t('common.add')}</button>
       </div>
     </div>
-    <div class="panel" style="padding:20px;margin-bottom:20px"><h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Évolution mensuelle</h3><div style="position:relative;height:250px"><canvas id="chart-student-revenue"></canvas></div></div>
+    <div class="panel" style="padding:20px;margin-bottom:20px"><h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.monthly_evolution')}</h3><div style="position:relative;height:250px"><canvas id="chart-student-revenue"></canvas></div></div>
     <div class="panel"><table class="table mobile-cards" id="revenue-table"><thead><tr><th>Mois</th><th>Modèle</th><th>Revenue</th><th>Commission</th></tr></thead><tbody>
       ${studentData.revenue.map(r => {
         const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
@@ -703,7 +705,7 @@ async function renderStudentRevenue() {
   if (months.length > 0 && typeof Chart !== 'undefined') {
     const revByMonth = months.map(m => studentData.revenue.filter(r => r.month === m).reduce((s, r) => s + parseFloat(r.revenue), 0));
     new Chart(document.getElementById('chart-student-revenue'), {
-      type: 'bar', data: { labels: months, datasets: [{ label: 'Revenue', data: revByMonth, backgroundColor: '#A855F7cc', borderRadius: 4 }] },
+      type: 'bar', data: { labels: months, datasets: [{ label: t('student.revenue_chart_label'), data: revByMonth, backgroundColor: '#A855F7cc', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' }, beginAtZero: true } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
     });
   }
@@ -725,14 +727,14 @@ async function renderStudentMessages() {
   if (!c) return;
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Messages</div><div class="page-subtitle">Messagerie interne</div></div></div>
+    <div class="page-header"><div><div class="page-title">${t('student.messages_title')}</div><div class="page-subtitle">${t('student.messages_subtitle')}</div></div></div>
     <div style="display:flex;gap:0;height:calc(100vh - 200px);border-radius:12px;overflow:hidden;border:1px solid var(--border)">
       <div id="chat-contacts" style="width:280px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0"></div>
       <div id="chat-area" style="flex:1;display:flex;flex-direction:column;background:var(--bg)">
-        <div id="chat-header" style="padding:14px 20px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px">Sélectionne une conversation</div>
+        <div id="chat-header" style="padding:14px 20px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px">${t('student.select_conversation')}</div>
         <div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px"></div>
         <div id="chat-input-wrap" style="padding:12px;border-top:1px solid var(--border);display:none">
-          <div style="display:flex;gap:8px"><input type="text" id="chat-input" class="form-input" placeholder="Écrire un message..." style="flex:1" onkeydown="if(event.key==='Enter')sendMessage()"><button class="btn btn-primary" onclick="sendMessage()" style="padding:8px 16px">Envoyer</button></div>
+          <div style="display:flex;gap:8px"><input type="text" id="chat-input" class="form-input" placeholder="${t('student.message_placeholder')}" style="flex:1" onkeydown="if(event.key==='Enter')sendMessage()"><button class="btn btn-primary" onclick="sendMessage()" style="padding:8px 16px">${t('common.send')}</button></div>
         </div>
       </div>
     </div>
@@ -753,7 +755,7 @@ function renderChatContacts() {
       </div>
       ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + c.unread + '</span>' : ''}
     </div>
-  `).join('') || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Aucune conversation</div>';
+  `).join('') || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">' + t('student.no_conversation') + '</div>';
 }
 
 async function openChat(userId) {
@@ -799,13 +801,13 @@ async function renderStudentResources() {
   const c = document.getElementById('section-student-resources');
   if (!c) return;
 
-  const categories = { outreach: 'Outreach', chatting: 'Chatting', traffic: 'Traffic', general: 'Général' };
+  const categories = { outreach: t('resource.outreach'), chatting: t('resource.chatting'), traffic: t('resource.traffic'), general: t('resource.general') };
   const grouped = {};
   resources.forEach(r => { if (!grouped[r.category]) grouped[r.category] = []; grouped[r.category].push(r); });
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Formation</div><div class="page-subtitle">Ressources et guides</div></div>
-      ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? '<div class="header-actions"><button class="btn btn-primary" onclick="showAddResourceForm()">+ Ajouter une ressource</button></div>' : ''}
+    <div class="page-header"><div><div class="page-title">${t('student.resources_title')}</div><div class="page-subtitle">${t('student.resources_subtitle')}</div></div>
+      ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? '<div class="header-actions"><button class="btn btn-primary" onclick="showAddResourceForm()">' + t('student.add_resource') + '</button></div>' : ''}
     </div>
     <div id="resource-form-wrap"></div>
     ${Object.entries(grouped).map(([cat, items]) => `
@@ -818,8 +820,8 @@ async function renderStudentResources() {
               ${r.description ? '<div style="font-size:12px;color:var(--text3);margin-top:2px">' + r.description + '</div>' : ''}
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-              ${r.url ? '<a href="' + r.url + '" target="_blank" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">Ouvrir</a>' : ''}
-              ${r.file_name ? '<a href="/api/resources/' + r.id + '/download" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">Télécharger</a>' : ''}
+              ${r.url ? '<a href="' + r.url + '" target="_blank" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">' + t('student.open_btn') + '</a>' : ''}
+              ${r.file_name ? '<a href="/api/resources/' + r.id + '/download" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">' + t('student.download_btn') + '</a>' : ''}
               ${(currentUser.role === 'admin' || currentUser.role === 'super_admin') ? '<button class="btn-delete-small" onclick="deleteResource(' + r.id + ')">✕</button>' : ''}
             </div>
           </div>`).join('')}
@@ -834,14 +836,14 @@ function showAddResourceForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Titre *</label><input type="text" id="res-title" class="form-input" placeholder="Titre"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Catégorie</label><select id="res-cat" class="form-input"><option value="outreach">Outreach</option><option value="chatting">Chatting</option><option value="traffic">Traffic</option><option value="general">Général</option></select></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Type</label><select id="res-type" class="form-input" onchange="document.getElementById('res-url-wrap').style.display=this.value==='link'?'':'none';document.getElementById('res-file-wrap').style.display=this.value==='file'?'':'none'"><option value="link">Lien (YouTube, etc.)</option><option value="file">Fichier (PDF, doc...)</option></select></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Description</label><input type="text" id="res-desc" class="form-input" placeholder="Description..."></div>
-      <div id="res-url-wrap" style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">URL</label><input type="text" id="res-url" class="form-input" placeholder="https://..."></div>
-      <div id="res-file-wrap" style="grid-column:1/-1;display:none"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Fichier</label><input type="file" id="res-file" class="form-input"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.resource_title_label') + '</label><input type="text" id="res-title" class="form-input" placeholder="Titre"></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.category_label') + '</label><select id="res-cat" class="form-input"><option value="outreach">' + t('resource.outreach') + '</option><option value="chatting">' + t('resource.chatting') + '</option><option value="traffic">' + t('resource.traffic') + '</option><option value="general">' + t('resource.general') + '</option></select></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="res-type" class="form-input" onchange="document.getElementById(\'res-url-wrap\').style.display=this.value===\'link\'?\'\':\'none\';document.getElementById(\'res-file-wrap\').style.display=this.value===\'file\'?\'\':\'none\'"><option value="link">' + t('student.type_link') + '</option><option value="file">' + t('student.type_file') + '</option></select></div>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="res-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>
+      <div id="res-url-wrap" style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.url_label') + '</label><input type="text" id="res-url" class="form-input" placeholder="' + t('student.url_placeholder') + '"></div>
+      <div id="res-file-wrap" style="grid-column:1/-1;display:none"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.file_label') + '</label><input type="file" id="res-file" class="form-input"></div>
     </div>
-    <div style="margin-top:12px"><button class="btn btn-primary" onclick="addResource()">Ajouter</button></div>
+    <div style="margin-top:12px"><button class="btn btn-primary" onclick="addResource()">' + t('common.add') + '</button></div>
   </div>`;
 }
 
@@ -865,11 +867,11 @@ async function addResource() {
     reader.readAsDataURL(file); return;
   }
   await fetch('/api/resources', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-  showToast('Ressource ajoutée !', 'success'); renderStudentResources();
+  showToast(t('toast.resource_added'), 'success'); renderStudentResources();
 }
 
 async function deleteResource(id) {
-  if (!(await confirmDelete('Supprimer cette ressource ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_resource')))) return;
   await fetch('/api/resources/' + id, { method:'DELETE', credentials:'include' });
   renderStudentResources();
 }
@@ -885,10 +887,10 @@ async function renderStudentObjectives() {
   const pastObjectives = studentData.objectives.filter(o => o.week_start !== thisWeek);
 
   c.innerHTML = `
-    <div class="page-header"><div><div class="page-title">Objectifs</div><div class="page-subtitle">Semaine du ${thisWeek}</div></div></div>
+    <div class="page-header"><div><div class="page-title">${t("student.objectives_title")}</div><div class="page-subtitle">${t("student.week_of")} ${thisWeek}</div></div></div>
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Cette semaine</h3>
-      ${weekObjectives.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px">Aucun objectif cette semaine</div>' :
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t("student.this_week")}</h3>
+      ${weekObjectives.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px">' + t('student.no_objectives') + '</div>' :
         '<div style="display:grid;gap:12px">' + weekObjectives.map(o => {
           const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
           const done = pct >= 100;
@@ -898,12 +900,12 @@ async function renderStudentObjectives() {
               <span style="font-size:13px;font-weight:700;color:${done?'var(--green)':'var(--accent)'}">${o.current} / ${o.target}</span>
             </div>
             <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${done?'var(--green)':'var(--accent)'};border-radius:3px;transition:width 0.3s"></div></div>
-            ${currentUser.role === 'student' ? '<div style="margin-top:8px;display:flex;gap:8px;align-items:center"><input type="number" class="form-input" style="width:80px;padding:4px 8px;font-size:12px" value="' + o.current + '" id="obj-cur-' + o.id + '" min="0"><button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateObjective(' + o.id + ')">Mettre à jour</button></div>' : ''}
+            ${currentUser.role === 'student' ? '<div style="margin-top:8px;display:flex;gap:8px;align-items:center"><input type="number" class="form-input" style="width:80px;padding:4px 8px;font-size:12px" value="' + o.current + '" id="obj-cur-' + o.id + '" min="0"><button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateObjective(' + o.id + ')">' + t('student.update_btn') + '</button></div>' : ''}
           </div>`;
         }).join('') + '</div>'}
     </div>
     ${pastObjectives.length > 0 ? `<div class="panel" style="padding:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text2)">Semaines précédentes</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text2)">${t("student.past_weeks")}</h3>
       ${pastObjectives.map(o => {
         const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
         return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>' + o.week_start + ' — ' + (o.description || o.obj_type) + '</span><span style="color:' + (pct>=100?'var(--green)':'var(--red)') + '">' + o.current + '/' + o.target + ' (' + pct + '%)</span></div>';
@@ -915,7 +917,7 @@ async function renderStudentObjectives() {
 async function updateObjective(id) {
   const current = parseInt(document.getElementById('obj-cur-' + id).value) || 0;
   await fetch('/api/objectives/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ current }) });
-  showToast('Objectif mis à jour !', 'success'); renderStudentObjectives();
+  showToast(t('student.objective_updated'), 'success'); renderStudentObjectives();
 }
 
 function getWeekStart() {
@@ -963,7 +965,7 @@ async function renderStudentPlanning() {
 
   let totalHours = 0;
 
-  let html = '<div class="page-header"><div><div class="page-title">Mon Planning</div><div class="page-subtitle">Semaine du ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun) + '</div></div></div>'
+  let html = '<div class="page-header"><div><div class="page-title">' + t('student.planning_title') + '</div><div class="page-subtitle">' + t('student.week_of') + ' ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun) + '</div></div></div>'
     + '<div class="panel" style="padding:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
     + '<button onclick="studentPlanNavigate(-1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
@@ -982,10 +984,10 @@ async function renderStudentPlanning() {
     const dayTaskEntries = dayShifts.filter(s => s.entry_type === 'task');
 
     html += '<div style="background:' + (isToday ? 'rgba(212,165,116,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
-      + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + ';margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">Aujourd\'hui</span>' : '') + '</div>';
+      + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + ';margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">' + t('common.today') + '</span>' : '') + '</div>';
 
     if (isLeave) {
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--red-bg);border-radius:8px;color:var(--red);font-weight:600;font-size:13px">Congé</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--red-bg);border-radius:8px;color:var(--red);font-weight:600;font-size:13px">' + t('student.leave_badge') + '</div>';
     } else {
       if (dayShiftEntries.length > 0) {
         dayShiftEntries.forEach(s => {
@@ -1021,7 +1023,7 @@ async function renderStudentPlanning() {
         });
       }
       if (dayShifts.length === 0) {
-        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">Aucun shift ou tâche</div>';
+        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">' + t('planning.no_shift') + '</div>';
       }
     }
     html += '</div>';
@@ -1029,7 +1031,7 @@ async function renderStudentPlanning() {
 
   html += '</div>'
     + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg3);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
-    + '<span style="font-size:13px;color:var(--text2)">Total semaine</span>'
+    + '<span style="font-size:13px;color:var(--text2)">' + t('planning.week_total') + '</span>'
     + '<span style="font-size:18px;font-weight:800;color:var(--accent)">' + totalHours.toFixed(0) + 'h</span>'
     + '</div>'
     + '</div>';
@@ -1049,7 +1051,7 @@ async function renderStudentTasks() {
 
   const tasks = await fetch('/api/tasks', { credentials: 'include' }).then(r => r.ok ? r.json() : []);
 
-  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: 'En attente' }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: 'En cours' }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: 'Terminée' } };
+  const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('tasks.pending_label') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: t('tasks.completed_label') } };
 
   const pending = tasks.filter(t => t.status !== 'completed');
   const completed = tasks.filter(t => t.status === 'completed');
@@ -1067,23 +1069,23 @@ async function renderStudentTasks() {
       + (t.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + t.description + '</div>' : '')
       + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
       + '<select onchange="updateStudentTaskStatus(' + t.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
-      + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En attente</option>'
-      + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">En cours</option>'
-      + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">Terminée</option></select>'
-      + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text3)') + '">📅 ' + dl + (overdue ? ' (en retard)' : '') + '</div>' : '')
-      + (t.creator_name ? '<div style="color:var(--text3)">Par ' + t.creator_name + '</div>' : '')
+      + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.pending_label') + '</option>'
+      + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.in_progress_label') + '</option>'
+      + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.completed_label') + '</option></select>'
+      + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text3)') + '">📅 ' + dl + (overdue ? ' (' + _overdueLabel + ')' : '') + '</div>' : '')
+      + (t.creator_name ? '<div style="color:var(--text3)">' + _createdByLabel + ' ' + t.creator_name + '</div>' : '')
       + (t.created_by === currentUser.id ? '<button class="btn-delete-small" onclick="deleteStudentTask(' + t.id + ')" style="margin-left:auto">✕</button>' : '')
       + '</div></div>';
   }
 
-  c.innerHTML = '<div class="page-header"><div><div class="page-title">Mes Tâches</div><div class="page-subtitle">' + pending.length + ' en cours · ' + completed.length + ' terminées</div></div>'
-    + '<div class="header-actions"><button class="btn btn-primary" onclick="showStudentTaskForm()">+ Nouvelle tâche</button></div></div>'
+  c.innerHTML = '<div class="page-header"><div><div class="page-title">' + t('student.tasks_title') + '</div><div class="page-subtitle">' + pending.length + ' ' + t('student.pending_count') + ' · ' + completed.length + ' ' + t('student.completed_count') + '</div></div>'
+    + '<div class="header-actions"><button class="btn btn-primary" onclick="showStudentTaskForm()">' + t('student.add_task') + '</button></div></div>'
     + '<div id="student-task-form-wrap"></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:16px">'
-    + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">À faire</h3>'
+    + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('student.todo_section') + '</h3>'
     + (pending.length === 0 ? emptyStateHTML('clipboard', t('student.no_task'), '+ Créer une tâche', 'showStudentTaskForm()') : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
     + '</div>'
-    + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">Terminées</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
+    + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">' + t('student.done_section') + '</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
 }
 
 function showStudentTaskForm() {
@@ -1092,18 +1094,18 @@ function showStudentTaskForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:16px;background:var(--bg2)">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Titre *</label><input type="text" id="st-title" class="form-input" placeholder="Titre de la tâche"></div>'
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Description</label><input type="text" id="st-desc" class="form-input" placeholder="Description..."></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Priorité</label><select id="st-priority" class="form-input"><option value="normal">Normale</option><option value="urgent">Urgente</option></select></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Deadline</label><input type="date" id="st-deadline" class="form-input"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.task_title_label') + '</label><input type="text" id="st-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="st-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.priority_label') + '</label><select id="st-priority" class="form-input"><option value="normal">' + t('student.priority_normal') + '</option><option value="urgent">' + t('student.priority_urgent') + '</option></select></div>'
+    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.deadline_label') + '</label><input type="date" id="st-deadline" class="form-input"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="addStudentTask()">Ajouter</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-task-form-wrap\').innerHTML=\'\'">Annuler</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="addStudentTask()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 
 async function addStudentTask() {
   const title = document.getElementById('st-title').value.trim();
-  if (!title) { showToast('Titre requis', 'error'); return; }
+  if (!title) { showToast(t('student.title_required'), 'error'); return; }
   const description = document.getElementById('st-desc').value.trim();
   const priority = document.getElementById('st-priority').value;
   const deadline = document.getElementById('st-deadline').value || null;
@@ -1114,7 +1116,7 @@ async function addStudentTask() {
     body: JSON.stringify({ title, description, priority, deadline })
   });
   if (res.ok) {
-    showToast('Tâche ajoutée', 'success');
+    showToast(t('student.task_added'), 'success');
     document.getElementById('student-task-form-wrap').innerHTML = '';
     renderStudentTasks();
   }
@@ -1126,7 +1128,7 @@ async function updateStudentTaskStatus(id, status) {
 }
 
 async function deleteStudentTask(id) {
-  if (!(await confirmDelete('Supprimer cette tâche ? Cette action est irréversible.'))) return;
+  if (!(await confirmDelete(t('confirm.delete_task')))) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' });
   renderStudentTasks();
 }
@@ -1151,14 +1153,14 @@ async function renderStudentAnalytics() {
   var c = document.getElementById('section-student-analytics');
   if (!c) return;
 
-  c.innerHTML = '<div class="page-header"><div><div class="page-title">Analytics</div><div class="page-subtitle">Statistiques de mon outreach</div></div></div>'
+  c.innerHTML = '<div class="page-header"><div><div class="page-title">' + t('student.analytics_title') + '</div><div class="page-subtitle">' + t('student.analytics_subtitle') + '</div></div></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Aujourd\'hui</h3>'
-    + '<div id="sa-today-stats"><div style="color:var(--text3);font-size:13px">Chargement...</div></div>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('common.today') + '</h3>'
+    + '<div id="sa-today-stats"><div style="color:var(--text3);font-size:13px">' + t('common.loading') + '</div></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Leads & DMs par jour</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('student.leads_dms_daily') + '</h3>'
     + '<div style="display:flex;gap:4px" id="student-daily-btns">'
     + '<button class="filter-chip" onclick="loadStudentDailyChart(1,this)">1j</button>'
     + '<button class="filter-chip" onclick="loadStudentDailyChart(2,this)">2j</button>'
@@ -1170,11 +1172,11 @@ async function renderStudentAnalytics() {
     + '<div style="position:relative;height:280px"><canvas id="chart-sa-daily"></canvas></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Activité par heure</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.hourly_chart') + '</h3>'
     + '<div style="position:relative;height:220px"><canvas id="chart-sa-hourly"></canvas></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Qui a ajouté les leads</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.by_person') + '</h3>'
     + '<div id="sa-by-person"></div>'
     + '</div>';
 
@@ -1201,15 +1203,15 @@ async function loadStudentDailyChart(days, btn) {
       var todayLeads = todayByPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
       var todayDms = todayByPerson.reduce(function(s, p) { return s + parseInt(p.dms); }, 0);
       todayDiv.innerHTML = '<div class="stats-grid" style="margin-bottom:12px">'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">Leads aujourd\'hui</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">DMs aujourd\'hui</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">' + t('student.leads_today') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">' + t('student.dms_today') + '</div></div>'
         + '</div>'
         + (todayByPerson.length > 0 ? '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th></tr></thead><tbody>'
         + todayByPerson.map(function(p) {
-          return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
+          return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || t('student.unknown')) + '</strong></td>'
             + '<td data-label="Leads" class="mc-half" style="color:var(--accent)">' + p.leads + '</td>'
             + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">Aucune activité aujourd\'hui</div>');
+        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">' + t('student.no_activity_today') + '</div>');
     }
 
     // Daily chart
@@ -1253,13 +1255,13 @@ async function loadStudentDailyChart(days, btn) {
     var personDiv = document.getElementById('sa-by-person');
     if (personDiv) {
       if (byPerson.length === 0) {
-        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">Aucune donnée</div>';
+        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">' + t('student.no_data_chart') + '</div>';
       } else {
         var totalLeads = byPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
         personDiv.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th><th>%</th></tr></thead><tbody>'
           + byPerson.map(function(p) {
             var pct = totalLeads > 0 ? ((parseInt(p.leads) / totalLeads) * 100).toFixed(1) : '0';
-            return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
+            return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || t('student.unknown')) + '</strong></td>'
               + '<td data-label="Leads" class="mc-half">' + p.leads + '</td>'
               + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td>'
               + '<td data-label="%" class="mc-half" style="color:var(--accent)">' + pct + '%</td></tr>';

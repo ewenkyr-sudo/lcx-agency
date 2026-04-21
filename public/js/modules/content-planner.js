@@ -26,18 +26,20 @@ var CP_TYPES = {
   twitter: ['post_twitter']
 };
 
-var CP_TYPE_LABELS = {
-  post_instagram: 'Post', story: 'Story', reel: 'Reel',
-  post_tiktok: 'Post', live_tiktok: 'Live',
-  post_onlyfans: 'Post OF',
-  post_fansly: 'Post', story_fansly: 'Story', ppv_fansly: 'PPV',
-  post_fanvue: 'Post', video_fanvue: 'Vidéo',
-  post_mym: 'Post', media_mym: 'Média',
-  post_twitter: 'Post'
-};
+function getCPTypeLabel(key) {
+  var labels = {
+    post_instagram: 'Post', story: 'Story', reel: 'Reel',
+    post_tiktok: 'Post', live_tiktok: 'Live',
+    post_onlyfans: 'Post OF',
+    post_fansly: 'Post', story_fansly: 'Story', ppv_fansly: 'PPV',
+    post_fanvue: 'Post', video_fanvue: t('cp.type_video'),
+    post_mym: 'Post', media_mym: t('cp.type_media'),
+    post_twitter: 'Post'
+  };
+  return labels[key] || key;
+}
 
 function getCPStatus(key) { var labels = { draft: 'cp.status_draft', scheduled: 'cp.status_scheduled', published: 'cp.status_published', cancelled: 'cp.status_cancelled' }; return labels[key] ? t(labels[key]) : key; }
-var CP_STATUS = { draft: 'Brouillon', scheduled: 'Planifié', published: 'Publié', cancelled: 'Annulé' };
 
 // ========== RENDERING ==========
 
@@ -56,22 +58,22 @@ function renderCPToolbar() {
   var mon = getCPMonday(cpDate);
   var sun = new Date(mon); sun.setDate(sun.getDate() + 6);
   var title = cpView === 'week'
-    ? 'Semaine du ' + mon.getDate() + ' ' + mon.toLocaleDateString('fr-FR',{month:'short'}) + ' au ' + sun.getDate() + ' ' + sun.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})
+    ? t('cp.week_of_label') + ' ' + mon.getDate() + ' ' + mon.toLocaleDateString(undefined,{month:'short'}) + ' — ' + sun.getDate() + ' ' + sun.toLocaleDateString(undefined,{month:'short',year:'numeric'})
     : cpView === 'month'
-    ? cpDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    ? cpDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : t('cp.list_view');
 
   tb.innerHTML = '<div class="cp-toolbar">'
     + '<button class="cp-nav-btn" onclick="cpNavigate(-1)">←</button>'
-    + '<button class="cp-nav-btn" onclick="cpToday()">Aujourd\'hui</button>'
+    + '<button class="cp-nav-btn" onclick="cpToday()">' + t('cp.today_btn') + '</button>'
     + '<button class="cp-nav-btn" onclick="cpNavigate(1)">→</button>'
     + '<div class="cp-toolbar-title">' + title + '</div>'
     + '<div style="display:flex;gap:4px">'
-    + '<button class="cp-view-btn' + (cpView==='week'?' active':'') + '" onclick="setCPView(\'week\')">Semaine</button>'
-    + '<button class="cp-view-btn' + (cpView==='month'?' active':'') + '" onclick="setCPView(\'month\')">Mois</button>'
-    + '<button class="cp-view-btn' + (cpView==='list'?' active':'') + '" onclick="setCPView(\'list\')">Liste</button>'
+    + '<button class="cp-view-btn' + (cpView==='week'?' active':'') + '" onclick="setCPView(\'week\')">' + t('cp.week_view') + '</button>'
+    + '<button class="cp-view-btn' + (cpView==='month'?' active':'') + '" onclick="setCPView(\'month\')">' + t('cp.month_view') + '</button>'
+    + '<button class="cp-view-btn' + (cpView==='list'?' active':'') + '" onclick="setCPView(\'list\')">' + t('cp.list_view') + '</button>'
     + '</div>'
-    + (isAdmin() ? '<button class="btn btn-primary" style="font-size:12px;margin-left:auto" onclick="openCPModal()">+ Nouveau post</button>' : '')
+    + (isAdmin() ? '<button class="btn btn-primary" style="font-size:12px;margin-left:auto" onclick="openCPModal()">' + t('cp.new_post_btn') + '</button>' : '')
     + '</div>';
 }
 
@@ -117,7 +119,7 @@ function renderCPWeek(container) {
     var d = new Date(mon); d.setDate(d.getDate() + i);
     days.push(d);
   }
-  var dayNames = ['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
+  var dayNames = [t('cp.day_mon'),t('cp.day_tue'),t('cp.day_wed'),t('cp.day_thu'),t('cp.day_fri'),t('cp.day_sat'),t('cp.day_sun')];
   var hours = [];
   for (var h = 6; h <= 23; h++) hours.push(h);
 
@@ -131,7 +133,7 @@ function renderCPWeek(container) {
   // Hour rows
   for (var hi = 0; hi < hours.length; hi++) {
     var h = hours[hi];
-    html += '<div class="cp-time-label">' + h + 'h</div>';
+    html += '<div class="cp-time-label">' + h + t('cp.hour_suffix') + '</div>';
     for (var di = 0; di < 7; di++) {
       var dayStr = fmtDateISO(days[di]);
       var cellPosts = cpPosts.filter(function(p) {
@@ -145,7 +147,7 @@ function renderCPWeek(container) {
         html += '<div class="cp-post cp-post-' + plat.cls + statusCls + '" onclick="event.stopPropagation();openCPModal(' + p.id + ')" title="' + (p.caption || '').replace(/"/g,'&quot;').substring(0,60) + '">'
           + plat.icon + ' '
           + (cpModelFilter ? '' : '<strong>' + (p.model_name || '').substring(0,8) + '</strong> ')
-          + (CP_TYPE_LABELS[p.content_type] || p.content_type)
+          + getCPTypeLabel(p.content_type)
           + '</div>';
       });
       html += '</div>';
@@ -163,7 +165,7 @@ function renderCPMonth(container) {
   var startDay = (first.getDay() + 6) % 7; // Monday = 0
   var daysInMonth = new Date(year, month+1, 0).getDate();
   var today = new Date(); today.setHours(0,0,0,0);
-  var dayNames = ['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
+  var dayNames = [t('cp.day_mon'),t('cp.day_tue'),t('cp.day_wed'),t('cp.day_thu'),t('cp.day_fri'),t('cp.day_sat'),t('cp.day_sun')];
 
   var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-radius:12px;overflow:hidden">';
   dayNames.forEach(function(d) { html += '<div style="background:rgba(19,13,33,0.8);padding:8px;text-align:center;font-size:10px;font-weight:700;color:var(--text3)">' + d + '</div>'; });
@@ -193,21 +195,21 @@ function renderCPMonth(container) {
 
 function renderCPList(container) {
   if (cpPosts.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">Aucun post planifié</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">' + t('cp.no_posts') + '</div>';
     return;
   }
-  var html = '<table class="table mobile-cards"><thead><tr><th>Date</th><th>Modèle</th><th>Plateforme</th><th>Type</th><th>Caption</th><th>Statut</th><th></th></tr></thead><tbody>';
+  var html = '<table class="table mobile-cards"><thead><tr><th>' + t('cp.table_date') + '</th><th>' + t('cp.table_model') + '</th><th>' + t('cp.table_platform') + '</th><th>' + t('cp.table_type') + '</th><th>' + t('cp.table_caption') + '</th><th>' + t('cp.table_status') + '</th><th></th></tr></thead><tbody>';
   cpPosts.forEach(function(p) {
     var plat = CP_PLATFORMS[p.platform] || CP_PLATFORMS.instagram;
     var dt = new Date(p.scheduled_at);
-    var dateStr = dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+    var dateStr = dt.toLocaleDateString(undefined, { day:'2-digit', month:'short' }) + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
     html += '<tr onclick="openCPModal(' + p.id + ')" style="cursor:pointer">'
-      + '<td data-label="Date" class="mc-half">' + dateStr + '</td>'
-      + '<td data-label="Modèle" class="mc-half"><strong>' + (p.model_name || '-') + '</strong></td>'
+      + '<td data-label="' + t('cp.table_date') + '" class="mc-half">' + dateStr + '</td>'
+      + '<td data-label="' + t('cp.table_model') + '" class="mc-half"><strong>' + (p.model_name || '-') + '</strong></td>'
       + '<td data-label="" class="mc-half">' + plat.icon + ' ' + plat.label + '</td>'
-      + '<td data-label="Type" class="mc-half">' + (CP_TYPE_LABELS[p.content_type] || p.content_type) + '</td>'
-      + '<td data-label="Caption" class="mc-full" style="color:var(--text2);font-size:12px">' + ((p.caption || '').substring(0,50) || '-') + '</td>'
-      + '<td data-label="Statut" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent2)') + '">' + (getCPStatus(p.status)) + '</span></td>'
+      + '<td data-label="' + t('cp.table_type') + '" class="mc-half">' + getCPTypeLabel(p.content_type) + '</td>'
+      + '<td data-label="' + t('cp.table_caption') + '" class="mc-full" style="color:var(--text2);font-size:12px">' + ((p.caption || '').substring(0,50) || '-') + '</td>'
+      + '<td data-label="' + t('cp.table_status') + '" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent2)') + '">' + (getCPStatus(p.status)) + '</span></td>'
       + '<td data-label="" class="mc-half">' + (isAdmin() ? '<button class="btn-delete-small" onclick="event.stopPropagation();deleteCPPost(' + p.id + ')">✕</button>' : '') + '</td>'
       + '</tr>';
   });
@@ -232,27 +234,27 @@ function openCPModal(postId, defaultDateTime) {
     + '<div class="modal" style="width:520px">'
     + '<div class="modal-header"><div class="modal-title">' + (post ? (isReadOnly ? t('cp.post_details_title') : t('cp.edit_post_title')) : t('cp.new_post_title')) + '</div><button class="modal-close" onclick="closeCPModal()">✕</button></div>'
     + '<div class="modal-body">'
-    + '<div class="form-group"><label class="form-label">Modèle *</label><select id="cp-model" class="form-input"' + (isReadOnly?' disabled':'') + '>' + modelOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="cp-model" class="form-input"' + (isReadOnly?' disabled':'') + '>' + modelOpts + '</select></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div class="form-group"><label class="form-label">Date *</label><input type="date" id="cp-date" class="form-input" value="' + dateVal + '"' + (isReadOnly?' disabled':'') + '></div>'
-    + '<div class="form-group"><label class="form-label">Heure *</label><input type="time" id="cp-time" class="form-input" value="' + timeVal + '"' + (isReadOnly?' disabled':'') + '></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_date') + '</label><input type="date" id="cp-date" class="form-input" value="' + dateVal + '"' + (isReadOnly?' disabled':'') + '></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_time') + '</label><input type="time" id="cp-time" class="form-input" value="' + timeVal + '"' + (isReadOnly?' disabled':'') + '></div>'
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div class="form-group"><label class="form-label">Plateforme</label><select id="cp-platform" class="form-input" onchange="updateCPTypes()"' + (isReadOnly?' disabled':'') + '><option value="instagram"' + (plat==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (plat==='tiktok'?' selected':'') + '>🎵 TikTok</option><option value="onlyfans"' + (plat==='onlyfans'?' selected':'') + '>💎 OnlyFans</option><option value="fansly"' + (plat==='fansly'?' selected':'') + '>🌸 Fansly</option><option value="fanvue"' + (plat==='fanvue'?' selected':'') + '>💚 Fanvue</option><option value="mym"' + (plat==='mym'?' selected':'') + '>🔥 MYM</option><option value="twitter"' + (plat==='twitter'?' selected':'') + '>🐦 Twitter</option></select></div>'
-    + '<div class="form-group"><label class="form-label">Type</label><select id="cp-type" class="form-input"' + (isReadOnly?' disabled':'') + '></select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="cp-platform" class="form-input" onchange="updateCPTypes()"' + (isReadOnly?' disabled':'') + '><option value="instagram"' + (plat==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (plat==='tiktok'?' selected':'') + '>🎵 TikTok</option><option value="onlyfans"' + (plat==='onlyfans'?' selected':'') + '>💎 OnlyFans</option><option value="fansly"' + (plat==='fansly'?' selected':'') + '>🌸 Fansly</option><option value="fanvue"' + (plat==='fanvue'?' selected':'') + '>💚 Fanvue</option><option value="mym"' + (plat==='mym'?' selected':'') + '>🔥 MYM</option><option value="twitter"' + (plat==='twitter'?' selected':'') + '>🐦 Twitter</option></select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_type') + '</label><select id="cp-type" class="form-input"' + (isReadOnly?' disabled':'') + '></select></div>'
     + '</div>'
-    + '<div class="form-group"><label class="form-label">Caption</label><textarea id="cp-caption" class="form-input" rows="3" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.caption || '') : '') + '</textarea></div>'
-    + '<div class="form-group"><label class="form-label">Lien média (Drive, etc.)</label><input type="url" id="cp-media" class="form-input" value="' + (post ? (post.media_link || '') : '') + '"' + (isReadOnly?' disabled':'') + '>' + (post && post.media_link ? '<a href="' + post.media_link + '" target="_blank" style="font-size:11px;color:var(--accent2)">Ouvrir le média</a>' : '') + '</div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_caption') + '</label><textarea id="cp-caption" class="form-input" rows="3" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.caption || '') : '') + '</textarea></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_media_link') + '</label><input type="url" id="cp-media" class="form-input" value="' + (post ? (post.media_link || '') : '') + '"' + (isReadOnly?' disabled':'') + '>' + (post && post.media_link ? '<a href="' + post.media_link + '" target="_blank" style="font-size:11px;color:var(--accent2)">' + t('cp.open_media') + '</a>' : '') + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div class="form-group"><label class="form-label">Statut</label><select id="cp-status" class="form-input"' + (isReadOnly?' disabled':'') + '><option value="draft"' + (post&&post.status==='draft'?' selected':'') + '>Brouillon</option><option value="scheduled"' + (post&&post.status==='scheduled'?' selected':'') + '>Planifié</option><option value="published"' + (post&&post.status==='published'?' selected':'') + '>Publié</option><option value="cancelled"' + (post&&post.status==='cancelled'?' selected':'') + '>Annulé</option></select></div>'
-    + '<div class="form-group"><label class="form-label">Assigné à</label><select id="cp-assign" class="form-input"' + (isReadOnly?' disabled':'') + '>' + teamOpts + '</select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_status') + '</label><select id="cp-status" class="form-input"' + (isReadOnly?' disabled':'') + '><option value="draft"' + (post&&post.status==='draft'?' selected':'') + '>' + t('cp.status_draft') + '</option><option value="scheduled"' + (post&&post.status==='scheduled'?' selected':'') + '>' + t('cp.status_scheduled') + '</option><option value="published"' + (post&&post.status==='published'?' selected':'') + '>' + t('cp.status_published') + '</option><option value="cancelled"' + (post&&post.status==='cancelled'?' selected':'') + '>' + t('cp.status_cancelled') + '</option></select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select id="cp-assign" class="form-input"' + (isReadOnly?' disabled':'') + '>' + teamOpts + '</select></div>'
     + '</div>'
-    + '<div class="form-group"><label class="form-label">Notes</label><textarea id="cp-notes" class="form-input" rows="2" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.notes || '') : '') + '</textarea></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_notes') + '</label><textarea id="cp-notes" class="form-input" rows="2" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.notes || '') : '') + '</textarea></div>'
     + '</div>'
     + (isReadOnly ? '' : '<div class="modal-footer">'
-      + (post ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteCPPost(' + post.id + ');closeCPModal()">Supprimer</button>' : '')
+      + (post ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteCPPost(' + post.id + ');closeCPModal()">' + t('common.delete') + '</button>' : '')
       + '<div style="flex:1"></div>'
-      + '<button class="btn btn-secondary" onclick="closeCPModal()">Annuler</button>'
+      + '<button class="btn btn-secondary" onclick="closeCPModal()">' + t('common.cancel') + '</button>'
       + '<button class="btn btn-primary" onclick="saveCPPost(' + (post ? post.id : 'null') + ')">' + (post ? t('common.save_btn') : t('common.create_btn')) + '</button>'
       + '</div>')
     + '</div></div>';
@@ -270,7 +272,7 @@ function updateCPTypes(selectedType) {
   var plat = document.getElementById('cp-platform').value;
   var types = CP_TYPES[plat] || ['post_instagram'];
   var sel = document.getElementById('cp-type');
-  sel.innerHTML = types.map(function(t) { return '<option value="' + t + '"' + (t === selectedType ? ' selected' : '') + '>' + (CP_TYPE_LABELS[t] || t) + '</option>'; }).join('');
+  sel.innerHTML = types.map(function(tp) { return '<option value="' + tp + '"' + (tp === selectedType ? ' selected' : '') + '>' + getCPTypeLabel(tp) + '</option>'; }).join('');
 }
 
 async function saveCPPost(postId) {
@@ -295,7 +297,7 @@ async function saveCPPost(postId) {
     loadContentPosts();
   } else {
     var err = await res.json().catch(function() { return {}; });
-    showToast(err.error || 'Erreur', 'error');
+    showToast(err.error || t('common.error'), 'error');
   }
 }
 

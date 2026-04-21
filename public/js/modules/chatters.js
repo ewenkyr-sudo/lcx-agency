@@ -101,7 +101,7 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  cardsDiv.innerHTML += isAdmin() ? `<button class="btn btn-primary" onclick="openModal('add-account')" style="margin-top:8px">+ Ajouter un compte</button>` : '';
+  cardsDiv.innerHTML += isAdmin() ? '<button class="btn btn-primary" onclick="openModal(\'add-account\')" style="margin-top:8px">' + t('acc.add_btn') + '</button>' : '';
 
   // Populate model select in add-account modal
   const select = document.getElementById('account-model-select');

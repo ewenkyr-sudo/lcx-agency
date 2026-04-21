@@ -22,15 +22,15 @@ async function loadDailyChart(days, btn) {
       var todayLeads = todayByPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
       var todayDms = todayByPerson.reduce(function(s, p) { return s + parseInt(p.dms); }, 0);
       todayDiv.innerHTML = '<div class="stats-grid" style="margin-bottom:12px">'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">Leads aujourd\'hui</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">DMs aujourd\'hui</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">' + t('analytics.leads_today_label') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">' + t('analytics.dms_today_label') + '</div></div>'
         + '</div>'
-        + (todayByPerson.length > 0 ? '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th></tr></thead><tbody>'
+        + (todayByPerson.length > 0 ? '<table class="table mobile-cards"><thead><tr><th>' + t('analytics.name') + '</th><th>' + t('analytics.leads') + '</th><th>' + t('analytics.dms') + '</th></tr></thead><tbody>'
         + todayByPerson.map(function(p) {
-          return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
-            + '<td data-label="Leads" class="mc-half" style="color:var(--accent)">' + p.leads + '</td>'
-            + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">Aucune activité aujourd\'hui</div>');
+          return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || t('student.unknown')) + '</strong></td>'
+            + '<td data-label="' + t('analytics.leads') + '" class="mc-half" style="color:var(--accent)">' + p.leads + '</td>'
+            + '<td data-label="' + t('analytics.dms') + '" class="mc-half" style="color:var(--blue)">' + p.dms + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">' + t('analytics.no_activity_today') + '</div>');
     }
     var byPerson = data.byPerson || [];
 
@@ -43,8 +43,8 @@ async function loadDailyChart(days, btn) {
         data: {
           labels: daily.map(function(d) { var dt = new Date(d.day); return dt.getDate() + '/' + (dt.getMonth()+1); }),
           datasets: [
-            { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
-            { label: 'DMs', data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
+            { label: t('analytics.leads'), data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
+            { label: t('analytics.dms'), data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 16 } } } }
@@ -63,8 +63,8 @@ async function loadDailyChart(days, btn) {
         data: {
           labels: hours.map(function(h) { return h + 'h'; }),
           datasets: [
-            { label: 'Leads', data: hLeads, backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 3 },
-            { label: 'DMs', data: hDms, backgroundColor: 'rgba(34,211,238,0.5)', borderRadius: 3 }
+            { label: t('analytics.leads'), data: hLeads, backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 3 },
+            { label: t('analytics.dms'), data: hDms, backgroundColor: 'rgba(34,211,238,0.5)', borderRadius: 3 }
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 12 } } } }
@@ -75,15 +75,15 @@ async function loadDailyChart(days, btn) {
     var personDiv = document.getElementById('daily-by-person');
     if (personDiv) {
       if (byPerson.length === 0) {
-        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">Aucune donnée</div>';
+        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">' + t('analytics.no_data') + '</div>';
       } else {
         var totalLeads = byPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
-        personDiv.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th><th>%</th></tr></thead><tbody>'
+        personDiv.innerHTML = '<table class="table mobile-cards"><thead><tr><th>' + t('analytics.name') + '</th><th>' + t('analytics.leads') + '</th><th>' + t('analytics.dms') + '</th><th>%</th></tr></thead><tbody>'
           + byPerson.map(function(p) {
             var pct = totalLeads > 0 ? ((parseInt(p.leads) / totalLeads) * 100).toFixed(1) : '0';
-            return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || 'Inconnu') + '</strong></td>'
-              + '<td data-label="Leads" class="mc-half">' + p.leads + '</td>'
-              + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td>'
+            return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || t('student.unknown')) + '</strong></td>'
+              + '<td data-label="' + t('analytics.leads') + '" class="mc-half">' + p.leads + '</td>'
+              + '<td data-label="' + t('analytics.dms') + '" class="mc-half" style="color:var(--blue)">' + p.dms + '</td>'
               + '<td data-label="%" class="mc-half" style="color:var(--accent)">' + pct + '%</td></tr>';
           }).join('') + '</tbody></table>';
       }
@@ -95,7 +95,7 @@ async function renderAnalytics() {
   if (!isAdmin()) return;
   var container = document.getElementById('analytics-content');
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
 
   var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }); };
   var [replyRate, ranking, hourly, frVsUs] = await Promise.all([
@@ -106,14 +106,14 @@ async function renderAnalytics() {
   container.innerHTML = ''
     // Today stats
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Aujourd\'hui</h3>'
-    + '<div id="analytics-today-stats"><div style="color:var(--text3);font-size:13px">Chargement...</div></div>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('analytics.today_label') + '</h3>'
+    + '<div id="analytics-today-stats"><div style="color:var(--text3);font-size:13px">' + t('common.loading') + '</div></div>'
     + '</div>'
 
     // Daily leads & DMs chart with period selector
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">Mon outreach — Leads & DMs</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('analytics.my_outreach') + '</h3>'
     + '<div style="display:flex;gap:4px" id="daily-period-btns">'
     + '<button class="filter-chip" onclick="loadDailyChart(1,this)">1j</button>'
     + '<button class="filter-chip" onclick="loadDailyChart(2,this)">2j</button>'
@@ -127,60 +127,60 @@ async function renderAnalytics() {
 
     // Hourly breakdown
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Activité par heure</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.hourly_chart') + '</h3>'
     + '<div style="position:relative;height:220px"><canvas id="chart-my-hourly"></canvas></div>'
     + '</div>'
 
     // By person
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Qui a ajouté les leads</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.by_person') + '</h3>'
     + '<div id="daily-by-person"></div>'
     + '</div>'
 
     // FR vs US
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Comparaison FR vs US</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('analytics.fr_vs_us') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">'
     + frVsUs.map(function(m) {
       var rate = parseInt(m.dm_sent) > 0 ? ((parseInt(m.replies) / parseInt(m.dm_sent)) * 100).toFixed(1) : '0';
       return '<div style="background:var(--bg3);padding:16px;border-radius:10px;text-align:center">'
         + '<div style="font-size:20px;font-weight:800;color:var(--accent)">' + m.market.toUpperCase() + '</div>'
         + '<div class="stats-grid" style="margin-top:12px">'
-        + '<div class="stat-card"><div class="stat-value">' + m.total + '</div><div class="stat-label">Leads</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + m.dm_sent + '</div><div class="stat-label">DMs</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">' + m.replies + '</div><div class="stat-label">Réponses</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">' + m.signed + '</div><div class="stat-label">Signés</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + rate + '%</div><div class="stat-label">Taux réponse</div></div>'
+        + '<div class="stat-card"><div class="stat-value">' + m.total + '</div><div class="stat-label">' + t('analytics.leads') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + m.dm_sent + '</div><div class="stat-label">' + t('analytics.dms') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">' + m.replies + '</div><div class="stat-label">' + t('analytics.replies') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">' + m.signed + '</div><div class="stat-label">' + t('analytics.signed') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + rate + '%</div><div class="stat-label">' + t('analytics.reply_rate') + '</div></div>'
         + '</div></div>';
     }).join('')
     + '</div></div>'
 
     // Classement assistantes
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Classement Assistantes</h3>'
-    + '<table class="table mobile-cards"><thead><tr><th>#</th><th>Nom</th><th>Leads</th><th>DMs</th><th>Réponses</th><th>Signés</th><th>ROI</th></tr></thead><tbody>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('analytics.assistant_ranking') + '</h3>'
+    + '<table class="table mobile-cards"><thead><tr><th>#</th><th>' + t('analytics.name') + '</th><th>' + t('analytics.leads') + '</th><th>' + t('analytics.dms') + '</th><th>' + t('analytics.replies') + '</th><th>' + t('analytics.signed') + '</th><th>ROI</th></tr></thead><tbody>'
     + ranking.map(function(a, i) {
       var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
       var roi = parseInt(a.total_leads) > 0 ? ((parseInt(a.signed) / parseInt(a.total_leads)) * 100).toFixed(1) : '0';
       return '<tr><td data-label="#" class="mc-half" style="font-size:18px">' + medal + '</td>'
         + '<td data-label="" class="mc-title"><strong>' + a.name + '</strong></td>'
-        + '<td data-label="Leads" class="mc-half">' + a.total_leads + '</td>'
-        + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + a.dms_sent + '</td>'
-        + '<td data-label="Réponses" class="mc-half" style="color:var(--yellow)">' + a.replies + '</td>'
-        + '<td data-label="Signés" class="mc-half" style="color:var(--green)">' + a.signed + '</td>'
+        + '<td data-label="' + t('analytics.leads') + '" class="mc-half">' + a.total_leads + '</td>'
+        + '<td data-label="' + t('analytics.dms') + '" class="mc-half" style="color:var(--blue)">' + a.dms_sent + '</td>'
+        + '<td data-label="' + t('analytics.replies') + '" class="mc-half" style="color:var(--yellow)">' + a.replies + '</td>'
+        + '<td data-label="' + t('analytics.signed') + '" class="mc-half" style="color:var(--green)">' + a.signed + '</td>'
         + '<td data-label="ROI" class="mc-half" style="color:var(--accent)">' + roi + '%</td></tr>';
-    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Aucune donnée</td></tr>'
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">' + t('analytics.no_data') + '</td></tr>'
     + '</tbody></table></div>'
 
     // Taux de réponse hebdo
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Taux de réponse par semaine</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('analytics.reply_rate_weekly') + '</h3>'
     + '<div style="position:relative;height:300px"><canvas id="chart-reply-rate"></canvas></div>'
     + '</div>'
 
     // Meilleurs créneaux
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Meilleurs créneaux horaires pour DMs</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('analytics.best_hours') + '</h3>'
     + '<div style="position:relative;height:300px"><canvas id="chart-hourly"></canvas></div>'
     + '</div>';
 
@@ -198,7 +198,7 @@ async function renderAnalytics() {
         data: {
           labels: replyRate.map(function(r) { return r.week; }),
           datasets: [{
-            label: 'Taux de réponse (%)',
+            label: t('analytics.reply_rate_pct'),
             data: replyRate.map(function(r) { return parseInt(r.dm_sent) > 0 ? ((parseInt(r.replies) / parseInt(r.dm_sent)) * 100).toFixed(1) : 0; }),
             borderColor: '#A855F7', backgroundColor: 'rgba(168,85,247,0.1)', fill: true, tension: 0.3
           }]
@@ -216,7 +216,7 @@ async function renderAnalytics() {
         type: 'bar',
         data: {
           labels: hours.map(function(h) { return h + 'h'; }),
-          datasets: [{ label: 'DMs envoyés', data: hourData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 }]
+          datasets: [{ label: t('analytics.dms_sent_chart'), data: hourData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 }]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' } }, x: { ticks: { color: '#9585B0' } } }, plugins: { legend: { labels: { color: '#EDE4FF' } } } }
       });

@@ -13,25 +13,25 @@ var CONTENT_PREF_OPTIONS = [
 async function renderModelProfile(modelId) {
   var container = document.getElementById('cockpit-profile-content');
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
   var res = await fetch('/api/model-profile/' + modelId, { credentials: 'include' });
   var p = await res.json();
   var canEdit = isAdmin();
 
   container.innerHTML = '<form id="profile-form" style="display:grid;gap:20px;max-width:700px">'
     // Section 1: Infos de base
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Informations de base</h4>'
+    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.info_base') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + pf(t('mp.online_name'), 'online_name', p.online_name) + pf(t('mp.age'), 'age', p.age, 'number')
-    + pf('Date de naissance', 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf(t('mp.zodiac'), 'zodiac_sign', p.zodiac_sign)
+    + pf(t('mp.birth_date'), 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf(t('mp.zodiac'), 'zodiac_sign', p.zodiac_sign)
     + pf(t('mp.orientation'), 'sexual_orientation', p.sexual_orientation) + pf(t('mp.ethnicity'), 'ethnicity', p.ethnicity)
     + pf(t('mp.height'), 'height', p.height) + pf(t('mp.shoe_size'), 'shoe_size', p.shoe_size)
     + pf(t('mp.bra_size'), 'bra_size', p.bra_size) + pf(t('mp.location'), 'location', p.location)
-    + pf(t('mp.hometown'), 'hometown', p.hometown) + pf('Langues parlées', 'spoken_languages', p.spoken_languages)
+    + pf(t('mp.hometown'), 'hometown', p.hometown) + pf(t('mp.languages'), 'spoken_languages', p.spoken_languages)
     + pf(t('mp.english_level'), 'english_level', p.english_level)
     + '</div></div>'
     // Section 2: Profil personnel
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Profil personnel</h4>'
+    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.personal_profile') + '</h4>'
     + pfArea(t('mp.about'), 'about', p.about)
     + pfArea(t('mp.personality'), 'personality', p.personality)
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
@@ -42,7 +42,7 @@ async function renderModelProfile(modelId) {
     + pf(t('mp.specialty'), 'specialty', p.specialty) + pf(t('mp.other_job'), 'other_job', p.other_job)
     + '</div></div>'
     // Section 3: Préférences de contenu
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Préférences de contenu</h4>'
+    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.content_prefs') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="pref-checks">'
     + CONTENT_PREF_OPTIONS.map(function(opt) {
       var checked = p.content_prefs && p.content_prefs[opt];
@@ -54,7 +54,7 @@ async function renderModelProfile(modelId) {
     + pfBool(t('mp.live_of'), 'live_of', p.live_of) + pfBool(t('mp.other_people'), 'other_people', p.other_people)
     + '</div></div>'
     // Section 4: Notes supplémentaires
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">Notes supplémentaires</h4>'
+    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.extra_notes') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + pf(t('mp.relationship'), 'relationship_status', p.relationship_status)
     + pf(t('mp.travel'), 'travel_experience', p.travel_experience)
@@ -68,7 +68,7 @@ async function renderModelProfile(modelId) {
     + pfArea(t('mp.current_situation'), 'current_situation', p.current_situation)
     + pfArea(t('mp.blocked'), 'blocked_notes', p.blocked_notes)
     + '</div>'
-    + (canEdit ? '<button type="button" class="btn btn-primary" onclick="saveModelProfile(' + modelId + ')" style="width:fit-content">Sauvegarder la fiche</button>' : '')
+    + (canEdit ? '<button type="button" class="btn btn-primary" onclick="saveModelProfile(' + modelId + ')" style="width:fit-content">' + t('mp.save_profile') + '</button>' : '')
     + '</form>';
 }
 
@@ -107,7 +107,7 @@ async function saveModelProfile(modelId) {
     }
   }
   if (missing.length > 0) {
-    showToast('Il reste ' + missing.length + ' champ(s) obligatoire(s) à remplir', 'error');
+    showToast(t('mp.fields_missing').replace('{n}', missing.length), 'error');
     // Scroll to first empty field
     var firstEmpty = document.getElementById('pf-' + missing[0]);
     if (firstEmpty) firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -135,13 +135,17 @@ async function saveModelProfile(modelId) {
   };
   var res = await fetch('/api/model-profile/' + modelId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   if (res.ok) showToast(t('mp.profile_saved'), 'success');
-  else showToast('Erreur', 'error');
+  else showToast(t('common.error'), 'error');
 }
 
 // ========== PLANNING MODÈLE ==========
 
 var msDate = new Date();
 var msItems = [];
+
+function getMSDayNames() {
+  return [t('ms.day_mon'), t('ms.day_tue'), t('ms.day_wed'), t('ms.day_thu'), t('ms.day_fri'), t('ms.day_sat'), t('ms.day_sun')];
+}
 
 async function renderModelSchedule(modelId) {
   var container = document.getElementById('cockpit-schedule-content');
@@ -153,17 +157,17 @@ async function renderModelSchedule(modelId) {
   msItems = await res.json();
 
   var days = []; for (var i = 0; i < 7; i++) { var d = new Date(mon); d.setDate(d.getDate()+i); days.push(d); }
-  var dayNames = ['LUNDI','MARDI','MERCREDI','JEUDI','VENDREDI','SAMEDI','DIMANCHE'];
+  var dayNames = getMSDayNames();
   var hours = ['10:00','12:00','14:00','17:00','18:00','18:30','19:00','20:00','21:30','22:00','23:00','23:30','00:00'];
   var today = new Date(); today.setHours(0,0,0,0);
   var catColors = { content: '#22D3EE', live: '#dc2626', call: '#FBBF24', deadline: '#F472B6', task: '#A855F7' };
 
   var html = '<div class="cp-toolbar">'
     + '<button class="cp-nav-btn" onclick="msNavigate(-1,' + modelId + ')">←</button>'
-    + '<button class="cp-nav-btn" onclick="msToday(' + modelId + ')">Aujourd\'hui</button>'
+    + '<button class="cp-nav-btn" onclick="msToday(' + modelId + ')">' + t('common.today') + '</button>'
     + '<button class="cp-nav-btn" onclick="msNavigate(1,' + modelId + ')">→</button>'
-    + '<div class="cp-toolbar-title">Semaine du ' + mon.getDate() + '/' + (mon.getMonth()+1) + ' au ' + sun.getDate() + '/' + (sun.getMonth()+1) + '</div>'
-    + (isAdmin() ? '<button class="btn btn-primary" style="font-size:12px;margin-left:auto" onclick="openMSModal(' + modelId + ')">+ Ajouter</button>' : '')
+    + '<div class="cp-toolbar-title">' + t('cp.week_of_label') + ' ' + mon.getDate() + '/' + (mon.getMonth()+1) + ' au ' + sun.getDate() + '/' + (sun.getMonth()+1) + '</div>'
+    + (isAdmin() ? '<button class="btn btn-primary" style="font-size:12px;margin-left:auto" onclick="openMSModal(' + modelId + ')">' + t('ms.add_btn') + '</button>' : '')
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:60px repeat(7,1fr);border:1px solid var(--border);border-radius:12px;overflow:hidden">';
@@ -194,11 +198,11 @@ async function renderModelSchedule(modelId) {
   var agencyTasks = msItems.filter(function(it) { return it.category === 'agency_task'; });
   if (modelTasks.length > 0 || agencyTasks.length > 0) {
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">';
-    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">TÂCHES À EFFECTUER PAR LA MODÈLE</strong>';
-    modelTasks.forEach(function(t) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + t.title + '</div>'; });
+    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.model_tasks') + '</strong>';
+    modelTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + tk.title + '</div>'; });
     html += '</div>';
-    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">TÂCHES À EFFECTUER PAR L\'AGENCE</strong>';
-    agencyTasks.forEach(function(t) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + t.title + '</div>'; });
+    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.agency_tasks') + '</strong>';
+    agencyTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + tk.title + '</div>'; });
     html += '</div></div>';
   }
 
@@ -208,31 +212,35 @@ async function renderModelSchedule(modelId) {
 function msNavigate(dir, modelId) { msDate.setDate(msDate.getDate() + 7*dir); renderModelSchedule(modelId); }
 function msToday(modelId) { msDate = new Date(); renderModelSchedule(modelId); }
 
+function getMSCategories() {
+  return [
+    { val: 'content', label: t('ms.cat_content'), col: '#22D3EE' },
+    { val: 'live', label: t('ms.cat_live'), col: '#dc2626' },
+    { val: 'call', label: t('ms.cat_call'), col: '#FBBF24' },
+    { val: 'deadline', label: t('ms.cat_deadline'), col: '#F472B6' },
+    { val: 'task', label: t('ms.cat_task'), col: '#A855F7' },
+    { val: 'model_task', label: t('ms.cat_model_task'), col: '#10B981' },
+    { val: 'agency_task', label: t('ms.cat_agency_task'), col: '#3B82F6' }
+  ];
+}
+
 function openMSModal(modelId, dayDate, timeSlot, editId) {
   var item = editId ? msItems.find(function(it) { return it.id === editId; }) : null;
-  var cats = [
-    { val: 'content', label: '📸 Contenu à produire', col: '#22D3EE' },
-    { val: 'live', label: '🔴 Live', col: '#dc2626' },
-    { val: 'call', label: '📞 Call', col: '#FBBF24' },
-    { val: 'deadline', label: '⏰ Deadline', col: '#F472B6' },
-    { val: 'task', label: '✅ Tâche', col: '#A855F7' },
-    { val: 'model_task', label: '👤 Tâche modèle (en bas)', col: '#10B981' },
-    { val: 'agency_task', label: '🏢 Tâche agence (en bas)', col: '#3B82F6' }
-  ];
+  var cats = getMSCategories();
   var html = '<div class="modal-overlay show" id="ms-modal" onclick="if(event.target===this)document.getElementById(\'ms-modal\').remove()">'
     + '<div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title">' + (item ? t('ms.edit_title') : t('ms.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'ms-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
-    + '<div class="form-group"><label class="form-label">Titre *</label><input class="form-input" id="ms-title" value="' + (item ? item.title : '') + '"></div>'
+    + '<div class="form-group"><label class="form-label">' + t('ms.form_title') + '</label><input class="form-input" id="ms-title" value="' + (item ? item.title : '') + '"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + '<div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="ms-date" value="' + (item ? item.day_date.substring(0,10) : dayDate || fmtDateISO(new Date())) + '"></div>'
-    + '<div class="form-group"><label class="form-label">Heure</label><input type="time" class="form-input" id="ms-time" value="' + (item ? (item.time_slot||'') : timeSlot || '') + '"></div>'
+    + '<div class="form-group"><label class="form-label">' + t('common.date') + '</label><input type="date" class="form-input" id="ms-date" value="' + (item ? item.day_date.substring(0,10) : dayDate || fmtDateISO(new Date())) + '"></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_time') + '</label><input type="time" class="form-input" id="ms-time" value="' + (item ? (item.time_slot||'') : timeSlot || '') + '"></div>'
     + '</div>'
-    + '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-input" id="ms-cat">' + cats.map(function(c) { return '<option value="' + c.val + '"' + (item && item.category === c.val ? ' selected' : '') + '>' + c.label + '</option>'; }).join('') + '</select></div>'
-    + '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="ms-notes" rows="2">' + (item ? (item.notes||'') : '') + '</textarea></div>'
+    + '<div class="form-group"><label class="form-label">' + t('student.category_label') + '</label><select class="form-input" id="ms-cat">' + cats.map(function(c) { return '<option value="' + c.val + '"' + (item && item.category === c.val ? ' selected' : '') + '>' + c.label + '</option>'; }).join('') + '</select></div>'
+    + '<div class="form-group"><label class="form-label">' + t('common.notes') + '</label><textarea class="form-input" id="ms-notes" rows="2">' + (item ? (item.notes||'') : '') + '</textarea></div>'
     + '</div><div class="modal-footer">'
-    + (item ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteMSItem(' + item.id + ',' + modelId + ')">Supprimer</button>' : '')
-    + '<div style="flex:1"></div><button class="btn btn-secondary" onclick="document.getElementById(\'ms-modal\').remove()">Annuler</button>'
-    + '<button class="btn btn-primary" onclick="saveMSItem(' + modelId + ',' + (editId||'null') + ')">' + (item ? 'Enregistrer' : 'Ajouter') + '</button>'
+    + (item ? '<button class="btn" style="background:var(--red-bg);color:var(--red);border:none;cursor:pointer" onclick="deleteMSItem(' + item.id + ',' + modelId + ')">' + t('common.delete') + '</button>' : '')
+    + '<div style="flex:1"></div><button class="btn btn-secondary" onclick="document.getElementById(\'ms-modal\').remove()">' + t('common.cancel') + '</button>'
+    + '<button class="btn btn-primary" onclick="saveMSItem(' + modelId + ',' + (editId||'null') + ')">' + (item ? t('common.save_btn') : t('common.add')) + '</button>'
     + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
@@ -245,7 +253,7 @@ async function saveMSItem(modelId, editId) {
   var method = editId ? 'PUT' : 'POST';
   await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
   document.getElementById('ms-modal').remove();
-  showToast(editId ? 'Modifié' : t('ms.added_toast'), 'success');
+  showToast(editId ? t('ms.modified_toast') : t('ms.added_toast'), 'success');
   renderModelSchedule(modelId);
 }
 
@@ -264,14 +272,14 @@ async function renderModelTracklinks(modelId) {
   var res = await fetch('/api/model-tracklinks/' + modelId, { credentials: 'include' });
   var links = await res.json();
 
-  var html = isAdmin() ? '<div style="margin-bottom:12px"><button class="btn btn-primary" style="font-size:12px" onclick="addTracklink(' + modelId + ')">+ Ajouter un lien</button></div>' : '';
-  html += '<table class="table mobile-cards"><thead><tr><th>Réseau social</th><th>Account</th><th>Link</th>' + (isAdmin()?'<th></th>':'') + '</tr></thead><tbody>';
+  var html = isAdmin() ? '<div style="margin-bottom:12px"><button class="btn btn-primary" style="font-size:12px" onclick="addTracklink(' + modelId + ')">' + t('tl.add_link') + '</button></div>' : '';
+  html += '<table class="table mobile-cards"><thead><tr><th>' + t('tl.social_prompt') + '</th><th>Account</th><th>Link</th>' + (isAdmin()?'<th></th>':'') + '</tr></thead><tbody>';
   if (links.length === 0) {
-    html += '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">Aucun tracklink</td></tr>';
+    html += '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">' + t('tl.no_tracklinks') + '</td></tr>';
   } else {
     links.forEach(function(l) {
       html += '<tr>'
-        + '<td data-label="Réseau" class="mc-half"><strong>' + l.platform + '</strong></td>'
+        + '<td data-label="' + t('tl.social_prompt') + '" class="mc-half"><strong>' + l.platform + '</strong></td>'
         + '<td data-label="Account" class="mc-half">' + (l.account_name || '-') + '</td>'
         + '<td data-label="Link" class="mc-full">' + (l.link ? '<a href="' + l.link + '" target="_blank" style="color:var(--accent2);word-break:break-all">' + l.link + '</a>' : '-') + '</td>'
         + (isAdmin() ? '<td data-label="" class="mc-half"><button class="btn-delete-small" onclick="deleteTracklink(' + l.id + ',' + modelId + ')">✕</button></td>' : '')
@@ -283,10 +291,10 @@ async function renderModelTracklinks(modelId) {
 }
 
 async function addTracklink(modelId) {
-  var platform = await showPromptModal('Réseau social', 'Ex: Instagram, TikTok, OnlyFans...');
+  var platform = await showPromptModal(t('tl.social_prompt'), t('tl.social_placeholder'));
   if (!platform) return;
-  var account = await showPromptModal('Nom du compte', 'Ex: @chloe.agts');
-  var link = await showPromptModal('Lien', 'https://...');
+  var account = await showPromptModal(t('tl.account_prompt'), t('tl.account_placeholder'));
+  var link = await showPromptModal(t('tl.link_prompt'), t('tl.link_placeholder'));
   await fetch('/api/model-tracklinks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ model_id: modelId, platform: platform, account_name: account, link: link }) });
   showToast(t('tl.added_toast'), 'success');
   renderModelTracklinks(modelId);
