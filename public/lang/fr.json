@@ -688,5 +688,16 @@
   "service.mym": "MYM Management",
   "service.multiplatform": "Multi-plateforme",
   "ob.platforms_title": "Plateformes adultes",
-  "ob.platforms_desc": "Sur quelles plateformes la créatrice est-elle active ?"
+  "ob.platforms_desc": "Sur quelles plateformes la créatrice est-elle active ?",
+  "fans.title": "Fans",
+  "fans.totalSpent": "Total dépensé",
+  "fans.addFan": "+ Ajouter un fan",
+  "fans.importCSV": "Import CSV",
+  "fans.noFans": "Aucun fan trouvé",
+  "fans.whale": "Whale",
+  "fans.vip": "VIP",
+  "fans.new": "Nouveau",
+  "fans.silent": "Silencieux",
+  "fans.atRisk": "À risque",
+  "fans.topFan": "Top fan"
 }

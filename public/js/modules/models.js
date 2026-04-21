@@ -4,13 +4,14 @@
 function switchCockpitTab(tab, btn, modelId) {
   document.querySelectorAll('#cockpit-content .tab').forEach(function(t2) { t2.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  ['dashboard','profile','schedule','tracklinks'].forEach(function(t) {
+  ['dashboard','profile','schedule','tracklinks','fans'].forEach(function(t) {
     var el = document.getElementById('cockpit-' + t + '-content');
     if (el) el.style.display = t === tab ? '' : 'none';
   });
   if (tab === 'profile') renderModelProfile(modelId);
   else if (tab === 'schedule') renderModelSchedule(modelId);
   else if (tab === 'tracklinks') renderModelTracklinks(modelId);
+  else if (tab === 'fans') renderFanCRM(modelId);
 }
 
 function switchModelsTab(tab, btn) {
@@ -18,7 +19,10 @@ function switchModelsTab(tab, btn) {
   if (btn) btn.classList.add('active');
   document.getElementById('models-content').style.display = tab === 'models' ? '' : 'none';
   document.getElementById('content-planner-content').style.display = tab === 'planner' ? '' : 'none';
+  var fansEl = document.getElementById('fans-global-content');
+  if (fansEl) fansEl.style.display = tab === 'fans' ? '' : 'none';
   if (tab === 'planner') renderContentPlanner();
+  if (tab === 'fans') renderFanCRM();
 }
 
 function renderModels() {
@@ -142,6 +146,7 @@ async function renderModelCockpit(modelId) {
         <button class="tab" onclick="switchCockpitTab('profile',this,${modelId})">Fiche perso</button>
         <button class="tab" onclick="switchCockpitTab('schedule',this,${modelId})">Planning</button>
         <button class="tab" onclick="switchCockpitTab('tracklinks',this,${modelId})">Tracklinks</button>
+        <button class="tab" onclick="switchCockpitTab('fans',this,${modelId})">Fans</button>
       </div>
 
       <div id="cockpit-dashboard-content">
@@ -263,7 +268,8 @@ async function renderModelCockpit(modelId) {
     document.getElementById('cockpit-dashboard-content').insertAdjacentHTML('afterend',
       '<div id="cockpit-profile-content" style="display:none"></div>'
       + '<div id="cockpit-schedule-content" style="display:none"></div>'
-      + '<div id="cockpit-tracklinks-content" style="display:none"></div>');
+      + '<div id="cockpit-tracklinks-content" style="display:none"></div>'
+      + '<div id="cockpit-fans-content" style="display:none"></div>');
 
     // Render charts
     renderCockpitCharts(d);

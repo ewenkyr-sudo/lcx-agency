@@ -688,5 +688,16 @@
   "service.mym": "MYM Management",
   "service.multiplatform": "Multi-platform",
   "ob.platforms_title": "Adult Platforms",
-  "ob.platforms_desc": "Which platforms is the creator active on?"
+  "ob.platforms_desc": "Which platforms is the creator active on?",
+  "fans.title": "Fans",
+  "fans.totalSpent": "Total spent",
+  "fans.addFan": "+ Add fan",
+  "fans.importCSV": "Import CSV",
+  "fans.noFans": "No fans found",
+  "fans.whale": "Whale",
+  "fans.vip": "VIP",
+  "fans.new": "New",
+  "fans.silent": "Silent",
+  "fans.atRisk": "At risk",
+  "fans.topFan": "Top fan"
 }
