@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const pool = require('../db/pool');
 const { sendWhatsApp, getNotifSetting, isNotifEnabled } = require('./whatsapp');
+const { notifyAdmins } = require('./notifications');
 
 
 async function sendDailyReport() {
@@ -202,6 +203,7 @@ async function checkInactiveChatters() {
       if (recent.length === 0) {
         sendWhatsApp(`⚠️ CHATTER INACTIF\n\n👤 ${chatter.display_name}\n⏱️ Pointé depuis ${Math.round(chatter.hours_in)}h sans activité\n\nVérifie que tout va bien.`);
         await pool.query("INSERT INTO activity_log (user_name, action, target_type, details) VALUES ($1, 'inactive-chatter-alert', 'system', $1)", [chatter.display_name]);
+        try { await notifyAdmins(null, 'alert', '⚠️ Chatter inactif', chatter.display_name + ' pointé depuis ' + Math.round(chatter.hours_in) + 'h', '/chatters'); } catch(e2) {}
       }
     }
   } catch(e) { console.log('Inactive chatter check error:', e.message); }

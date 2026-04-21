@@ -248,6 +248,7 @@ const pool = require('./db/pool');
 // DB init, seed, migration → db/init.js
 const { initDB, seedData, migrateToMultiAgency } = require('./db/init');
 const { sensitiveRL, passwordRL, loginLimiter, forgotPasswordRL } = require('./middlewares/rateLimit');
+const { createNotification, notifyAdmins, setBroadcast: setNotifBroadcast } = require('./services/notifications');
 
 const { authMiddleware, adminOnly, platformAdminOnly } = require('./middlewares/auth');
 const { sendWhatsApp, getNotifSetting, isNotifEnabled } = require('./services/whatsapp');
@@ -580,6 +581,7 @@ app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) 
       `);
     }
 
+    try { await notifyAdmins(req.user.agency_id, 'team_added', 'Nouveau membre', display_name + ' a rejoint en tant que ' + role, '/settings', null, req.user.id); } catch(e2) {}
     res.json({ id: newId, username, display_name, role });
   } catch (e) {
     res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
@@ -770,6 +772,7 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
     'INSERT INTO tasks (title, description, created_by, assigned_to_id, priority, deadline, notes, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
     [title, description, req.user.id, assignTo, priority || 'normal', deadline, notes, req.user.agency_id]);
   broadcast('task-new', rows[0]);
+  if (assignTo && assignTo !== req.user.id) { try { await createNotification(assignTo, req.user.agency_id, 'task_assigned', 'Nouvelle tâche', title, '/tasks', { task_id: rows[0].id }); } catch(e) {} }
   res.json(rows[0]);
 });
 
@@ -1366,6 +1369,7 @@ app.post('/api/call-requests', authMiddleware, async (req, res) => {
   broadcast('call-request-new', rows[0]);
   await logActivity(req.user.id, req.user.display_name, 'call-request', 'call', rows[0].id, null);
   sendWhatsApp('📞 Demande de call de ' + req.user.display_name);
+  try { await notifyAdmins(req.user.agency_id, 'call_request', 'Nouvelle demande de call', (req.user.display_name || 'Un élève') + ' demande un call', '/coaching', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
@@ -2381,6 +2385,7 @@ app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
 app.post('/api/payments', authMiddleware, adminOnly, async (req, res) => {
   const { model_id, month, amount, status, notes } = req.body;
   const { rows } = await pool.query('INSERT INTO payments (model_id, month, amount, status, notes, agency_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [model_id, month, amount || 0, status || 'pending', notes, req.user.agency_id]);
+  try { await notifyAdmins(req.user.agency_id, 'payment_added', 'Nouveau paiement', '$' + (amount || 0) + ' — ' + month, '/finance', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
@@ -2733,6 +2738,7 @@ app.post('/api/leave-requests', authMiddleware, async (req, res) => {
   sendWhatsApp('🏖️ Demande de congé de ' + req.user.display_name + ' du ' + start_date + ' au ' + end_date);
   await logActivity(req.user.id, req.user.display_name, 'leave-request', 'leave', rows[0].id, start_date + ' → ' + end_date);
   broadcast('leave-request-new', rows[0]);
+  try { await notifyAdmins(req.user.agency_id, 'leave_request', 'Demande de congé', (req.user.display_name || 'Un membre') + ' demande un congé du ' + start_date + ' au ' + end_date, '/planning', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
@@ -3291,6 +3297,13 @@ async function start() {
 
   // Pass broadcast to scraping module
   setBroadcast(broadcast);
+  setNotifBroadcast(function(event, data, targetUserId) {
+    // Send to specific user only
+    const message = JSON.stringify({ event, data });
+    wss.clients.forEach(function(client) {
+      if (client.readyState === 1 && client.userId === targetUserId) client.send(message);
+    });
+  });
 
   // Schedule WhatsApp reports & alerts via node-cron
   await setupCronJobs();
