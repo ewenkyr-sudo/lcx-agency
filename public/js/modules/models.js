@@ -118,6 +118,7 @@ async function renderModelCockpit(modelId) {
     if (!res.ok) throw new Error('API error');
     const d = await res.json();
     const model = d.model;
+    if (typeof model.platforms === 'string') { try { model.platforms = JSON.parse(model.platforms); } catch(e2) { model.platforms = []; } }
     const modelIdx = allModels.findIndex(m => m.id === modelId);
     const objPct = d.objective.target > 0 ? Math.min(100, (d.revenueMonth / d.objective.target * 100)).toFixed(0) : 0;
     const objColor = objPct >= 100 ? 'var(--green)' : objPct >= 60 ? 'var(--yellow)' : 'var(--red)';
