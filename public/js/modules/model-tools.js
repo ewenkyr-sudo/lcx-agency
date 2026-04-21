@@ -73,18 +73,47 @@ async function renderModelProfile(modelId) {
 }
 
 function pf(label, name, value, type) {
-  return '<div class="form-group" style="margin-bottom:0"><label class="form-label" style="font-size:10px">' + label + '</label><input class="form-input" id="pf-' + name + '" type="' + (type||'text') + '" value="' + (value||'').toString().replace(/"/g,'&quot;') + '" style="padding:7px 10px;font-size:12px"></div>';
+  return '<div class="form-group" style="margin-bottom:0"><label class="form-label" style="font-size:10px">' + label + ' <span style="color:var(--red)">*</span></label><input class="form-input" id="pf-' + name + '" type="' + (type||'text') + '" value="' + (value||'').toString().replace(/"/g,'&quot;') + '" required style="padding:7px 10px;font-size:12px"></div>';
 }
 function pfArea(label, name, value) {
-  return '<div class="form-group"><label class="form-label" style="font-size:10px">' + label + '</label><textarea class="form-input" id="pf-' + name + '" rows="2" style="font-size:12px;resize:vertical">' + (value||'') + '</textarea></div>';
+  return '<div class="form-group"><label class="form-label" style="font-size:10px">' + label + ' <span style="color:var(--red)">*</span></label><textarea class="form-input" id="pf-' + name + '" rows="2" required style="font-size:12px;resize:vertical">' + (value||'') + '</textarea></div>';
 }
 function pfBool(label, name, value) {
   return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="pf-' + name + '"' + (value ? ' checked' : '') + ' style="width:16px;height:16px"><span>' + label + '</span></label>';
 }
 
 async function saveModelProfile(modelId) {
-  var g = function(id) { var el = document.getElementById('pf-' + id); return el ? el.value : ''; };
+  var g = function(id) { var el = document.getElementById('pf-' + id); return el ? el.value.trim() : ''; };
   var gc = function(id) { var el = document.getElementById('pf-' + id); return el ? el.checked : false; };
+
+  // Validate all required fields
+  var requiredFields = [
+    'online_name', 'age', 'birth_date', 'zodiac_sign', 'sexual_orientation', 'ethnicity',
+    'height', 'shoe_size', 'bra_size', 'location', 'hometown', 'spoken_languages', 'english_level',
+    'about', 'personality', 'hobbies', 'fav_color', 'fav_food', 'fav_music', 'fav_singer',
+    'sports', 'pets', 'university', 'specialty', 'other_job',
+    'relationship_status', 'travel_experience', 'sexiest_body_part', 'physical_appearance',
+    'work_availability', 'of_experience', 'current_revenue', 'equipment',
+    'current_situation', 'blocked_notes'
+  ];
+  var missing = [];
+  for (var i = 0; i < requiredFields.length; i++) {
+    var el = document.getElementById('pf-' + requiredFields[i]);
+    if (el && !el.value.trim()) {
+      el.style.borderColor = 'var(--red)';
+      missing.push(requiredFields[i]);
+    } else if (el) {
+      el.style.borderColor = '';
+    }
+  }
+  if (missing.length > 0) {
+    showToast('Il reste ' + missing.length + ' champ(s) obligatoire(s) à remplir', 'error');
+    // Scroll to first empty field
+    var firstEmpty = document.getElementById('pf-' + missing[0]);
+    if (firstEmpty) firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   var prefs = {};
   document.querySelectorAll('#pref-checks input[data-pref]').forEach(function(cb) { prefs[cb.dataset.pref] = cb.checked; });
 
