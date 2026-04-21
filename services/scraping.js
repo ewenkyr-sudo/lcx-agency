@@ -220,6 +220,6 @@ async function updateAgencyAccounts() {
   } catch(e) { console.error('[AGENCY SCRAPE] Error:', e.message); }
 }
 
-module.exports = { updateAllFollowers, updateProfilePictures, updateAgencyAccounts, setBroadcast };
+module.exports = { updateAllFollowers, updateProfilePictures, updateAgencyAccounts, setBroadcast, scrapeInstagramFollowers, scrapeTikTokFollowers, scrapeOgImage, downloadImage };
 
 

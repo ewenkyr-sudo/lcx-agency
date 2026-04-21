@@ -3385,9 +3385,37 @@ app.get('/api/agency-accounts', authMiddleware, async (req, res) => {
 app.post('/api/agency-accounts', authMiddleware, adminOnly, async (req, res) => {
   var { handle, platform, category, assigned_to_id, purpose } = req.body;
   if (!handle) return res.status(400).json({ error: 'Handle requis' });
+  var cleanHandle = handle.trim().replace(/^@/, '');
   var { rows } = await pool.query(
     'INSERT INTO agency_accounts (agency_id, handle, platform, category, assigned_to_id, purpose) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-    [req.user.agency_id, handle.trim(), platform || 'instagram', category || 'agency', assigned_to_id || null, purpose || null]);
+    [req.user.agency_id, '@' + cleanHandle, platform || 'instagram', category || 'agency', assigned_to_id || null, purpose || null]);
+  // Scrape followers + avatar immediately in background
+  (async function() {
+    try {
+      var acc = rows[0];
+      var { scrapeInstagramFollowers, scrapeTikTokFollowers, scrapeOgImage, downloadImage } = require('./services/scraping');
+      var newCount = null;
+      if ((platform || 'instagram') === 'instagram') newCount = await scrapeInstagramFollowers(cleanHandle);
+      else if (platform === 'tiktok') newCount = await scrapeTikTokFollowers(cleanHandle);
+      if (newCount !== null) await pool.query('UPDATE agency_accounts SET current_followers = $1, last_scraped = NOW() WHERE id = $2', [newCount, acc.id]);
+      // Avatar
+      var https = require('https');
+      var url = (platform || 'instagram') === 'instagram' ? 'https://www.instagram.com/' + cleanHandle + '/' : 'https://www.tiktok.com/@' + cleanHandle;
+      var htmlRes = await new Promise(function(resolve, reject) {
+        var req2 = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, function(res2) {
+          if (res2.statusCode >= 300 && res2.statusCode < 400 && res2.headers.location) { resolve(''); return; }
+          var data = ''; res2.on('data', function(c) { data += c; }); res2.on('end', function() { resolve(data); });
+        }); req2.on('error', function() { resolve(''); }); req2.setTimeout(10000, function() { req2.destroy(); resolve(''); });
+      });
+      if (htmlRes) {
+        var ogMatch = htmlRes.match(/property="og:image"\s+content="([^"]+)"/) || htmlRes.match(/content="([^"]+)"\s+property="og:image"/);
+        if (ogMatch) {
+          var imgData = await downloadImage(ogMatch[1]).catch(function() { return null; });
+          if (imgData) await pool.query('UPDATE agency_accounts SET profile_picture_data = $1, profile_picture_url = $2, profile_picture_updated_at = NOW() WHERE id = $3', [imgData, ogMatch[1], acc.id]);
+        }
+      }
+    } catch(e) { console.log('[AGENCY ACCOUNT] Scrape on create failed:', e.message); }
+  })();
   res.json(rows[0]);
 });
 
