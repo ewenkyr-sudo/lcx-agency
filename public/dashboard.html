@@ -224,7 +224,7 @@
         <div class="page-subtitle" id="planning-subtitle" data-i18n="section.planning_sub">Horaires de ton équipe</div>
       </div>
       <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" style="font-size:12px;background:var(--yellow-bg);color:var(--yellow);border:none;cursor:pointer;border-radius:8px" onclick="showLeaveRequestForm()">" + t('planning.leave_request_title') + "</button>
+        <button class="btn" style="font-size:12px;background:var(--yellow-bg);color:var(--yellow);border:none;cursor:pointer;border-radius:8px" onclick="showLeaveRequestForm()" data-i18n="planning.leave_request_title">Demande de congé</button>
       </div>
     </div>
     <div id="plan-leave-form-wrap"></div>
@@ -383,8 +383,8 @@
       </div>
       <div class="header-actions">
         <button class="btn btn-primary" onclick="showAddLeadForm()" data-i18n="common.new_lead">+ Nouveau Lead</button>
-        <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOutreachOptionsManager()">Mes options</button>
-        <button class="btn" id="btn-import-csv" style="background:var(--bg3);color:var(--text2);display:none" onclick="importCSV()">Importer CSV</button>
+        <button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOutreachOptionsManager()" data-i18n="outreach.my_options">Mes options</button>
+        <button class="btn" id="btn-import-csv" style="background:var(--bg3);color:var(--text2);display:none" onclick="importCSV()" data-i18n="outreach.import_csv">Importer CSV</button>
       </div>
     </div>
 
@@ -394,9 +394,9 @@
     <!-- Admin: stats par assistante -->
     <div id="outreach-admin-stats" style="margin-bottom:24px;display:none">
       <div class="panel" style="padding:20px">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Stats par assistante</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="outreach.stats_by_assistant">Stats par assistante</h3>
         <table class="table mobile-cards" id="outreach-agents-table">
-          <thead><tr><th>Assistante</th><th>Leads auj.</th><th>DMs auj.</th><th>DMs total</th><th>Cold</th><th>Warm</th><th>Booked</th><th>Signés</th><th>Total</th></tr></thead>
+          <thead><tr><th data-i18n="dash.assistant">Assistante</th><th data-i18n="outreach.table_leads">Leads auj.</th><th data-i18n="outreach.table_dms">DMs auj.</th><th data-i18n="outreach.table_dms_total">DMs total</th><th data-i18n="outreach.table_cold">Cold</th><th data-i18n="outreach.table_warm">Warm</th><th data-i18n="outreach.table_booked">Booked</th><th data-i18n="outreach.table_signed">Signés</th><th data-i18n="common.total">Total</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -404,53 +404,53 @@
 
     <!-- Formulaire ajout lead (caché par défaut) -->
     <div id="add-lead-form" class="panel" style="padding:20px;margin-bottom:24px;display:none">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">Ajouter un lead</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="student.add_lead_title">Ajouter un lead</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px" id="add-lead-fields">
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Lien Instagram *</label>
-          <input type="text" id="lead-ig-link" class="form-input" placeholder="Coller le lien ici..." oninput="autoFillUsername(this.value)" onpaste="setTimeout(function(){autoFillUsername(document.getElementById('lead-ig-link').value)},100)" onchange="autoFillUsername(this.value)">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="outreach.ig_link_label">Lien Instagram *</label>
+          <input type="text" id="lead-ig-link" class="form-input" placeholder="Coller le lien ici..." data-i18n-placeholder="so.paste_link" oninput="autoFillUsername(this.value)" onpaste="setTimeout(function(){autoFillUsername(document.getElementById('lead-ig-link').value)},100)" onchange="autoFillUsername(this.value)">
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Username (auto)</label>
-          <input type="text" id="lead-username" class="form-input" placeholder="Se remplit automatiquement" style="opacity:0.7">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="so.username_auto">Username (auto)</label>
+          <input type="text" id="lead-username" class="form-input" placeholder="Se remplit automatiquement" data-i18n-placeholder="so.auto_fill" style="opacity:0.7">
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Type</label>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="common.type">Type</label>
           <div id="lead-type-wrap"></div>
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Script</label>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="outreach.script">Script</label>
           <div id="lead-script-wrap"></div>
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Compte IG</label>
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="outreach.table_ig">Compte IG</label>
           <div id="lead-account-wrap"></div>
         </div>
         <div>
-          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Notes</label>
-          <input type="text" id="lead-notes" class="form-input" placeholder="Notes optionnelles...">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px" data-i18n="common.notes">Notes</label>
+          <input type="text" id="lead-notes" class="form-input" placeholder="Notes optionnelles..." data-i18n-placeholder="student.notes_placeholder">
         </div>
       </div>
       <div style="margin-top:16px;display:flex;gap:10px">
-        <button class="btn btn-primary" onclick="addLead()">Ajouter le lead</button>
-        <button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('add-lead-form').style.display='none'">Annuler</button>
+        <button class="btn btn-primary" onclick="addLead()" data-i18n="toast.lead_added">Ajouter le lead</button>
+        <button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('add-lead-form').style.display='none'" data-i18n="common.cancel">Annuler</button>
       </div>
     </div>
 
     <!-- Filtres par statut -->
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="lead-filters">
-      <button class="btn lead-filter active" data-filter="all" onclick="filterLeads('all', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer">Tous</button>
-      <button class="btn lead-filter" data-filter="to-send" onclick="filterLeads('to-send', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">To Send</button>
-      <button class="btn lead-filter" data-filter="sent" onclick="filterLeads('sent', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Sent</button>
-      <button class="btn lead-filter" data-filter="talking-cold" onclick="filterLeads('talking-cold', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Cold</button>
-      <button class="btn lead-filter" data-filter="talking-warm" onclick="filterLeads('talking-warm', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Talking Warm</button>
-      <button class="btn lead-filter" data-filter="call-booked" onclick="filterLeads('call-booked', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Call Booked</button>
-      <button class="btn lead-filter" data-filter="signed" onclick="filterLeads('signed', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Signé</button>
+      <button class="btn lead-filter active" data-filter="all" onclick="filterLeads('all', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer" data-i18n="common.all">Tous</button>
+      <button class="btn lead-filter" data-filter="to-send" onclick="filterLeads('to-send', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.to_send">To Send</button>
+      <button class="btn lead-filter" data-filter="sent" onclick="filterLeads('sent', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.sent">Sent</button>
+      <button class="btn lead-filter" data-filter="talking-cold" onclick="filterLeads('talking-cold', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.talking_cold">Talking Cold</button>
+      <button class="btn lead-filter" data-filter="talking-warm" onclick="filterLeads('talking-warm', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.talking_warm">Talking Warm</button>
+      <button class="btn lead-filter" data-filter="call-booked" onclick="filterLeads('call-booked', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.call_booked">Call Booked</button>
+      <button class="btn lead-filter" data-filter="signed" onclick="filterLeads('signed', this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="lead.signed">Signé</button>
     </div>
 
     <!-- Recherche -->
     <div style="margin-bottom:16px">
-      <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." oninput="debouncedRenderLeads()" style="max-width:350px">
+      <input type="text" id="lead-search" class="form-input" placeholder="Rechercher un username..." data-i18n-placeholder="outreach.search_placeholder" oninput="debouncedRenderLeads()" style="max-width:350px">
     </div>
 
     <!-- Barre actions groupées (visible quand leads sélectionnés) -->
@@ -463,13 +463,13 @@
           <th style="width:30px"><input type="checkbox" id="leads-master-cb" onclick="toggleAllLeads(this.checked)" title="Tout sélectionner"></th>
           <th style="width:40px">#</th>
           <th>Username</th>
-          <th>Type</th>
-          <th>Script</th>
-          <th>Compte IG</th>
-          <th>Statut</th>
-          <th>Notes</th>
-          <th id="lead-col-agent" style="display:none">Assistante</th>
-          <th>Date</th>
+          <th data-i18n="outreach.table_type">Type</th>
+          <th data-i18n="outreach.table_script">Script</th>
+          <th data-i18n="outreach.table_ig">Compte IG</th>
+          <th data-i18n="outreach.table_status">Statut</th>
+          <th data-i18n="outreach.table_notes">Notes</th>
+          <th id="lead-col-agent" style="display:none" data-i18n="dash.assistant">Assistante</th>
+          <th data-i18n="outreach.table_date">Date</th>
           <th></th>
         </tr></thead>
         <tbody></tbody>
@@ -502,7 +502,7 @@
         <div class="page-subtitle" data-i18n="section.stats_sub">Suivi des abonnements et statistiques — Auto-refresh toutes les 15 min</div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-primary" onclick="refreshFollowers()">Rafraîchir maintenant</button>
+        <button class="btn btn-primary" onclick="refreshFollowers()" data-i18n="common.refresh">Rafraîchir maintenant</button>
       </div>
     </div>
     <!-- KPIs globaux -->
