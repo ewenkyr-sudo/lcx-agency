@@ -1167,6 +1167,111 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
   res.json(rows);
 });
 
+// ============ REAL-TIME CHATTER SHIFTS ============
+
+// Start a new shift
+app.post('/api/chatter-shifts/start', authMiddleware, async (req, res) => {
+  try {
+    var { model_ids, planned_duration_hours } = req.body;
+    var uid = req.user.id;
+    var aid = req.user.agency_id;
+
+    // Check no active shift for this user
+    var active = await pool.query("SELECT id FROM chatter_shifts WHERE user_id = $1 AND shift_status = 'active'", [uid]);
+    if (active.rows.length > 0) return res.status(400).json({ error: 'A shift is already active' });
+
+    var duration = parseFloat(planned_duration_hours) || 4;
+    var now = new Date();
+    var plannedEnd = new Date(now.getTime() + duration * 3600000);
+    var modelNames = [];
+    if (model_ids && model_ids.length > 0) {
+      var mRes = await pool.query('SELECT name FROM models WHERE id = ANY($1)', [model_ids]);
+      modelNames = mRes.rows.map(function(r) { return r.name; });
+    }
+
+    var result = await pool.query(
+      `INSERT INTO chatter_shifts (user_id, date, model_name, start_time, planned_end_time, model_ids, shift_status, agency_id)
+       VALUES ($1, $2, $3, $4, $5, $6, 'active', $7) RETURNING *`,
+      [uid, now.toISOString().slice(0, 10), modelNames.join(', ') || '-', now, plannedEnd, JSON.stringify(model_ids || []), aid]
+    );
+
+    broadcast('shift-started', { shift: result.rows[0], user_name: req.user.display_name });
+    logActivity(uid, req.user.display_name, 'clock-in', null, null, 'Shift started — ' + (modelNames.join(', ') || 'No model'), aid);
+    res.json(result.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update shift in progress (live revenue updates)
+app.post('/api/chatter-shifts/:id/update', authMiddleware, async (req, res) => {
+  try {
+    var { ppv_total, tips_total, ppv_count, ppv_sold, shift_notes } = req.body;
+    await pool.query(
+      `UPDATE chatter_shifts SET ppv_total = COALESCE($1, ppv_total), tips_total = COALESCE($2, tips_total),
+       ppv_count = COALESCE($3, ppv_count), ppv_sold = COALESCE($4, ppv_sold), shift_notes = COALESCE($5, shift_notes)
+       WHERE id = $6 AND user_id = $7 AND shift_status = 'active'`,
+      [ppv_total, tips_total, ppv_count, ppv_sold, shift_notes, req.params.id, req.user.id]
+    );
+    var updated = await pool.query('SELECT * FROM chatter_shifts WHERE id = $1', [req.params.id]);
+    if (updated.rows.length > 0) broadcast('shift-updated', { shift: updated.rows[0], user_name: req.user.display_name });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// End shift
+app.post('/api/chatter-shifts/:id/end', authMiddleware, async (req, res) => {
+  try {
+    var { handover_notes } = req.body;
+    var now = new Date();
+    var result = await pool.query(
+      `UPDATE chatter_shifts SET end_time = $1, shift_status = 'completed', handover_notes = $2
+       WHERE id = $3 AND user_id = $4 AND shift_status = 'active' RETURNING *`,
+      [now, handover_notes || null, req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'No active shift found' });
+    var shift = result.rows[0];
+    var duration = Math.round((now - new Date(shift.start_time)) / 60000);
+    broadcast('shift-ended', { shift: shift, user_name: req.user.display_name, duration: duration });
+    logActivity(req.user.id, req.user.display_name, 'clock-out', null, null, 'Shift ended — ' + duration + 'min — $' + (parseFloat(shift.ppv_total) + parseFloat(shift.tips_total)).toFixed(2), req.user.agency_id);
+    res.json({ shift: shift, duration: duration });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get all active shifts (admin dashboard)
+app.get('/api/chatter-shifts/active', authMiddleware, async (req, res) => {
+  try {
+    var result = await pool.query(
+      `SELECT cs.*, u.display_name as chatter_name, u.avatar_url
+       FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id
+       WHERE cs.shift_status = 'active' AND (cs.agency_id = $1 OR cs.agency_id IS NULL)
+       ORDER BY cs.start_time ASC`,
+      [req.user.agency_id]
+    );
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get my current active shift
+app.get('/api/chatter-shifts/mine/current', authMiddleware, async (req, res) => {
+  try {
+    var result = await pool.query("SELECT * FROM chatter_shifts WHERE user_id = $1 AND shift_status = 'active' LIMIT 1", [req.user.id]);
+    res.json(result.rows[0] || null);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Chatter detailed stats (for chatter profile card)
+app.get('/api/chatter-shifts/stats/:userId', authMiddleware, async (req, res) => {
+  try {
+    var uid = req.params.userId;
+    var aid = req.user.agency_id;
+    var [total, monthly, recent] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue, COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts, COALESCE(SUM(ppv_count), 0) as ppv_sent, COALESCE(SUM(ppv_sold), 0) as ppv_sold FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [uid, aid]),
+      pool.query("SELECT TO_CHAR(date::date, 'YYYY-MM-DD') as day, SUM(ppv_total + tips_total) as revenue FROM chatter_shifts WHERE user_id = $1 AND date >= (CURRENT_DATE - INTERVAL '30 days')::date::text AND (agency_id = $2 OR agency_id IS NULL) GROUP BY day ORDER BY day", [uid, aid]),
+      pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY created_at DESC LIMIT 10', [uid, aid])
+    ]);
+    res.json({ totals: total.rows[0], monthly: monthly.rows, recent: recent.rows });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============ OUTREACH LEADS ============
 
 // Get leads — outreach voit ses propres leads, admin voit tout

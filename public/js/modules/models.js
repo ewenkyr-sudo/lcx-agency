@@ -378,6 +378,15 @@ function getWeekNumber(d) {
 
 // ========== CHATTERS ==========
 async function renderChatters() {
+  // Init shift timer for chatters
+  if (currentUser.role === 'chatter') {
+    await initShiftTimer();
+  }
+  // Admin: show active shifts
+  if (isAdmin()) {
+    var activeContainer = document.getElementById('active-shifts-container');
+    if (activeContainer) { activeContainer.style.display = ''; await renderActiveShiftsWidget(); }
+  }
   await loadShifts();
   renderShifts();
   await loadChatterKPIs();

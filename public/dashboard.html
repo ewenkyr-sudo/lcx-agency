@@ -308,6 +308,17 @@
       </div>
     </div>
 
+    <!-- Real-time shift timer widget (chatters) -->
+    <div id="shift-timer-widget" style="margin-bottom:20px"></div>
+
+    <!-- Admin: active shifts -->
+    <div id="active-shifts-container" style="margin-bottom:20px;display:none">
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">🟢 <span data-i18n="shift.active_shifts_title">Shifts en cours</span></h3>
+        <div id="active-shifts-widget"></div>
+      </div>
+    </div>
+
     <!-- KPIs -->
     <div class="stats-grid" id="chatter-kpis" style="margin-bottom:24px"></div>
 
@@ -1779,6 +1790,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/content-planner.js"></script>
 <script src="/js/modules/model-onboarding.js"></script>
 <script src="/js/modules/model-tools.js"></script>
+<script src="/js/modules/shift-timer.js"></script>
 <script src="/js/modules/fan-crm.js"></script>
 <script src="/js/modules/agency-accounts.js"></script>
 <script src="/js/modules/chatters.js"></script>
