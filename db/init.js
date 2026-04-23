@@ -756,6 +756,63 @@ async function initDB() {
       `);
       if (migrated.rowCount > 0) console.log('[MIGRATION] Emails migrés depuis invitation_tokens:', migrated.rowCount);
     } catch(e) {}
+
+    // ============ V2 MIGRATIONS — Finances / Chatters / Performances / VA ============
+
+    // Extend chatter_shifts for real-time shift system
+    const shiftCols = [
+      'start_time TIMESTAMPTZ',
+      'end_time TIMESTAMPTZ',
+      'planned_end_time TIMESTAMPTZ',
+      'model_ids JSONB DEFAULT \'[]\'',
+      'ppv_count INTEGER DEFAULT 0',
+      'ppv_sold INTEGER DEFAULT 0',
+      'handover_notes TEXT',
+      'shift_status VARCHAR(20) DEFAULT \'completed\''
+    ];
+    for (const col of shiftCols) {
+      await pool.query('ALTER TABLE chatter_shifts ADD COLUMN IF NOT EXISTS ' + col).catch(function() {});
+    }
+
+    // Extend payments for detailed finance tracking
+    const paymentCols = [
+      'commission_rate NUMERIC(5,2)',
+      'commission_amount NUMERIC(10,2)',
+      'net_amount NUMERIC(10,2)',
+      'payment_date DATE',
+      'source TEXT DEFAULT \'manual\''
+    ];
+    for (const col of paymentCols) {
+      await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS ' + col).catch(function() {});
+    }
+
+    // Add commission_rate to team_members for chatter commission calculation
+    await pool.query('ALTER TABLE team_members ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,2) DEFAULT 0').catch(function() {});
+    await pool.query('ALTER TABLE team_members ADD COLUMN IF NOT EXISTS hourly_rate NUMERIC(8,2) DEFAULT 0').catch(function() {});
+
+    // VA recurring tasks
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recurring_tasks (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        frequency VARCHAR(20) DEFAULT 'daily',
+        assigned_role VARCHAR(20) DEFAULT 'va',
+        assigned_to_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+
+    // Performance indexes
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_chatter_shifts_user ON chatter_shifts(user_id, date DESC)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_chatter_shifts_agency ON chatter_shifts(agency_id, date DESC)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_chatter_shifts_status ON chatter_shifts(shift_status) WHERE shift_status = \'active\'').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_payments_agency ON payments(agency_id, month DESC)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_payments_model ON payments(model_id, month DESC)').catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_shift_clocks_user ON shift_clocks(user_id, clock_in DESC)').catch(function() {});
+
   } catch(e) {}
 }
 
