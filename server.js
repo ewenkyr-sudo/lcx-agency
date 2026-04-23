@@ -2424,6 +2424,144 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ FINANCE V2 ============
+
+// Finance summary — KPIs for current month vs previous
+app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const now = new Date();
+    const curMonth = now.toISOString().slice(0, 7);
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonth = prevDate.toISOString().slice(0, 7);
+    const monthStart = curMonth + '-01';
+    const prevMonthStart = prevMonth + '-01';
+
+    const [curRev, prevRev, objective, dueCount] = await Promise.all([
+      pool.query(`SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue,
+        COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips
+        FROM chatter_shifts WHERE date >= $1 AND (agency_id = $2 OR agency_id IS NULL)`, [monthStart, aid]),
+      pool.query(`SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)`, [prevMonthStart, monthStart, aid]),
+      pool.query(`SELECT COALESCE(SUM(target), 0) as target, COALESCE(SUM(current), 0) as current
+        FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+      pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+        FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid])
+    ]);
+
+    const cur = parseFloat(curRev.rows[0].revenue);
+    const prev = parseFloat(prevRev.rows[0].revenue);
+    const variation = prev > 0 ? ((cur - prev) / prev * 100) : (cur > 0 ? 100 : 0);
+
+    res.json({
+      currentMonth: { revenue: cur, ppv: parseFloat(curRev.rows[0].ppv), tips: parseFloat(curRev.rows[0].tips), month: curMonth },
+      previousMonth: { revenue: prev, month: prevMonth },
+      variation: Math.round(variation * 10) / 10,
+      objective: { target: parseFloat(objective.rows[0].target), current: parseFloat(objective.rows[0].current) },
+      due: { count: parseInt(dueCount.rows[0].count), total: parseFloat(dueCount.rows[0].total) }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Finance monthly — 12 months revenue stacked by model
+app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const result = await pool.query(`
+      SELECT TO_CHAR(date::date, 'YYYY-MM') as month, model_name,
+        SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
+      FROM chatter_shifts
+      WHERE date >= (CURRENT_DATE - INTERVAL '12 months')::date::text
+        AND (agency_id = $1 OR agency_id IS NULL)
+      GROUP BY month, model_name ORDER BY month ASC
+    `, [aid]);
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Finance breakdown — by model and by source for current month
+app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    const monthStart = month + '-01';
+    const nextMonth = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(5,7)), 1).toISOString().slice(0,10);
+
+    const [byModel, bySource] = await Promise.all([
+      pool.query(`SELECT model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)
+        GROUP BY model_name ORDER BY revenue DESC`, [monthStart, nextMonth, aid]),
+      pool.query(`SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)`, [monthStart, nextMonth, aid])
+    ]);
+
+    res.json({ byModel: byModel.rows, bySource: bySource.rows[0] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Finance due — models with pending payments this month
+app.get('/api/finance/due', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+
+    const result = await pool.query(`
+      SELECT p.id, p.model_id, m.name as model_name, p.amount, p.commission_rate, p.commission_amount, p.net_amount, p.notes, p.status
+      FROM payments p JOIN models m ON p.model_id = m.id
+      WHERE p.month = $1 AND p.status = 'pending' AND (p.agency_id = $2 OR p.agency_id IS NULL)
+      ORDER BY m.name
+    `, [month, aid]);
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Finance commissions — agency earnings recap
+app.get('/api/finance/commissions', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const curMonth = new Date().toISOString().slice(0, 7);
+    const yearStart = new Date().getFullYear() + '-01-01';
+
+    const [monthly, yearly, byModel] = await Promise.all([
+      pool.query(`SELECT COALESCE(SUM(commission_amount), 0) as total
+        FROM payments WHERE month = $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+      pool.query(`SELECT COALESCE(SUM(commission_amount), 0) as total
+        FROM payments WHERE month >= $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth.slice(0,4) + '-01', aid]),
+      pool.query(`SELECT m.name as model_name, COALESCE(SUM(p.commission_amount), 0) as commission, COALESCE(SUM(p.amount), 0) as revenue
+        FROM payments p JOIN models m ON p.model_id = m.id
+        WHERE p.month >= $1 AND p.status = 'paid' AND (p.agency_id = $2 OR p.agency_id IS NULL)
+        GROUP BY m.name ORDER BY commission DESC`, [curMonth.slice(0,4) + '-01', aid])
+    ]);
+
+    res.json({
+      monthlyCommission: parseFloat(monthly.rows[0].total),
+      yearlyCommission: parseFloat(yearly.rows[0].total),
+      byModel: byModel.rows
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Export payments CSV
+app.get('/api/export/payments', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const result = await pool.query(`
+      SELECT m.name as model, p.month, p.amount, p.commission_rate, p.commission_amount, p.net_amount, p.status, p.notes, p.payment_date, p.created_at
+      FROM payments p JOIN models m ON p.model_id = m.id
+      WHERE (p.agency_id = $1 OR p.agency_id IS NULL) ORDER BY p.month DESC, m.name
+    `, [aid]);
+
+    var csv = 'Model,Month,Amount,Commission %,Commission,Net,Status,Notes,Payment Date,Created\n';
+    result.rows.forEach(function(r) {
+      csv += [r.model, r.month, r.amount, r.commission_rate || '', r.commission_amount || '', r.net_amount || '', r.status, (r.notes || '').replace(/,/g, ';'), r.payment_date || '', r.created_at].join(',') + '\n';
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="payments-export.csv"');
+    res.send(csv);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============ ANALYTICS ============
 app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
   try {

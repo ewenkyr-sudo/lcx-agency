@@ -1534,5 +1534,19 @@
   "settings.export_leads": "Leads",
   "settings.export_team": "Équipe",
   "settings.export_students": "Élèves",
-  "settings.export_revenue": "Revenus"
+  "settings.export_revenue": "Revenus",
+  "finance.prev_month": "Mois précédent",
+  "finance.objective": "Objectif du mois",
+  "finance.pending_payments": "Paiements en attente",
+  "finance.monthly_revenue": "Revenus mensuels (12 mois)",
+  "finance.by_model": "Par modèle",
+  "finance.by_source": "Par source",
+  "finance.due_this_month": "À payer ce mois",
+  "finance.mark_paid": "Marquer payé",
+  "finance.marked_paid": "Marqué comme payé !",
+  "finance.agency_commissions": "Commissions agence",
+  "finance.this_month_commission": "Commission ce mois",
+  "finance.yearly_commission": "Commission annuelle",
+  "finance.all_models": "Tous les modèles",
+  "finance.all_statuses": "Tous les statuts"
 }
