@@ -813,6 +813,80 @@ async function initDB() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_payments_model ON payments(model_id, month DESC)').catch(function() {});
     await pool.query('CREATE INDEX IF NOT EXISTS idx_shift_clocks_user ON shift_clocks(user_id, clock_in DESC)').catch(function() {});
 
+    // ============ VA SECTION TABLES ============
+
+    // Extend recurring_tasks with scheduling fields
+    await pool.query('ALTER TABLE recurring_tasks ADD COLUMN IF NOT EXISTS day_of_week INTEGER').catch(function() {});
+    await pool.query('ALTER TABLE recurring_tasks ADD COLUMN IF NOT EXISTS day_of_month INTEGER').catch(function() {});
+
+    // Recurring task completions (tracks daily checkbox state)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recurring_task_completions (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER REFERENCES recurring_tasks(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        completed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        completed_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(task_id, user_id, completed_date)
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_rtc_task_date ON recurring_task_completions(task_id, completed_date)').catch(function() {});
+
+    // Content library (links to external content — Drive, Dropbox, etc.)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content_library (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+        added_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        title TEXT NOT NULL,
+        external_url TEXT NOT NULL,
+        content_type VARCHAR(20) DEFAULT 'image',
+        platforms JSONB DEFAULT '[]',
+        status VARCHAR(20) DEFAULT 'to_sort',
+        caption TEXT,
+        tags JSONB DEFAULT '[]',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_content_lib_agency ON content_library(agency_id, model_id, status)').catch(function() {});
+
+    // VA compensation config
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS va_compensation (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        comp_type VARCHAR(30) DEFAULT 'hourly',
+        hourly_rate NUMERIC(8,2) DEFAULT 0,
+        fixed_monthly NUMERIC(10,2) DEFAULT 0,
+        bonuses JSONB DEFAULT '[]',
+        custom_description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id)
+      );
+    `).catch(function() {});
+
+    // VA payments history
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS va_payments (
+        id SERIAL PRIMARY KEY,
+        agency_id INTEGER REFERENCES agencies(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        month TEXT NOT NULL,
+        amount NUMERIC(10,2) DEFAULT 0,
+        hours_worked NUMERIC(8,2) DEFAULT 0,
+        bonus_amount NUMERIC(8,2) DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'pending',
+        notes TEXT,
+        paid_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(function() {});
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_va_payments_user ON va_payments(user_id, month DESC)').catch(function() {});
+
   } catch(e) {}
 }
 
