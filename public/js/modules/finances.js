@@ -49,7 +49,7 @@ async function renderFinance() {
 
     // === Revenue chart 12 months + Pie charts ===
     + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">'
-    + '<div class="panel" style="padding:20px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">' + t('finance.monthly_revenue') + '</h3><canvas id="finance-chart-monthly" height="220"></canvas></div>'
+    + '<div class="panel" style="padding:20px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">' + t('finance.monthly_revenue') + '</h3><div style="position:relative;height:200px"><canvas id="finance-chart-monthly"></canvas></div></div>'
     + '<div style="display:grid;gap:16px">'
     + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_model') + '</h3><canvas id="finance-chart-model" height="140"></canvas></div>'
     + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_source') + '</h3><canvas id="finance-chart-source" height="140"></canvas></div>'
