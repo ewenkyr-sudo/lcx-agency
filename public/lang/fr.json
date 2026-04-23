@@ -1581,5 +1581,15 @@
   "shift.handover_placeholder": "Infos importantes, fans à suivre...",
   "shift.confirm_end": "Terminer le shift",
   "shift.no_active_shifts": "Aucun shift en cours",
-  "shift.active_shifts_title": "Shifts en cours"
+  "shift.active_shifts_title": "Shifts en cours",
+  "va.on_shift_since": "En poste depuis",
+  "va.start_working": "Commencer à travailler",
+  "va.tasks_today": "Tâches du jour",
+  "va.tasks_pending": "Tâches en cours",
+  "va.tasks_completed": "Terminées",
+  "va.messages": "Messages",
+  "va.no_tasks_today": "Aucune tâche pour aujourd'hui",
+  "va.all_tasks": "Toutes mes tâches",
+  "va.team_title": "Équipe VA",
+  "va.no_va": "Aucun VA dans l'équipe"
 }
