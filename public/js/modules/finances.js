@@ -49,10 +49,10 @@ async function renderFinance() {
 
     // === Revenue chart 12 months + Pie charts ===
     + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px">'
-    + '<div class="panel" style="padding:20px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">' + t('finance.monthly_revenue') + '</h3><div style="position:relative;height:200px"><canvas id="finance-chart-monthly"></canvas></div></div>'
+    + '<div class="panel" style="padding:20px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">' + t('finance.monthly_revenue') + '</h3><div style="position:relative;height:200px;max-height:200px;overflow:hidden"><canvas id="finance-chart-monthly" style="max-height:200px"></canvas></div></div>'
     + '<div style="display:grid;gap:16px">'
-    + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_model') + '</h3><canvas id="finance-chart-model" height="140"></canvas></div>'
-    + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_source') + '</h3><canvas id="finance-chart-source" height="140"></canvas></div>'
+    + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_model') + '</h3><div style="position:relative;height:130px;max-height:130px;overflow:hidden"><canvas id="finance-chart-model" style="max-height:130px"></canvas></div></div>'
+    + '<div class="panel" style="padding:20px"><h3 style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:12px">' + t('finance.by_source') + '</h3><div style="position:relative;height:130px;max-height:130px;overflow:hidden"><canvas id="finance-chart-source" style="max-height:130px"></canvas></div></div>'
     + '</div></div>'
 
     // === Due this month ===
