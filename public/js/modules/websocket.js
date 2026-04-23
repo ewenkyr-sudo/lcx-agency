@@ -118,9 +118,21 @@ function connectWebSocket() {
     }
     if (msg.event === 'shift-added' || msg.event === 'shift-deleted') {
       await loadShifts();
-      renderChatters();
+      renderShifts();
       await loadChatterKPIs();
       if (isAdmin()) loadDashboardChatterStats();
+    }
+    if (msg.event === 'shift-started' || msg.event === 'shift-ended' || msg.event === 'shift-updated') {
+      if (isAdmin()) {
+        renderActiveShiftsWidget();
+        if (typeof loadDashActiveShifts === 'function') loadDashActiveShifts();
+      }
+      if (msg.event === 'shift-started' && isAdmin()) {
+        showToast('🟢 ' + (msg.data.user_name || '') + ' — shift started', 'info');
+      }
+      if (msg.event === 'shift-ended' && isAdmin()) {
+        showToast('🔴 ' + (msg.data.user_name || '') + ' — shift ended ($' + (parseFloat(msg.data.shift.ppv_total) + parseFloat(msg.data.shift.tips_total)).toFixed(2) + ')', 'info');
+      }
     }
     if (msg.event === 'followers-updated') {
       await reloadAccounts();

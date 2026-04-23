@@ -1652,6 +1652,16 @@ function renderDashboard() {
       </div>
     </div>
 
+    <!-- Active shifts widget -->
+    <div class="panel" style="margin-bottom:20px" id="dash-active-shifts-panel">
+      <div class="panel-header">
+        <div class="panel-title">🟢 ${t('shift.active_shifts_title')}</div>
+      </div>
+      <div id="dash-active-shifts-widget">
+        <div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">${t('common.loading')}</div>
+      </div>
+    </div>
+
     <!-- Chatter stats for admin -->
     <div id="dashboard-chatter-stats"></div>
 
@@ -1661,9 +1671,45 @@ function renderDashboard() {
 
   // Load stats in dashboard for admin
   if (isAdmin()) {
+    loadDashActiveShifts();
     loadDashboardChatterStats();
     loadDashboardOutreachStats();
   }
+}
+
+async function loadDashActiveShifts() {
+  var widget = document.getElementById('dash-active-shifts-widget');
+  var panel = document.getElementById('dash-active-shifts-panel');
+  if (!widget) return;
+  try {
+    var res = await fetch('/api/chatter-shifts/active', { credentials: 'include' });
+    if (!res.ok) { if (panel) panel.style.display = 'none'; return; }
+    var shifts = await res.json();
+    if (shifts.length === 0) {
+      widget.innerHTML = '<div style="color:var(--text3);padding:12px 0;text-align:center;font-size:13px">' + t('shift.no_active_shifts') + '</div>';
+      return;
+    }
+    widget.innerHTML = '<div style="display:grid;gap:8px;padding:0 16px 16px">' + shifts.map(function(s) {
+      var now = Date.now();
+      var end = new Date(s.planned_end_time).getTime();
+      var diff = end - now;
+      var isOvertime = diff < 0;
+      var almostDone = diff > 0 && diff < 1800000;
+      var dotColor = isOvertime ? 'var(--red)' : almostDone ? '#f59e0b' : 'var(--green)';
+      var revenue = (parseFloat(s.ppv_total) + parseFloat(s.tips_total)).toFixed(2);
+      var absDiff = Math.abs(diff);
+      var h = Math.floor(absDiff / 3600000);
+      var m = Math.floor((absDiff % 3600000) / 60000);
+      var timeStr = isOvertime ? '+' + (h > 0 ? h + 'h ' : '') + m + 'min' : (h > 0 ? h + 'h ' : '') + m + 'min';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:8px;border-left:3px solid ' + dotColor + '">'
+        + '<div style="width:8px;height:8px;border-radius:50%;background:' + dotColor + ';flex-shrink:0"></div>'
+        + '<strong style="font-size:13px;flex:1">' + s.chatter_name + '</strong>'
+        + '<span style="font-size:11px;color:var(--text3)">' + s.model_name + '</span>'
+        + '<span style="font-size:13px;font-weight:700;color:' + dotColor + '">' + timeStr + '</span>'
+        + '<span style="font-size:12px;color:var(--green)">$' + revenue + '</span>'
+        + '</div>';
+    }).join('') + '</div>';
+  } catch(e) { if (panel) panel.style.display = 'none'; }
 }
 
 async function loadDashboardOutreachStats() {
