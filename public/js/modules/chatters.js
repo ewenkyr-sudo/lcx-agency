@@ -1,10 +1,7 @@
 // CHATTERS MODULE
 // Extracted from dashboard.html
 
-function renderVA() {
-  const vas = allTeam.filter(m => m.role === 'va');
-  renderTeamTable('va-table', vas);
-}
+// renderVA() is now in va-dashboard.js
 
 function renderTeamTable(tableId, members) {
   const table = document.getElementById(tableId);

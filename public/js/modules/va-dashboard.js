@@ -6,8 +6,14 @@ var _vaWeekOffset = 0;
 async function renderVA() {
   var container = document.getElementById('va-content');
   if (!container) return;
-  if (currentUser.role === 'va') renderVADashboard(container);
-  else if (isAdmin()) renderVAAdmin(container);
+  try {
+    if (currentUser.role === 'va') await renderVADashboard(container);
+    else if (isAdmin()) await renderVAAdmin(container);
+    else container.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">' + t('va.no_va') + '</div>';
+  } catch(e) {
+    console.error('renderVA error:', e);
+    container.innerHTML = '<div style="color:var(--red);text-align:center;padding:40px">Error loading VA section: ' + e.message + '</div>';
+  }
 }
 
 // ============ VA USER DASHBOARD ============
@@ -289,15 +295,15 @@ async function sendVAMessage(userId) {
 async function renderVAAdmin(container) {
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
 
-  var vas = (allTeam || []).filter(function(m) { return m.role === 'va'; });
-  var vaUsers = (allUsers || []).filter(function(u) { return u.role === 'va'; });
+  var vas = (window.allTeam || []).filter(function(m) { return m.role === 'va'; });
+  var vaUsers = (window.allUsers || []).filter(function(u) { return u.role === 'va'; });
 
   // Load compensation data for each VA
   var compData = {};
   for (var i = 0; i < vaUsers.length; i++) {
     try {
-      var res = await fetch('/api/va/compensation?user_id=' + vaUsers[i].id, { credentials: 'include' });
-      if (res.ok) compData[vaUsers[i].id] = await res.json();
+      var cRes = await fetch('/api/va/compensation?user_id=' + vaUsers[i].id, { credentials: 'include' });
+      if (cRes.ok) compData[vaUsers[i].id] = await cRes.json();
     } catch(e) {}
   }
 
