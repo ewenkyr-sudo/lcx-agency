@@ -1167,6 +1167,175 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
   res.json(rows);
 });
 
+// ============ VA SECTION ============
+
+// Recurring tasks — list for current user (VA sees own, admin sees all)
+app.get('/api/recurring-tasks', authMiddleware, async (req, res) => {
+  try {
+    var aid = req.user.agency_id;
+    var isAdm = ['admin','super_admin','platform_admin'].includes(req.user.role);
+    var where = isAdm ? '(rt.agency_id = $1 OR rt.agency_id IS NULL)' : '(rt.agency_id = $1 OR rt.agency_id IS NULL) AND (rt.assigned_to_id = $2 OR rt.assigned_to_id IS NULL AND rt.assigned_role = $3)';
+    var params = isAdm ? [aid] : [aid, req.user.id, req.user.role];
+    var result = await pool.query('SELECT rt.*, u.display_name as assigned_name FROM recurring_tasks rt LEFT JOIN users u ON rt.assigned_to_id = u.id WHERE ' + where + ' AND rt.active = true ORDER BY rt.frequency, rt.title', params);
+    // Get today's completions
+    var completions = await pool.query('SELECT task_id FROM recurring_task_completions WHERE user_id = $1 AND completed_date = CURRENT_DATE', [req.user.id]);
+    var completedIds = completions.rows.map(function(r) { return r.task_id; });
+    res.json(result.rows.map(function(r) { r.completed_today = completedIds.indexOf(r.id) !== -1; return r; }));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: create recurring task
+app.post('/api/recurring-tasks', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    var { title, description, frequency, assigned_to_id, assigned_role, day_of_week, day_of_month } = req.body;
+    var result = await pool.query(
+      'INSERT INTO recurring_tasks (agency_id, title, description, frequency, assigned_to_id, assigned_role, day_of_week, day_of_month) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+      [req.user.agency_id, title, description || null, frequency || 'daily', assigned_to_id || null, assigned_role || 'va', day_of_week || null, day_of_month || null]
+    );
+    res.json(result.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin: delete recurring task
+app.delete('/api/recurring-tasks/:id', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('DELETE FROM recurring_tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  res.json({ ok: true });
+});
+
+// Complete a recurring task for today
+app.post('/api/recurring-tasks/:id/complete', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('INSERT INTO recurring_task_completions (task_id, user_id) VALUES ($1, $2) ON CONFLICT (task_id, user_id, completed_date) DO NOTHING', [req.params.id, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Uncomplete a recurring task
+app.delete('/api/recurring-tasks/:id/complete', authMiddleware, async (req, res) => {
+  await pool.query('DELETE FROM recurring_task_completions WHERE task_id = $1 AND user_id = $2 AND completed_date = CURRENT_DATE', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+// Content library — list with filters
+app.get('/api/content-library', authMiddleware, async (req, res) => {
+  try {
+    var aid = req.user.agency_id;
+    var where = '(cl.agency_id = $1 OR cl.agency_id IS NULL)';
+    var params = [aid];
+    var idx = 2;
+    if (req.query.model_id) { where += ' AND cl.model_id = $' + idx; params.push(req.query.model_id); idx++; }
+    if (req.query.status) { where += ' AND cl.status = $' + idx; params.push(req.query.status); idx++; }
+    var result = await pool.query('SELECT cl.*, m.name as model_name, u.display_name as added_by_name FROM content_library cl LEFT JOIN models m ON cl.model_id = m.id LEFT JOIN users u ON cl.added_by = u.id WHERE ' + where + ' ORDER BY cl.created_at DESC', params);
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Content library — add item (link)
+app.post('/api/content-library', authMiddleware, async (req, res) => {
+  try {
+    var { model_id, title, external_url, content_type, platforms, status, caption, tags } = req.body;
+    if (!title || !external_url) return res.status(400).json({ error: 'Title and URL required' });
+    var result = await pool.query(
+      'INSERT INTO content_library (agency_id, model_id, added_by, title, external_url, content_type, platforms, status, caption, tags) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',
+      [req.user.agency_id, model_id || null, req.user.id, title, external_url, content_type || 'image', JSON.stringify(platforms || []), status || 'to_sort', caption || null, JSON.stringify(tags || [])]
+    );
+    res.json(result.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Content library — update
+app.put('/api/content-library/:id', authMiddleware, async (req, res) => {
+  try {
+    var { title, external_url, content_type, platforms, status, caption, tags } = req.body;
+    await pool.query(
+      'UPDATE content_library SET title=COALESCE($1,title), external_url=COALESCE($2,external_url), content_type=COALESCE($3,content_type), platforms=COALESCE($4,platforms), status=COALESCE($5,status), caption=COALESCE($6,caption), tags=COALESCE($7,tags), updated_at=NOW() WHERE id=$8 AND agency_id=$9',
+      [title, external_url, content_type, platforms ? JSON.stringify(platforms) : null, status, caption, tags ? JSON.stringify(tags) : null, req.params.id, req.user.agency_id]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Content library — delete (archive)
+app.delete('/api/content-library/:id', authMiddleware, async (req, res) => {
+  var isAdm = ['admin','super_admin','platform_admin'].includes(req.user.role);
+  if (isAdm) {
+    await pool.query('DELETE FROM content_library WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  } else {
+    await pool.query("UPDATE content_library SET status = 'archived' WHERE id = $1 AND agency_id = $2", [req.params.id, req.user.agency_id]);
+  }
+  res.json({ ok: true });
+});
+
+// VA compensation — get config + current month calculation
+app.get('/api/va/compensation', authMiddleware, async (req, res) => {
+  try {
+    var uid = req.query.user_id || req.user.id;
+    var aid = req.user.agency_id;
+    var config = await pool.query('SELECT * FROM va_compensation WHERE user_id = $1 AND agency_id = $2', [uid, aid]);
+    var comp = config.rows[0] || { comp_type: 'hourly', hourly_rate: 0, fixed_monthly: 0, bonuses: [] };
+    // Calculate hours worked this month from shift_clocks
+    var monthStart = new Date().toISOString().slice(0, 7) + '-01';
+    var hours = await pool.query("SELECT COALESCE(SUM(duration_minutes), 0) as total_minutes FROM shift_clocks WHERE user_id = $1 AND clock_in >= $2::date", [uid, monthStart]);
+    var totalMinutes = parseInt(hours.rows[0].total_minutes);
+    var totalHours = Math.round(totalMinutes / 60 * 100) / 100;
+    var due = 0;
+    if (comp.comp_type === 'hourly' || comp.comp_type === 'hourly_plus_bonus') due = totalHours * parseFloat(comp.hourly_rate);
+    else if (comp.comp_type === 'fixed_monthly') due = parseFloat(comp.fixed_monthly);
+    res.json({ config: comp, hoursWorked: totalHours, minutesWorked: totalMinutes, amountDue: Math.round(due * 100) / 100 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// VA compensation — save config (admin)
+app.put('/api/va/compensation/:userId', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    var { comp_type, hourly_rate, fixed_monthly, bonuses, custom_description } = req.body;
+    await pool.query(
+      `INSERT INTO va_compensation (agency_id, user_id, comp_type, hourly_rate, fixed_monthly, bonuses, custom_description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (user_id) DO UPDATE SET comp_type=EXCLUDED.comp_type, hourly_rate=EXCLUDED.hourly_rate, fixed_monthly=EXCLUDED.fixed_monthly, bonuses=EXCLUDED.bonuses, custom_description=EXCLUDED.custom_description, updated_at=NOW()`,
+      [req.user.agency_id, req.params.userId, comp_type || 'hourly', hourly_rate || 0, fixed_monthly || 0, JSON.stringify(bonuses || []), custom_description || null]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// VA payments — history
+app.get('/api/va/payments', authMiddleware, async (req, res) => {
+  try {
+    var uid = req.query.user_id || req.user.id;
+    var result = await pool.query('SELECT * FROM va_payments WHERE user_id = $1 AND agency_id = $2 ORDER BY month DESC', [uid, req.user.agency_id]);
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// VA payments — create/mark paid (admin)
+app.post('/api/va/payments', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    var { user_id, month, amount, hours_worked, bonus_amount, status, notes } = req.body;
+    var result = await pool.query(
+      'INSERT INTO va_payments (agency_id, user_id, month, amount, hours_worked, bonus_amount, status, notes, paid_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [req.user.agency_id, user_id, month, amount || 0, hours_worked || 0, bonus_amount || 0, status || 'paid', notes || null, status === 'paid' ? new Date() : null]
+    );
+    res.json(result.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// VA planning — weekly clock data
+app.get('/api/va/weekly-clocks', authMiddleware, async (req, res) => {
+  try {
+    var uid = req.query.user_id || req.user.id;
+    var offset = parseInt(req.query.offset) || 0;
+    var result = await pool.query(
+      `SELECT id, clock_in, clock_out, duration_minutes FROM shift_clocks
+       WHERE user_id = $1 AND clock_in >= (CURRENT_DATE - INTERVAL '` + (7 * offset + 6) + ` days')::date
+       AND clock_in < (CURRENT_DATE - INTERVAL '` + (7 * (offset - 1) - 1) + ` days')::date
+       ORDER BY clock_in ASC`,
+      [uid]
+    );
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============ REAL-TIME CHATTER SHIFTS ============
 
 // Start a new shift
