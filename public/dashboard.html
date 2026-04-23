@@ -546,23 +546,34 @@
       </div>
     </div>
 
-    <!-- Graphique Followers -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="perf.followers_chart">Evolution des followers</h3>
-      <div style="position:relative;height:300px"><canvas id="chart-followers"></canvas></div>
+    <!-- KPIs -->
+    <div id="perf-kpis" style="margin-bottom:20px"></div>
+
+    <!-- Charts row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="perf.followers_chart">Evolution des followers</h3>
+        <div style="position:relative;height:260px"><canvas id="chart-followers"></canvas></div>
+      </div>
+      <div class="panel" style="padding:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="perf.chatters_chart">Revenue Chatters (PPV + Tips)</h3>
+        <div style="position:relative;height:260px"><canvas id="chart-revenue"></canvas></div>
+      </div>
     </div>
 
-    <!-- Graphique Revenue Chatters -->
-    <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="perf.chatters_chart">Revenue Chatters (PPV + Tips)</h3>
-      <div style="position:relative;height:300px"><canvas id="chart-revenue"></canvas></div>
-    </div>
-
-    <!-- Graphique Outreach Leads -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
       <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)" data-i18n="perf.outreach_chart">Outreach — Leads par jour</h3>
-      <div style="position:relative;height:300px"><canvas id="chart-leads"></canvas></div>
+      <div style="position:relative;height:260px"><canvas id="chart-leads"></canvas></div>
     </div>
+
+    <!-- Top performers + Heatmap -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div id="perf-top-performers"></div>
+      <div id="perf-heatmap"></div>
+    </div>
+
+    <!-- Model comparison -->
+    <div id="perf-model-comparison"></div>
   </div>
 
   <!-- STUDENT SECTIONS -->

@@ -2562,6 +2562,110 @@ app.get('/api/export/payments', authMiddleware, adminOnly, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ============ PERFORMANCES V2 ============
+
+// Performance KPIs — revenue, PPV conversion, fan metrics
+app.get('/api/performance/kpis', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const days = parseInt(req.query.days) || 30;
+    const curStart = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
+    const prevStart = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
+
+    const [curRev, prevRev, ppvStats, fanStats] = await Promise.all([
+      pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue, COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE date >= ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
+      pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue FROM chatter_shifts WHERE date >= ' + prevStart + ' AND date < ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
+      pool.query('SELECT COALESCE(SUM(ppv_count), 0) as sent, COALESCE(SUM(ppv_sold), 0) as sold FROM chatter_shifts WHERE date >= ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
+      pool.query('SELECT COUNT(*) as total, COUNT(CASE WHEN first_seen_at >= (CURRENT_DATE - INTERVAL \'' + days + ' days\') THEN 1 END) as new_fans FROM fans WHERE (agency_id = $1 OR agency_id IS NULL)', [aid])
+    ]);
+
+    const cur = parseFloat(curRev.rows[0].revenue);
+    const prev = parseFloat(prevRev.rows[0].revenue);
+    const ppvSent = parseInt(ppvStats.rows[0].sent);
+    const ppvSold = parseInt(ppvStats.rows[0].sold);
+
+    res.json({
+      revenue: cur,
+      previousRevenue: prev,
+      variation: prev > 0 ? Math.round((cur - prev) / prev * 1000) / 10 : 0,
+      ppv: parseFloat(curRev.rows[0].ppv),
+      tips: parseFloat(curRev.rows[0].tips),
+      shifts: parseInt(curRev.rows[0].shifts),
+      ppvSent: ppvSent,
+      ppvSold: ppvSold,
+      ppvConversion: ppvSent > 0 ? Math.round(ppvSold / ppvSent * 1000) / 10 : 0,
+      totalFans: parseInt(fanStats.rows[0].total),
+      newFans: parseInt(fanStats.rows[0].new_fans)
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Top performers — models, chatters, whales
+app.get('/api/performance/top', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const days = parseInt(req.query.days) || 30;
+    const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
+
+    const [topModels, topChatters, topFans] = await Promise.all([
+      pool.query('SELECT model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE date >= ' + dateFilter + ' AND (agency_id = $1 OR agency_id IS NULL) GROUP BY model_name ORDER BY revenue DESC LIMIT 5', [aid]),
+      pool.query('SELECT u.display_name, SUM(cs.ppv_total + cs.tips_total) as revenue, SUM(cs.ppv_total) as ppv, SUM(cs.tips_total) as tips, COUNT(*) as shifts FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id WHERE cs.date >= ' + dateFilter + ' AND (cs.agency_id = $1 OR cs.agency_id IS NULL) GROUP BY u.display_name ORDER BY revenue DESC LIMIT 5', [aid]),
+      pool.query('SELECT f.display_name, f.username, f.total_spent, m.name as model_name FROM fans f LEFT JOIN models m ON f.model_id = m.id WHERE (f.agency_id = $1 OR f.agency_id IS NULL) ORDER BY f.total_spent DESC LIMIT 10', [aid])
+    ]);
+
+    res.json({
+      models: topModels.rows,
+      chatters: topChatters.rows,
+      fans: topFans.rows
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Heatmap — revenue by day of week × hour
+app.get('/api/performance/heatmap', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const days = parseInt(req.query.days) || 30;
+    // Use created_at for hourly resolution since date is just a date string
+    const result = await pool.query(`
+      SELECT EXTRACT(DOW FROM created_at) as dow, EXTRACT(HOUR FROM created_at) as hour,
+        SUM(ppv_total + tips_total) as revenue, COUNT(*) as count
+      FROM chatter_shifts
+      WHERE created_at >= (CURRENT_DATE - INTERVAL '` + days + ` days')
+        AND (agency_id = $1 OR agency_id IS NULL)
+      GROUP BY dow, hour ORDER BY dow, hour
+    `, [aid]);
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Model comparison table
+app.get('/api/performance/models', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const aid = req.user.agency_id;
+    const days = parseInt(req.query.days) || 30;
+    const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
+    const prevFilter = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
+
+    const result = await pool.query(`
+      SELECT m.id, m.name,
+        COALESCE(SUM(CASE WHEN cs.date >= ` + dateFilter + ` THEN cs.ppv_total + cs.tips_total ELSE 0 END), 0) as revenue,
+        COALESCE(SUM(CASE WHEN cs.date >= ` + prevFilter + ` AND cs.date < ` + dateFilter + ` THEN cs.ppv_total + cs.tips_total ELSE 0 END), 0) as prev_revenue,
+        COUNT(CASE WHEN cs.date >= ` + dateFilter + ` THEN 1 END) as shifts,
+        (SELECT COUNT(*) FROM fans f WHERE f.model_id = m.id) as fans
+      FROM models m LEFT JOIN chatter_shifts cs ON cs.model_name = m.name
+      WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND m.status = 'active'
+      GROUP BY m.id, m.name ORDER BY revenue DESC
+    `, [aid]);
+
+    res.json(result.rows.map(function(r) {
+      var rev = parseFloat(r.revenue);
+      var prev = parseFloat(r.prev_revenue);
+      return { id: r.id, name: r.name, revenue: rev, prevRevenue: prev, variation: prev > 0 ? Math.round((rev - prev) / prev * 1000) / 10 : 0, shifts: parseInt(r.shifts), fans: parseInt(r.fans) };
+    }));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============ ANALYTICS ============
 app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
   try {

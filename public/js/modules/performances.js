@@ -4,12 +4,14 @@
 let chartRevenue = null;
 let chartLeads = null;
 const chartColors = ['#A855F7','#F0ABFC','#22D3EE','#A78BFA','#FBBF24','#FB7185','#34D399','#84cc16'];
+var _perfDays = 7;
 
 function renderPerformances() {
   loadPerformances(7);
 }
 
 async function loadPerformances(days, btn) {
+  _perfDays = days;
   // Update active button
   if (btn) {
     document.querySelectorAll('.perf-period').forEach(b => {
@@ -20,15 +22,126 @@ async function loadPerformances(days, btn) {
     btn.style.color = 'white';
   }
 
-  const [followersRes, revenueRes, leadsRes] = await Promise.all([
-    fetch('/api/charts/followers?days=' + days, { credentials: 'include' }).then(r => r.json()),
-    fetch('/api/charts/revenue?days=' + days, { credentials: 'include' }).then(r => r.json()),
-    fetch('/api/charts/leads?days=' + days, { credentials: 'include' }).then(r => r.json())
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : null); };
+
+  const [followersRes, revenueRes, leadsRes, kpis, top, heatmap, models] = await Promise.all([
+    f('/api/charts/followers?days=' + days),
+    f('/api/charts/revenue?days=' + days),
+    f('/api/charts/leads?days=' + days),
+    f('/api/performance/kpis?days=' + days),
+    f('/api/performance/top?days=' + days),
+    f('/api/performance/heatmap?days=' + days),
+    f('/api/performance/models?days=' + days)
   ]);
 
-  renderFollowersChart(followersRes, days);
-  renderRevenueChart(revenueRes, days);
-  renderLeadsChart(leadsRes, days);
+  renderPerfKPIs(kpis);
+  renderFollowersChart(followersRes || [], days);
+  renderRevenueChart(revenueRes || [], days);
+  renderLeadsChart(leadsRes || [], days);
+  renderPerfTopPerformers(top);
+  renderPerfHeatmap(heatmap);
+  renderPerfModelComparison(models);
+}
+
+function renderPerfKPIs(kpis) {
+  var el = document.getElementById('perf-kpis');
+  if (!el || !kpis) return;
+  var varColor = kpis.variation >= 0 ? 'var(--green)' : 'var(--red)';
+  var varIcon = kpis.variation >= 0 ? '↑' : '↓';
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--green);font-size:24px">$' + kpis.revenue.toLocaleString(undefined,{maximumFractionDigits:0}) + '</div><div class="stat-label" style="display:flex;gap:6px;align-items:center;justify-content:center">' + t('finance.revenue_total') + ' <span style="color:' + varColor + ';font-size:12px;font-weight:700">' + varIcon + Math.abs(kpis.variation) + '%</span></div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="font-size:20px">$' + kpis.ppv.toLocaleString(undefined,{maximumFractionDigits:0}) + '</div><div class="stat-label">PPV</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow);font-size:20px">$' + kpis.tips.toLocaleString(undefined,{maximumFractionDigits:0}) + '</div><div class="stat-label">Tips</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="font-size:20px">' + kpis.ppvSent + ' → ' + kpis.ppvSold + '</div><div class="stat-label">PPV ' + t('perf.conversion') + ' ' + kpis.ppvConversion + '%</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--accent);font-size:20px">' + kpis.newFans + '</div><div class="stat-label">' + t('perf.new_fans') + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="font-size:20px">' + kpis.totalFans + '</div><div class="stat-label">' + t('perf.total_fans') + '</div></div>'
+    + '</div>';
+}
+
+function renderPerfTopPerformers(top) {
+  var el = document.getElementById('perf-top-performers');
+  if (!el || !top) return;
+
+  function tableRows(items, nameKey, showPpvTips) {
+    return items.map(function(r, i) {
+      var rev = parseFloat(r.revenue || r.total_spent || 0);
+      return '<tr><td style="color:var(--text3);width:30px">' + (i + 1) + '</td><td><strong>' + (r[nameKey] || r.display_name || r.username || '-') + '</strong>' + (r.model_name && nameKey !== 'model_name' ? ' <span style="color:var(--text3);font-size:11px">' + r.model_name + '</span>' : '') + '</td>'
+        + (showPpvTips ? '<td style="font-size:12px">$' + parseFloat(r.ppv||0).toFixed(0) + ' / $' + parseFloat(r.tips||0).toFixed(0) + '</td>' : '')
+        + '<td style="color:var(--green);font-weight:700;text-align:right">$' + rev.toLocaleString(undefined,{maximumFractionDigits:0}) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">' + t('analytics.no_data') + '</td></tr>';
+  }
+
+  el.innerHTML = '<div class="panel" style="padding:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:12px">🏆 ' + t('perf.top_performers') + '</h3>'
+    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_models') + '</h4>'
+    + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.models || [], 'model_name', true) + '</tbody></table></div>'
+    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_chatters') + '</h4>'
+    + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.chatters || [], 'display_name', true) + '</tbody></table></div>'
+    + '<div><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_whales') + '</h4>'
+    + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.fans || [], 'username', false) + '</tbody></table></div>'
+    + '</div>';
+}
+
+function renderPerfHeatmap(data) {
+  var el = document.getElementById('perf-heatmap');
+  if (!el || !data) return;
+
+  var dayLabels = [t('days.sun'), t('days.mon'), t('days.tue'), t('days.wed'), t('days.thu'), t('days.fri'), t('days.sat')];
+  var grid = {};
+  var maxRev = 0;
+  (data || []).forEach(function(r) {
+    var key = r.dow + '-' + r.hour;
+    var rev = parseFloat(r.revenue || 0);
+    grid[key] = rev;
+    if (rev > maxRev) maxRev = rev;
+  });
+
+  var hours = [];
+  for (var h = 0; h < 24; h += 2) hours.push(h);
+
+  var cells = '';
+  for (var d = 0; d < 7; d++) {
+    for (var hi = 0; hi < hours.length; hi++) {
+      var rev = (grid[d + '-' + hours[hi]] || 0) + (grid[d + '-' + (hours[hi]+1)] || 0);
+      var intensity = maxRev > 0 ? Math.min(1, rev / maxRev) : 0;
+      var bg = intensity > 0 ? 'rgba(168,85,247,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg3)';
+      cells += '<div style="background:' + bg + ';border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:' + (intensity > 0.5 ? 'white' : 'var(--text3)') + '"' + (rev > 0 ? ' title="$' + rev.toFixed(0) + '"' : '') + '>' + (rev > 0 ? '$' + rev.toFixed(0) : '') + '</div>';
+    }
+  }
+
+  el.innerHTML = '<div class="panel" style="padding:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:12px">🔥 ' + t('perf.activity_heatmap') + '</h3>'
+    + '<div style="display:grid;grid-template-columns:40px repeat(' + hours.length + ',1fr);gap:2px;font-size:10px">'
+    + '<div></div>' + hours.map(function(h) { return '<div style="text-align:center;color:var(--text3)">' + h + 'h</div>'; }).join('')
+    + [0,1,2,3,4,5,6].map(function(d) {
+      return '<div style="display:flex;align-items:center;color:var(--text3);font-size:10px">' + dayLabels[d] + '</div>'
+        + hours.map(function(h) {
+          var rev = (grid[d + '-' + h] || 0) + (grid[d + '-' + (h+1)] || 0);
+          var intensity = maxRev > 0 ? Math.min(1, rev / maxRev) : 0;
+          var bg = intensity > 0 ? 'rgba(168,85,247,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg3)';
+          return '<div style="background:' + bg + ';border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:' + (intensity > 0.5 ? 'white' : 'transparent') + '"' + (rev > 0 ? ' title="$' + rev.toFixed(0) + '"' : '') + '></div>';
+        }).join('');
+    }).join('')
+    + '</div></div>';
+}
+
+function renderPerfModelComparison(models) {
+  var el = document.getElementById('perf-model-comparison');
+  if (!el || !models || models.length === 0) return;
+
+  el.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">📊 ' + t('perf.model_comparison') + '</h3>'
+    + '<table class="table mobile-cards"><thead><tr><th>' + t('finance.model_col') + '</th><th>' + t('finance.revenue_total') + '</th><th>' + t('perf.variation') + '</th><th>Shifts</th><th>Fans</th></tr></thead><tbody>'
+    + models.map(function(m) {
+      var varColor = m.variation >= 0 ? 'var(--green)' : 'var(--red)';
+      var varIcon = m.variation >= 0 ? '↑' : '↓';
+      return '<tr><td data-label="" class="mc-title"><strong>' + m.name + '</strong></td>'
+        + '<td data-label="Revenue" class="mc-half" style="color:var(--green);font-weight:700">$' + m.revenue.toLocaleString(undefined,{maximumFractionDigits:0}) + '</td>'
+        + '<td data-label="' + t('perf.variation') + '" class="mc-half" style="color:' + varColor + '">' + varIcon + ' ' + Math.abs(m.variation) + '%</td>'
+        + '<td data-label="Shifts" class="mc-half">' + m.shifts + '</td>'
+        + '<td data-label="Fans" class="mc-half">' + m.fans + '</td></tr>';
+    }).join('')
+    + '</tbody></table></div>';
 }
 
 function renderFollowersChart(data, days) {

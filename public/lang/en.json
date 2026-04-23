@@ -1548,5 +1548,15 @@
   "finance.this_month_commission": "This month commission",
   "finance.yearly_commission": "Yearly commission",
   "finance.all_models": "All models",
-  "finance.all_statuses": "All statuses"
+  "finance.all_statuses": "All statuses",
+  "perf.conversion": "Conversion",
+  "perf.new_fans": "New fans",
+  "perf.total_fans": "Total fans",
+  "perf.top_performers": "Top Performers",
+  "perf.top_models": "Top Models",
+  "perf.top_chatters": "Top Chatters",
+  "perf.top_whales": "Top Fans (Whales)",
+  "perf.activity_heatmap": "Activity Heatmap",
+  "perf.model_comparison": "Model Comparison",
+  "perf.variation": "Variation"
 }
