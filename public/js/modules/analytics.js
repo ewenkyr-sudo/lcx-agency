@@ -47,7 +47,7 @@ async function loadDailyChart(days, btn) {
             { label: t('analytics.dms'), data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' }, grid: { color: 'rgba(59,130,246,0.06)' } }, x: { ticks: { color: '#A1A1AA', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 16 } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: chartDarkTicks, grid: chartDarkGrid }, x: { ticks: Object.assign({}, chartDarkTicks, { maxRotation: 45 }), grid: { display: false } } }, plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
     }
 
@@ -67,7 +67,7 @@ async function loadDailyChart(days, btn) {
             { label: t('analytics.dms'), data: hDms, backgroundColor: 'rgba(34,211,238,0.5)', borderRadius: 3 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' }, grid: { color: 'rgba(59,130,246,0.06)' } }, x: { ticks: { color: '#A1A1AA', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 12 } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: chartDarkTicks, grid: chartDarkGrid }, x: { ticks: chartDarkTicks, grid: { display: false } } }, plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
     }
 
@@ -203,7 +203,7 @@ async function renderAnalytics() {
             borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' } }, x: { ticks: { color: '#A1A1AA' } } }, plugins: { legend: { labels: { color: '#FAFAFA' } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: chartDarkTicks }, x: { ticks: chartDarkTicks } }, plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
     }
     // Hourly chart
@@ -218,7 +218,7 @@ async function renderAnalytics() {
           labels: hours.map(function(h) { return h + 'h'; }),
           datasets: [{ label: t('analytics.dms_sent_chart'), data: hourData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' } }, x: { ticks: { color: '#A1A1AA' } } }, plugins: { legend: { labels: { color: '#FAFAFA' } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: chartDarkTicks }, x: { ticks: chartDarkTicks } }, plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
     }
   }, 100);

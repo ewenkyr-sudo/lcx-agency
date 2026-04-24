@@ -11,6 +11,8 @@
     z-index: 100;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59,130,246,0.15) transparent;
   }
 
   .logo {
@@ -28,18 +30,7 @@
     border-radius: var(--radius-lg);
     display: flex; align-items: center; justify-content: center;
     font-size: 16px;
-    box-shadow: 0 0 20px rgba(59,130,246,0.2), 0 0 0 1px rgba(255,255,255,0.08) inset;
-    position: relative;
-    animation: ds-glow-breathe 4s ease-in-out infinite;
-  }
-  .logo-icon::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 13px;
-    background: radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%);
-    z-index: -1;
-    filter: blur(6px);
+    box-shadow: 0 0 20px rgba(59,130,246,0.15), 0 0 0 1px rgba(255,255,255,0.08) inset;
   }
 
   .logo h1 {

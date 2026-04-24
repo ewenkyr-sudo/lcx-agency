@@ -3,6 +3,24 @@
 // Shared helper functions used across all modules
 // ========================================
 
+// Chart.js dark theme defaults
+var chartDarkTooltip = {
+  backgroundColor: '#131316',
+  borderColor: 'rgba(255,255,255,0.06)',
+  borderWidth: 1,
+  titleColor: '#FAFAFA',
+  bodyColor: '#A1A1AA',
+  padding: 10,
+  titleFont: { size: 12, weight: '600' },
+  bodyFont: { size: 11 },
+  cornerRadius: 8,
+  displayColors: true,
+  boxPadding: 4
+};
+var chartDarkGrid = { color: 'rgba(255,255,255,0.06)' };
+var chartDarkTicks = { color: '#52525B', font: { size: 10 } };
+var chartDarkLegend = { color: '#A1A1AA', font: { size: 11 }, boxWidth: 12, padding: 16, usePointStyle: true };
+
 // Debounce
 function debounce(fn, delay) {
   let timer;

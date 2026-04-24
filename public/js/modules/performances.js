@@ -248,11 +248,11 @@ function chartOptions(yTitle) {
     scales: {
       x: {
         grid: { color: 'rgba(255,255,255,0.05)' },
-        ticks: { color: '#52525B', maxTicksLimit: 15 }
+        ticks: Object.assign({}, chartDarkTicks, { maxTicksLimit: 15 })
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.05)' },
-        ticks: { color: '#52525B' },
+        ticks: chartDarkTicks,
         title: { display: !!yTitle, text: yTitle, color: '#A1A1AA' },
         beginAtZero: true
       }

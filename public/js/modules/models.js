@@ -307,10 +307,10 @@ function renderCockpitCharts(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#A1A1AA', font: { size: 11 } } } },
+        plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
-          x: { ticks: { color: '#52525B', font: { size: 10 } }, grid: { color: '#1E1E22' } },
-          y: { ticks: { color: '#52525B', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1E1E22' } }
+          x: { ticks: chartDarkTicks, grid: chartDarkGrid },
+          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }, grid: chartDarkGrid }
         }
       }
     });
@@ -359,10 +359,10 @@ function renderCockpitCharts(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#A1A1AA', font: { size: 11 } } } },
+        plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
-          x: { stacked: true, ticks: { color: '#52525B', font: { size: 10 } }, grid: { display: false } },
-          y: { stacked: true, ticks: { color: '#52525B', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1E1E22' } }
+          x: { stacked: true, ticks: chartDarkTicks, grid: { display: false } },
+          y: { stacked: true, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }, grid: chartDarkGrid }
         }
       }
     });

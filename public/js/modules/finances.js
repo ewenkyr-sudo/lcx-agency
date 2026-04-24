@@ -175,10 +175,10 @@ function renderFinanceCharts(monthly, breakdown) {
       data: { labels: months.map(function(m) { return m.slice(5); + '/' + m.slice(2, 4) }), datasets: datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+        plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
-          x: { stacked: true, grid: { display: false }, ticks: { color: '#6b7280', font: { size: 10 } } },
-          y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', callback: function(v) { return '$' + v; } } }
+          x: { stacked: true, grid: { display: false }, ticks: chartDarkTicks },
+          y: { stacked: true, grid: chartDarkGrid, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }) }
         }
       }
     });
@@ -195,7 +195,7 @@ function renderFinanceCharts(monthly, breakdown) {
         labels: topByModel.map(function(r) { return r.model_name; }),
         datasets: [{ data: topByModel.map(function(r) { return parseFloat(r.revenue); }), backgroundColor: chartColors.slice(0, topByModel.length), borderWidth: 0 }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 12 } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
     });
   }
 
@@ -212,7 +212,7 @@ function renderFinanceCharts(monthly, breakdown) {
           labels: ['PPV', 'Tips'],
           datasets: [{ data: [ppv, tips], backgroundColor: ['#3B82F6', '#22D3EE'], borderWidth: 0 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 12 } } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
     }
   }
