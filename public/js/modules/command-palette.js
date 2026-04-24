@@ -251,13 +251,4 @@ function executeCmdItem(id) {
   }
 }
 
-// Open model cockpit helper (if not already defined globally)
-function openModelCockpit(modelId) {
-  // Navigate to models section first
-  var navItem = document.querySelector('[data-section="models"]');
-  if (navItem) navItem.click();
-  // Then open cockpit
-  if (typeof renderModelCockpit === 'function') {
-    setTimeout(function() { renderModelCockpit(modelId); }, 100);
-  }
-}
+// openModelCockpit is defined in models.js — reused here via executeCmdItem
