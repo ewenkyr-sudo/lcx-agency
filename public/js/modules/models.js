@@ -310,7 +310,7 @@ function renderCockpitCharts(d) {
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
           x: { ticks: chartDarkTicks, grid: chartDarkGrid },
-          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }, grid: chartDarkGrid }
+          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }), grid: chartDarkGrid }
         }
       }
     });
@@ -362,7 +362,7 @@ function renderCockpitCharts(d) {
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
           x: { stacked: true, ticks: chartDarkTicks, grid: { display: false } },
-          y: { stacked: true, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }, grid: chartDarkGrid }
+          y: { stacked: true, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }), grid: chartDarkGrid }
         }
       }
     });
