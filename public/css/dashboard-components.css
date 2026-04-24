@@ -1154,20 +1154,22 @@
   .mobile-header {
     display: none;
     position: fixed; top: 0; left: 0; right: 0;
-    height: 54px;
-    background: rgba(5,5,7,0.92);
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    height: 56px;
+    background: rgba(5,5,7,0.95);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
     border-bottom: 1px solid var(--border-default);
-    z-index: 200; padding: 0 16px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.3);
+    z-index: 200; padding: 0 10px;
     align-items: center; justify-content: space-between;
   }
   .mobile-header button {
-    background: none; border: none; color: var(--text-primary);
-    cursor: pointer; padding: 8px; display: flex; align-items: center;
-    transition: transform var(--duration-fast);
+    background: none; border: none; color: var(--text-secondary);
+    cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;
+    transition: color var(--duration-fast), background var(--duration-fast);
   }
-  .mobile-header button:active { transform: scale(0.9); }
+  .mobile-header button:hover { color: var(--text-primary); background: var(--bg-subtle); }
+  .mobile-header button:active { transform: scale(0.92); }
   .sidebar-overlay {
     display: none; position: fixed; inset: 0;
     background: rgba(0,0,0,0.5);
