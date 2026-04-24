@@ -132,7 +132,7 @@ function showTaskForm() {
   }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">' + t('tasks.new_task') + '</h3>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
+    + '<div class="grid-2col" style="gap:12px;max-width:700px">'
     + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('tasks.title_required') + '</label><input type="text" id="tf-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
     + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('tasks.description') + '</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="' + t('student.description_placeholder') + '"></textarea></div>'
     + assignSelect

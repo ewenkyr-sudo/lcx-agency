@@ -160,7 +160,7 @@ function renderCoachingTabContent() {
             + '<div class="coaching-step ' + cls + '" onclick="updateStudentProgression(' + s.id + ',\'' + st.key + '\')">' + st.icon + ' ' + st.label + '</div>';
         }).join('') + '</div>'
       // KPIs
-      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0">'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(0) + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.revenue_total_label') + '</div></div>'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent-blue-light)">' + models.length + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.models_managed') + '</div></div>'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800">' + asgn.length + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.outreach_assigned') + '</div></div>'
@@ -356,7 +356,7 @@ function showCoachingLeadForm() {
   var scriptOpts = (opts.script||[]).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
   var accountOpts = (opts.account||[]).map(function(o) { return '<option value="' + o.value + '">' + o.value + '</option>'; }).join('');
   wrap.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:16px;background:var(--bg-base);border-radius:10px">'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:700px">'
+    + '<div class="grid-2col" style="gap:10px;max-width:700px">'
     + '<div><label style="font-size:11px;color:var(--text-tertiary)">Username *</label><input type="text" id="cl-username" class="form-input" placeholder="@username"></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary)">Lien Instagram</label><input type="text" id="cl-iglink" class="form-input" placeholder="https://instagram.com/..." oninput="var m=this.value.match(/instagram\\.com\\/([a-zA-Z0-9_.]+)/);if(m)document.getElementById(\'cl-username\').value=\'@\'+m[1]"></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary)">Type</label><select id="cl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
@@ -627,7 +627,7 @@ function coachingShowTaskForm() {
   if (!wrap) return;
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:14px;margin-bottom:12px;background:var(--bg2)">'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('coaching.task_title_label') + '</label><input type="text" id="ct-title" class="form-input" placeholder="' + t('coaching.task_title_placeholder') + '"></div>'
     + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('common.description') + '</label><input type="text" id="ct-desc" class="form-input" placeholder="' + t('common.description') + '..."></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('common.priority') + '</label><select id="ct-priority" class="form-input"><option value="normal">' + t('common.normal') + '</option><option value="urgent">' + t('common.urgent') + '</option></select></div>'

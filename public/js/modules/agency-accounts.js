@@ -31,7 +31,7 @@ async function renderAgencyAccounts() {
   var growing = agencyAccounts.filter(function(a) { return a.current_followers > a.previous_followers; }).length;
   var declining = agencyAccounts.filter(function(a) { return a.current_followers < a.previous_followers && a.previous_followers > 0; }).length;
 
-  var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(6,1fr);margin-bottom:20px">'
+  var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:20px">'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + total + '</div><div class="coaching-kpi-label">' + t('acc.total') + '</div></div>'
     + ACCOUNT_CATEGORIES.map(function(c) {
       return '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:' + c.color + '">' + (byCat[c.key] || 0) + '</div><div class="coaching-kpi-label">' + c.icon + ' ' + getAccCatLabel(c) + '</div></div>';
@@ -83,7 +83,7 @@ function renderAccountsList(accounts) {
         + '</div>'
         + '</div>'
         // Stats
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+        + '<div class="grid-2col" style="gap:8px">'
         + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('acc.followers') + '</div></div>'
         + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('acc.evolution') + '</div></div>'
         + '</div>'
@@ -106,7 +106,7 @@ function openAddAccountModal(editId) {
     + '<div class="modal" style="width:440px"><div class="modal-header"><div class="modal-title">' + (acc ? t('acc.edit_title') : t('acc.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'acc-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">@Handle *</label><input class="form-input" id="acc-handle" value="' + (acc ? acc.handle : '') + '" placeholder="@username"></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select class="form-input" id="acc-platform"><option value="instagram"' + (acc && acc.platform==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (acc && acc.platform==='tiktok'?' selected':'') + '>🎵 TikTok</option></select></div>'
     + '<div class="form-group"><label class="form-label">' + t('student.category_label') + '</label><select class="form-input" id="acc-category">' + catOpts + '</select></div></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select class="form-input" id="acc-assigned">' + teamOpts + '</select></div>'

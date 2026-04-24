@@ -60,7 +60,7 @@ async function renderRecruitment() {
   if (isOwner) {
     container.innerHTML = ''
       // KPIs
-      + '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(6,1fr)">'
+      + '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + (stats.total || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.total_leads') + '</div></div>'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#7c3aed">' + (bs.prospect_chaud || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.hot_prospects') + '</div></div>'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#16a34a">' + (bs.en_discussion || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.in_discussion') + '</div></div>'
@@ -165,7 +165,7 @@ function showAddRecruitLeadForm() {
   if (isOwner && _recruiters.length > 0) {
     recruiterSelect = '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.recruiter') + '</label><select id="recruit-lead-recruiter" class="form-input" style="font-size:12px;padding:6px 8px">' + _recruiters.filter(function(r) { return r.is_active; }).map(function(r) { return '<option value="' + r.id + '">' + r.display_name + '</option>'; }).join('') + '</select></div>';
   }
-  wrap.innerHTML = '<div style="background:var(--bg-base);padding:14px;border-radius:10px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">'
+  wrap.innerHTML = '<div style="background:var(--bg-base);padding:14px;border-radius:10px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;align-items:end">'
     + recruiterSelect
     + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.platform') + '</label><select id="recruit-lead-platform" class="form-input" style="font-size:12px;padding:6px 8px"><option value="instagram">Instagram</option><option value="whop">Whop</option><option value="discord">Discord</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option></select></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.prospect_pseudo') + '</label><input type="text" id="recruit-lead-pseudo" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="@pseudo"></div>'

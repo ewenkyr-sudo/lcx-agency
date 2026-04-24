@@ -21,7 +21,7 @@ async function renderModelProfile(modelId) {
   container.innerHTML = '<form id="profile-form" style="display:grid;gap:20px;max-width:700px">'
     // Section 1: Infos de base
     + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.info_base') + '</h4>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + pf(t('mp.online_name'), 'online_name', p.online_name) + pf(t('mp.age'), 'age', p.age, 'number')
     + pf(t('mp.birth_date'), 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf(t('mp.zodiac'), 'zodiac_sign', p.zodiac_sign)
     + pf(t('mp.orientation'), 'sexual_orientation', p.sexual_orientation) + pf(t('mp.ethnicity'), 'ethnicity', p.ethnicity)
@@ -34,7 +34,7 @@ async function renderModelProfile(modelId) {
     + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.personal_profile') + '</h4>'
     + pfArea(t('mp.about'), 'about', p.about)
     + pfArea(t('mp.personality'), 'personality', p.personality)
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + pf(t('mp.hobbies'), 'hobbies', p.hobbies) + pf(t('mp.fav_color'), 'fav_color', p.fav_color)
     + pf(t('mp.fav_food'), 'fav_food', p.fav_food) + pf(t('mp.fav_music'), 'fav_music', p.fav_music)
     + pf(t('mp.fav_singer'), 'fav_singer', p.fav_singer) + pf(t('mp.sports'), 'sports', p.sports)
@@ -43,19 +43,19 @@ async function renderModelProfile(modelId) {
     + '</div></div>'
     // Section 3: Préférences de contenu
     + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.content_prefs') + '</h4>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="pref-checks">'
+    + '<div class="grid-2col" style="gap:6px" id="pref-checks">'
     + CONTENT_PREF_OPTIONS.map(function(opt) {
       var checked = p.content_prefs && p.content_prefs[opt];
       return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:4px 0"><input type="checkbox" data-pref="' + opt + '"' + (checked ? ' checked' : '') + (canEdit ? '' : ' disabled') + ' style="width:16px;height:16px;cursor:pointer"><span>' + opt + '</span></label>';
     }).join('')
     + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">'
+    + '<div class="grid-2col" style="gap:10px;margin-top:10px">'
     + pfBool(t('mp.custom_requests'), 'custom_requests', p.custom_requests) + pfBool(t('mp.video_calls'), 'video_calls', p.video_calls)
     + pfBool(t('mp.live_of'), 'live_of', p.live_of) + pfBool(t('mp.other_people'), 'other_people', p.other_people)
     + '</div></div>'
     // Section 4: Notes supplémentaires
     + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.extra_notes') + '</h4>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + pf(t('mp.relationship'), 'relationship_status', p.relationship_status)
     + pf(t('mp.travel'), 'travel_experience', p.travel_experience)
     + pf(t('mp.sexiest_part'), 'sexiest_body_part', p.sexiest_body_part)
@@ -170,7 +170,7 @@ async function renderModelSchedule(modelId) {
     + (isAdmin() ? '<button class="btn btn-primary" style="font-size:12px;margin-left:auto" onclick="openMSModal(' + modelId + ')">' + t('ms.add_btn') + '</button>' : '')
     + '</div>';
 
-  html += '<div style="display:grid;grid-template-columns:60px repeat(7,1fr);border:1px solid var(--border);border-radius:12px;overflow:hidden">';
+  html += '<div class="scroll-x"><div style="display:grid;grid-template-columns:60px repeat(7,1fr);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:500px">';
   // Header
   html += '<div style="background:var(--bg4);padding:8px;border-bottom:1px solid var(--border)"></div>';
   for (var i = 0; i < 7; i++) {
@@ -191,13 +191,13 @@ async function renderModelSchedule(modelId) {
       html += '</div>';
     }
   }
-  html += '</div>';
+  html += '</div></div>'; // close schedule grid + scroll-x
 
   // Tasks sections
   var modelTasks = msItems.filter(function(it) { return it.category === 'model_task'; });
   var agencyTasks = msItems.filter(function(it) { return it.category === 'agency_task'; });
   if (modelTasks.length > 0 || agencyTasks.length > 0) {
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">';
+    html += '<div class="grid-2col" style="gap:12px;margin-top:16px">';
     html += '<div style="background:var(--bg-base);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.model_tasks') + '</strong>';
     modelTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">• ' + tk.title + '</div>'; });
     html += '</div>';
@@ -231,7 +231,7 @@ function openMSModal(modelId, dayDate, timeSlot, editId) {
     + '<div class="modal" style="width:420px"><div class="modal-header"><div class="modal-title">' + (item ? t('ms.edit_title') : t('ms.add_title')) + '</div><button class="modal-close" onclick="document.getElementById(\'ms-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">' + t('ms.form_title') + '</label><input class="form-input" id="ms-title" value="' + (item ? item.title : '') + '"></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('common.date') + '</label><input type="date" class="form-input" id="ms-date" value="' + (item ? item.day_date.substring(0,10) : dayDate || fmtDateISO(new Date())) + '"></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_time') + '</label><input type="time" class="form-input" id="ms-time" value="' + (item ? (item.time_slot||'') : timeSlot || '') + '"></div>'
     + '</div>'

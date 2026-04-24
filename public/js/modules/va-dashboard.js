@@ -69,7 +69,7 @@ async function renderVADashboard(container) {
     + '</div>'
 
     // Two columns: tasks + recurring
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">'
+    + '<div class="grid-2col" style="gap:16px;margin-bottom:20px">'
 
     // Today's tasks
     + '<div class="panel" style="padding:20px">'
@@ -109,7 +109,7 @@ async function renderVADashboard(container) {
     + '</div>'
 
     // Content library + Messages row
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">'
+    + '<div class="grid-2col" style="gap:16px;margin-bottom:20px">'
     // Content library widget
     + '<div class="panel" style="padding:20px"><h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:16px">' + t('va.content_library') + '</h3><div id="va-content-library">' + t('common.loading') + '</div></div>'
     // Messages widget
@@ -207,7 +207,7 @@ function showAddContentModal() {
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">' + t('common.title_label') + ' *</label><input class="form-input" id="cl-title" placeholder="' + t('va.content_title_placeholder') + '"></div>'
     + '<div class="form-group"><label class="form-label">URL *</label><input class="form-input" id="cl-url" placeholder="https://drive.google.com/..."></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('finance.model_col') + '</label><select class="form-input" id="cl-model"><option value="">—</option>' + modelOpts + '</select></div>'
     + '<div class="form-group"><label class="form-label">' + t('common.type') + '</label><select class="form-input" id="cl-type"><option value="image">📸 Image</option><option value="video">🎬 Video</option><option value="document">📄 Document</option></select></div></div>'
     + '<div class="form-group"><label class="form-label">' + t('common.status') + '</label><select class="form-input" id="cl-status"><option value="to_sort">' + t('va.status_to_sort') + '</option><option value="ready">' + t('va.status_ready') + '</option><option value="published">' + t('va.status_published') + '</option></select></div>'
@@ -327,7 +327,7 @@ async function renderVAAdmin(container) {
         + '<div style="position:relative">' + av + (online ? '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--bg2)"></span>' : '') + '</div>'
         + '<div style="flex:1"><strong style="font-size:14px">' + v.name + '</strong><div style="font-size:11px;color:' + (online ? 'var(--green)' : 'var(--text-tertiary)') + '">' + (online ? t('status.online') : t('status.offline')) + '</div></div>'
         + '<button class="btn-delete-small" onclick="deleteTeamMember(' + v.id + ')">✕</button></div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px">'
+        + '<div class="grid-3col" style="gap:8px;font-size:12px">'
         + '<div style="background:var(--bg-base);padding:8px;border-radius:6px;text-align:center"><div style="font-weight:700">' + comp.hoursWorked + 'h</div><div style="color:var(--text-tertiary);font-size:10px">' + t('va.hours_this_month') + '</div></div>'
         + '<div style="background:var(--bg-base);padding:8px;border-radius:6px;text-align:center"><div style="font-weight:700;color:var(--green)">$' + comp.amountDue.toFixed(0) + '</div><div style="color:var(--text-tertiary);font-size:10px">' + t('va.due_this_month') + '</div></div>'
         + '<div style="background:var(--bg-base);padding:8px;border-radius:6px;text-align:center"><div style="font-weight:700">' + (rateLabel || '-') + '</div><div style="color:var(--text-tertiary);font-size:10px">' + t('va.rate') + '</div></div>'
@@ -411,7 +411,7 @@ function showAddRecurringTaskModal() {
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">' + t('common.title_label') + ' *</label><input class="form-input" id="rt-title" placeholder="' + t('va.task_title_placeholder') + '"></div>'
     + '<div class="form-group"><label class="form-label">' + t('common.description') + '</label><input class="form-input" id="rt-desc"></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('va.frequency') + '</label><select class="form-input" id="rt-freq"><option value="daily">' + t('va.daily') + '</option><option value="weekly">' + t('va.weekly') + '</option><option value="monthly">' + t('va.monthly') + '</option></select></div>'
     + '<div class="form-group"><label class="form-label">' + t('va.assign_to') + '</label><select class="form-input" id="rt-assign"><option value="">' + t('va.all_vas') + '</option>' + vaOpts + '</select></div>'
     + '</div>'

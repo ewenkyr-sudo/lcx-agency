@@ -140,7 +140,7 @@ async function renderAnalytics() {
     // FR vs US
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('analytics.fr_vs_us') + '</h3>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">'
+    + '<div class="grid-2col" style="gap:20px">'
     + frVsUs.map(function(m) {
       var rate = parseInt(m.dm_sent) > 0 ? ((parseInt(m.replies) / parseInt(m.dm_sent)) * 100).toFixed(1) : '0';
       return '<div style="background:var(--bg-base);padding:16px;border-radius:10px;text-align:center">'

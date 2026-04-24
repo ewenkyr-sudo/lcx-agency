@@ -317,6 +317,54 @@
 }
 
 
+/* ===== RESPONSIVE UTILITY CLASSES ===== */
+
+/* Responsive grid — stacks on mobile */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.grid-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+/* Horizontal scroll container for tables/grids */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Modal responsive helper */
+.modal-responsive {
+  width: 90vw;
+  max-width: 600px;
+}
+
+@media (max-width: 768px) {
+  .grid-2col { grid-template-columns: 1fr; }
+  .grid-3col { grid-template-columns: 1fr; }
+  .grid-4col { grid-template-columns: 1fr 1fr; }
+  .modal-responsive { width: calc(100vw - 24px); max-width: 100%; }
+}
+@media (max-width: 400px) {
+  .grid-4col { grid-template-columns: 1fr; }
+}
+
+
 /* ===== AMBIENT BACKGROUND HALOS ===== */
 
 /* Main ambient glow — positioned behind key dashboard areas */

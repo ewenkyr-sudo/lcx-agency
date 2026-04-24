@@ -68,7 +68,7 @@ async function renderFinance() {
     // === Commission recap ===
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light);margin-bottom:16px">' + t('finance.agency_commissions') + '</h3>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
+    + '<div class="grid-2col" style="gap:14px;margin-bottom:16px">'
     + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--accent)">$' + commissions.monthlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.this_month_commission') + '</div></div>'
     + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--green)">$' + commissions.yearlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.yearly_commission') + '</div></div>'
     + '</div>'

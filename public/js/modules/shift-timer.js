@@ -203,7 +203,7 @@ function showEndShiftModal() {
     + '<div class="modal-body">'
     + '<div style="background:var(--bg-elevated);border-radius:10px;padding:16px;margin-bottom:16px">'
     + '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:8px">' + t('shift.recap') + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div><div style="font-size:20px;font-weight:800">' + elapsedH + 'h ' + elapsedM + 'min</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('shift.duration') + '</div></div>'
     + '<div><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('shift.total_revenue') + '</div></div>'
     + '<div><div style="font-size:16px;font-weight:700">' + ppvCount + ' → ' + ppvSold + '</div><div style="font-size:11px;color:var(--text-tertiary)">PPV ' + t('shift.sent') + '/' + t('shift.sold') + '</div></div>'

@@ -43,11 +43,11 @@ function renderMOStep() {
       + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Informations de base sur la créatrice</p>'
       + moField(t('mo.firstname') + ' *', 'text', 'mo-name', 'Ex: Luna')
       + moField(t('mo.stage_name_alt'), 'text', 'mo-stage-name', 'Ex: Luna_exclusive')
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      + '<div class="grid-2col" style="gap:12px">'
       + moField(t('mo.birth_date'), 'date', 'mo-birth')
       + moField(t('mo.nationality'), 'text', 'mo-nationality', 'Ex: Française')
       + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      + '<div class="grid-2col" style="gap:12px">'
       + moField(t('mo.city'), 'text', 'mo-city', 'Ex: Paris')
       + moField(t('mo.country'), 'text', 'mo-country', 'Ex: France')
       + '</div>'
@@ -83,7 +83,7 @@ function renderMOStep() {
           + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mo-has-' + p.key + '" onchange="moTogglePlatform(\'' + p.key + '\')" ' + (hasAccount ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer"><span style="font-size:12px">' + (hasAccount ? t('mo.active') : 'Non') + '</span></label>'
           + '</div>'
           + '<div id="mo-plat-details-' + p.key + '" style="' + (hasAccount ? '' : 'display:none') + '">'
-          + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+          + '<div class="grid-3col" style="gap:8px">'
           + moField(t('mo.link'), 'url', 'mo-' + p.key + '-link', 'https://...')
           + moField(t('mo.subscribers'), 'number', 'mo-' + p.key + '-subs', '0')
           + moField(t('mo.monthly_revenue'), 'number', 'mo-' + p.key + '-rev', '0')
@@ -108,7 +108,7 @@ function renderMOStep() {
         return '<button class="filter-chip' + sel + '" onclick="this.classList.toggle(\'selected\')" data-val="' + t + '">' + t + '</button>';
       }).join('') + '</div></div>'
       + moField(t('mo.post_frequency'), 'text', 'mo-frequency', 'Ex: 3 posts/jour')
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      + '<div class="grid-2col" style="gap:12px">'
       + '<div class="form-group"><label class="form-label">A un photographe/vidéaste ?</label>'
       + '<select class="form-input" id="mo-photographer"><option value="false">Non</option><option value="true"' + (moData.has_photographer ? ' selected' : '') + '>Oui</option></select></div>'
       + moField(t('mo.content_stock'), 'number', 'mo-stock', '0')

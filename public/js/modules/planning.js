@@ -415,7 +415,7 @@ async function renderPlanStats(start, end) {
 
   container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('planning.hours_recap') + '</h3>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+    + '<div class="grid-2col" style="gap:16px">'
     // Semaine
     + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px">' + t('planning.this_week_label') + '</h4>'
     + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>' + t('common.name') + '</th><th>' + t('planning.planned') + '</th><th>' + t('planning.actual') + '</th></tr></thead><tbody>'

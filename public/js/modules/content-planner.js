@@ -123,7 +123,7 @@ function renderCPWeek(container) {
   var hours = [];
   for (var h = 6; h <= 23; h++) hours.push(h);
 
-  var html = '<div class="cp-week">';
+  var html = '<div class="scroll-x"><div class="cp-week">';
   // Header row
   html += '<div class="cp-week-header"></div>';
   for (var i = 0; i < 7; i++) {
@@ -153,7 +153,7 @@ function renderCPWeek(container) {
       html += '</div>';
     }
   }
-  html += '</div>';
+  html += '</div></div>'; // close cp-week + scroll-x
   container.innerHTML = html;
 }
 
@@ -235,17 +235,17 @@ function openCPModal(postId, defaultDateTime) {
     + '<div class="modal-header"><div class="modal-title">' + (post ? (isReadOnly ? t('cp.post_details_title') : t('cp.edit_post_title')) : t('cp.new_post_title')) + '</div><button class="modal-close" onclick="closeCPModal()">✕</button></div>'
     + '<div class="modal-body">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="cp-model" class="form-input"' + (isReadOnly?' disabled':'') + '>' + modelOpts + '</select></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div class="grid-2col" style="gap:12px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_date') + '</label><input type="date" id="cp-date" class="form-input" value="' + dateVal + '"' + (isReadOnly?' disabled':'') + '></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_time') + '</label><input type="time" id="cp-time" class="form-input" value="' + timeVal + '"' + (isReadOnly?' disabled':'') + '></div>'
     + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div class="grid-2col" style="gap:12px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="cp-platform" class="form-input" onchange="updateCPTypes()"' + (isReadOnly?' disabled':'') + '><option value="instagram"' + (plat==='instagram'?' selected':'') + '>📸 Instagram</option><option value="tiktok"' + (plat==='tiktok'?' selected':'') + '>🎵 TikTok</option><option value="onlyfans"' + (plat==='onlyfans'?' selected':'') + '>💎 OnlyFans</option><option value="fansly"' + (plat==='fansly'?' selected':'') + '>🌸 Fansly</option><option value="fanvue"' + (plat==='fanvue'?' selected':'') + '>💚 Fanvue</option><option value="mym"' + (plat==='mym'?' selected':'') + '>🔥 MYM</option><option value="twitter"' + (plat==='twitter'?' selected':'') + '>🐦 Twitter</option></select></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_type') + '</label><select id="cp-type" class="form-input"' + (isReadOnly?' disabled':'') + '></select></div>'
     + '</div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_caption') + '</label><textarea id="cp-caption" class="form-input" rows="3" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.caption || '') : '') + '</textarea></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_media_link') + '</label><input type="url" id="cp-media" class="form-input" value="' + (post ? (post.media_link || '') : '') + '"' + (isReadOnly?' disabled':'') + '>' + (post && post.media_link ? '<a href="' + post.media_link + '" target="_blank" style="font-size:11px;color:var(--accent-blue-light)">' + t('cp.open_media') + '</a>' : '') + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div class="grid-2col" style="gap:12px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_status') + '</label><select id="cp-status" class="form-input"' + (isReadOnly?' disabled':'') + '><option value="draft"' + (post&&post.status==='draft'?' selected':'') + '>' + t('cp.status_draft') + '</option><option value="scheduled"' + (post&&post.status==='scheduled'?' selected':'') + '>' + t('cp.status_scheduled') + '</option><option value="published"' + (post&&post.status==='published'?' selected':'') + '>' + t('cp.status_published') + '</option><option value="cancelled"' + (post&&post.status==='cancelled'?' selected':'') + '>' + t('cp.status_cancelled') + '</option></select></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select id="cp-assign" class="form-input"' + (isReadOnly?' disabled':'') + '>' + teamOpts + '</select></div>'
     + '</div>'

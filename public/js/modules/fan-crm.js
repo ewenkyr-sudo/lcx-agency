@@ -53,7 +53,7 @@ async function loadFans() {
 function renderFanKPIs(stats) {
   var el = document.getElementById('fan-kpis');
   if (!el || !stats) return;
-  el.innerHTML = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px">'
+  el.innerHTML = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:16px">'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + (stats.total || 0) + '</div><div class="coaching-kpi-label">' + t('fan.total_fans') + '</div></div>'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#3B82F6">' + (stats.whales || 0) + '</div><div class="coaching-kpi-label">🐋 Whales</div></div>'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#F59E0B">' + (stats.vips || 0) + '</div><div class="coaching-kpi-label">⭐ VIP</div></div>'
@@ -214,7 +214,7 @@ function openAddFanModal() {
   var html = '<div class="modal-overlay show" id="add-fan-modal" onclick="if(event.target===this)this.remove()">'
     + '<div class="modal" style="width:440px"><div class="modal-header"><div class="modal-title">' + t('fans.addFan') + '</div><button class="modal-close" onclick="document.getElementById(\'add-fan-modal\').remove()">✕</button></div>'
     + '<div class="modal-body">'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="af-model" class="form-input">' + modelOpts + '</select></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="af-platform" class="form-input"><option value="onlyfans">💎 OnlyFans</option><option value="fansly">🌸 Fansly</option><option value="fanvue">💚 Fanvue</option><option value="mym">🔥 MYM</option></select></div></div>'
     + '<div class="form-group"><label class="form-label">Username *</label><input id="af-username" class="form-input" placeholder="@username"></div>'
@@ -245,7 +245,7 @@ function openImportCSVModal() {
   var html = '<div class="modal-overlay show" id="csv-modal" onclick="if(event.target===this)this.remove()">'
     + '<div class="modal" style="width:620px;max-height:90vh;overflow-y:auto"><div class="modal-header"><div class="modal-title">' + t('fan.import_step1') + '</div><button class="modal-close" onclick="document.getElementById(\'csv-modal\').remove()">✕</button></div>'
     + '<div class="modal-body" id="csv-body">'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
+    + '<div class="grid-2col" style="gap:10px;margin-bottom:16px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="csv-model" class="form-input">' + modelOpts + '</select></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="csv-platform" class="form-input"><option value="onlyfans">OnlyFans</option><option value="fansly">Fansly</option><option value="fanvue">Fanvue</option><option value="mym">MYM</option></select></div></div>'
     + '<div class="form-group"><label class="form-label">' + t('student.file_label') + '</label>'
@@ -327,7 +327,7 @@ async function csvStep3() {
   if (title) title.textContent = t('fan.import_done');
   body.innerHTML = '<div style="text-align:center;padding:20px">'
     + '<div style="font-size:48px;margin-bottom:12px">✅</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">'
+    + '<div class="grid-3col" style="gap:12px;margin-bottom:16px">'
     + '<div style="background:var(--green-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--green)">' + (data.imported || 0) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.created_label') + '</div></div>'
     + '<div style="background:var(--blue-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--blue)">' + (data.updated || 0) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.updated_label') + '</div></div>'
     + '<div style="background:var(--red-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--red)">' + ((data.errors || []).length) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.errors_label') + '</div></div>'
