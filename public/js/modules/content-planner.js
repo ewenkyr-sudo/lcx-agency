@@ -168,7 +168,7 @@ function renderCPMonth(container) {
   var dayNames = [t('cp.day_mon'),t('cp.day_tue'),t('cp.day_wed'),t('cp.day_thu'),t('cp.day_fri'),t('cp.day_sat'),t('cp.day_sun')];
 
   var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-radius:12px;overflow:hidden">';
-  dayNames.forEach(function(d) { html += '<div style="background:rgba(19,13,33,0.8);padding:8px;text-align:center;font-size:10px;font-weight:700;color:var(--text3)">' + d + '</div>'; });
+  dayNames.forEach(function(d) { html += '<div style="background:rgba(19,13,33,0.8);padding:8px;text-align:center;font-size:10px;font-weight:700;color:var(--text-tertiary)">' + d + '</div>'; });
 
   for (var i = 0; i < startDay; i++) html += '<div style="background:var(--bg2);min-height:80px"></div>';
   for (var d = 1; d <= daysInMonth; d++) {
@@ -178,13 +178,13 @@ function renderCPMonth(container) {
     var dayPosts = cpPosts.filter(function(p) { return fmtDateISO(new Date(p.scheduled_at)) === dayStr; });
 
     html += '<div style="background:var(--bg2);min-height:80px;padding:4px;cursor:pointer;' + (isToday?'border:1px solid var(--accent);':'') + '" onclick="' + (isAdmin()?'openCPModal(null,\''+dayStr+'T10:00\')':'') + '">';
-    html += '<div style="font-size:11px;font-weight:' + (isToday?'800':'500') + ';color:' + (isToday?'var(--accent)':'var(--text2)') + ';margin-bottom:2px">' + d + '</div>';
+    html += '<div style="font-size:11px;font-weight:' + (isToday?'800':'500') + ';color:' + (isToday?'var(--accent)':'var(--text-secondary)') + ';margin-bottom:2px">' + d + '</div>';
     dayPosts.slice(0,3).forEach(function(p) {
       var plat = CP_PLATFORMS[p.platform] || CP_PLATFORMS.instagram;
       var time = new Date(p.scheduled_at); var hh = String(time.getHours()).padStart(2,'0') + ':' + String(time.getMinutes()).padStart(2,'0');
       html += '<div class="cp-post cp-post-' + plat.cls + '" onclick="event.stopPropagation();openCPModal(' + p.id + ')" style="font-size:9px;padding:2px 4px">' + hh + ' ' + plat.icon + '</div>';
     });
-    if (dayPosts.length > 3) html += '<div style="font-size:9px;color:var(--text3);text-align:center">+' + (dayPosts.length-3) + '</div>';
+    if (dayPosts.length > 3) html += '<div style="font-size:9px;color:var(--text-tertiary);text-align:center">+' + (dayPosts.length-3) + '</div>';
     html += '</div>';
   }
   html += '</div>';
@@ -195,7 +195,7 @@ function renderCPMonth(container) {
 
 function renderCPList(container) {
   if (cpPosts.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">' + t('cp.no_posts') + '</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:40px">' + t('cp.no_posts') + '</div>';
     return;
   }
   var html = '<table class="table mobile-cards"><thead><tr><th>' + t('cp.table_date') + '</th><th>' + t('cp.table_model') + '</th><th>' + t('cp.table_platform') + '</th><th>' + t('cp.table_type') + '</th><th>' + t('cp.table_caption') + '</th><th>' + t('cp.table_status') + '</th><th></th></tr></thead><tbody>';
@@ -208,8 +208,8 @@ function renderCPList(container) {
       + '<td data-label="' + t('cp.table_model') + '" class="mc-half"><strong>' + (p.model_name || '-') + '</strong></td>'
       + '<td data-label="" class="mc-half">' + plat.icon + ' ' + plat.label + '</td>'
       + '<td data-label="' + t('cp.table_type') + '" class="mc-half">' + getCPTypeLabel(p.content_type) + '</td>'
-      + '<td data-label="' + t('cp.table_caption') + '" class="mc-full" style="color:var(--text2);font-size:12px">' + ((p.caption || '').substring(0,50) || '-') + '</td>'
-      + '<td data-label="' + t('cp.table_status') + '" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent2)') + '">' + (getCPStatus(p.status)) + '</span></td>'
+      + '<td data-label="' + t('cp.table_caption') + '" class="mc-full" style="color:var(--text-secondary);font-size:12px">' + ((p.caption || '').substring(0,50) || '-') + '</td>'
+      + '<td data-label="' + t('cp.table_status') + '" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + (p.status==='published'?'var(--green)':p.status==='cancelled'?'var(--red)':'var(--accent-blue-light)') + '">' + (getCPStatus(p.status)) + '</span></td>'
       + '<td data-label="" class="mc-half">' + (isAdmin() ? '<button class="btn-delete-small" onclick="event.stopPropagation();deleteCPPost(' + p.id + ')">✕</button>' : '') + '</td>'
       + '</tr>';
   });
@@ -244,7 +244,7 @@ function openCPModal(postId, defaultDateTime) {
     + '<div class="form-group"><label class="form-label">' + t('cp.form_type') + '</label><select id="cp-type" class="form-input"' + (isReadOnly?' disabled':'') + '></select></div>'
     + '</div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_caption') + '</label><textarea id="cp-caption" class="form-input" rows="3" style="resize:vertical"' + (isReadOnly?' disabled':'') + '>' + (post ? (post.caption || '') : '') + '</textarea></div>'
-    + '<div class="form-group"><label class="form-label">' + t('cp.form_media_link') + '</label><input type="url" id="cp-media" class="form-input" value="' + (post ? (post.media_link || '') : '') + '"' + (isReadOnly?' disabled':'') + '>' + (post && post.media_link ? '<a href="' + post.media_link + '" target="_blank" style="font-size:11px;color:var(--accent2)">' + t('cp.open_media') + '</a>' : '') + '</div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_media_link') + '</label><input type="url" id="cp-media" class="form-input" value="' + (post ? (post.media_link || '') : '') + '"' + (isReadOnly?' disabled':'') + '>' + (post && post.media_link ? '<a href="' + post.media_link + '" target="_blank" style="font-size:11px;color:var(--accent-blue-light)">' + t('cp.open_media') + '</a>' : '') + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_status') + '</label><select id="cp-status" class="form-input"' + (isReadOnly?' disabled':'') + '><option value="draft"' + (post&&post.status==='draft'?' selected':'') + '>' + t('cp.status_draft') + '</option><option value="scheduled"' + (post&&post.status==='scheduled'?' selected':'') + '>' + t('cp.status_scheduled') + '</option><option value="published"' + (post&&post.status==='published'?' selected':'') + '>' + t('cp.status_published') + '</option><option value="cancelled"' + (post&&post.status==='cancelled'?' selected':'') + '>' + t('cp.status_cancelled') + '</option></select></div>'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_assigned') + '</label><select id="cp-assign" class="form-input"' + (isReadOnly?' disabled':'') + '>' + teamOpts + '</select></div>'

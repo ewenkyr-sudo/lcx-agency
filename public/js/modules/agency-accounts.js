@@ -2,8 +2,8 @@
 // Instagram/TikTok accounts managed by the agency team
 
 var ACCOUNT_CATEGORIES = [
-  { key: 'personal_brand', labelKey: 'acc.cat_personal', icon: '👤', color: '#A855F7' },
-  { key: 'fake_models', labelKey: 'acc.cat_fake', icon: '🎭', color: '#F472B6' },
+  { key: 'personal_brand', labelKey: 'acc.cat_personal', icon: '👤', color: '#3B82F6' },
+  { key: 'fake_models', labelKey: 'acc.cat_fake', icon: '🎭', color: '#8B5CF6' },
   { key: 'assistantes', labelKey: 'acc.cat_assistants', icon: '💬', color: '#22D3EE' },
   { key: 'agency', labelKey: 'acc.cat_agency', icon: '🏢', color: '#10B981' }
 ];
@@ -20,7 +20,7 @@ async function renderAgencyAccounts() {
     actions.innerHTML = '<button class="btn btn-primary" onclick="openAddAccountModal()">' + t('acc.add_btn') + '</button>';
   }
 
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary)">' + t('common.loading') + '</div>';
   var res = await fetch('/api/agency-accounts', { credentials: 'include' });
   agencyAccounts = await res.json();
 
@@ -62,30 +62,30 @@ function filterAccountsCat(cat, btn) {
 function renderAccountsList(accounts) {
   var el = document.getElementById('accounts-list');
   if (!el) return;
-  if (accounts.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">' + t('acc.no_accounts_cat') + '</div>'; return; }
+  if (accounts.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:40px">' + t('acc.no_accounts_cat') + '</div>'; return; }
 
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">'
     + accounts.map(function(a) {
       var cat = ACCOUNT_CATEGORIES.find(function(c) { return c.key === a.category; }) || ACCOUNT_CATEGORIES[3];
       var diff = a.current_followers - a.previous_followers;
       var diffSign = diff >= 0 ? '+' : '';
-      var diffColor = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--text3)';
+      var diffColor = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--text-tertiary)';
       var platIcon = a.platform === 'instagram' ? '📸' : a.platform === 'tiktok' ? '🎵' : '📱';
 
-      return '<div style="background:var(--bg3);border-radius:14px;padding:16px;border-left:3px solid ' + cat.color + ';transition:all 0.2s" onmouseover="this.style.borderColor=\'' + cat.color + '\'" onmouseout="this.style.borderColor=\'' + cat.color + '\'">'
+      return '<div style="background:var(--bg-base);border-radius:14px;padding:16px;border-left:3px solid ' + cat.color + ';transition:all 0.2s" onmouseover="this.style.borderColor=\'' + cat.color + '\'" onmouseout="this.style.borderColor=\'' + cat.color + '\'">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
         + '<img src="https://unavatar.io/' + (a.platform||'instagram') + '/' + (a.handle||'').replace(/^@/,'') + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid ' + cat.color + '40" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
         + '<div style="display:none;width:48px;height:48px;border-radius:50%;background:' + cat.color + ';align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;flex-shrink:0">' + (a.handle||'?').replace(/^@/,'').charAt(0).toUpperCase() + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + platIcon + ' ' + a.handle + '</div>'
-        + '<div style="font-size:11px;color:var(--text3)">' + cat.icon + ' ' + getAccCatLabel(cat) + (a.assigned_name ? ' · ' + a.assigned_name : '') + '</div>'
-        + (a.purpose ? '<div style="font-size:10px;color:var(--text3);font-style:italic">' + a.purpose + '</div>' : '')
+        + '<div style="font-size:11px;color:var(--text-tertiary)">' + cat.icon + ' ' + getAccCatLabel(cat) + (a.assigned_name ? ' · ' + a.assigned_name : '') + '</div>'
+        + (a.purpose ? '<div style="font-size:10px;color:var(--text-tertiary);font-style:italic">' + a.purpose + '</div>' : '')
         + '</div>'
         + '</div>'
         // Stats
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + t('acc.followers') + '</div></div>'
-        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text3)">' + t('acc.evolution') + '</div></div>'
+        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800">' + (a.current_followers || 0).toLocaleString() + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('acc.followers') + '</div></div>'
+        + '<div style="background:var(--bg2);padding:8px;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:' + diffColor + '">' + diffSign + diff.toLocaleString() + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('acc.evolution') + '</div></div>'
         + '</div>'
         // Actions
         + (isAdmin() ? '<div style="display:flex;gap:6px;margin-top:10px">'

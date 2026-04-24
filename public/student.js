@@ -58,12 +58,12 @@ function renderStudentBulkBar() {
   const scriptOpts = (userOptions.script || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   const accountOpts = (userOptions.account || []).map(o => `<option value="${o.value}">${o.value}</option>`).join('');
   bar.style.display = 'block';
-  bar.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">
+  bar.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--bg-elevated);border:1px solid var(--accent);border-radius:10px;margin-bottom:16px">
     <strong style="color:var(--accent);font-size:13px">${t('outreach.leads_selected').replace('{n}', n)}</strong>
     <select id="student-bulk-script" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">${t('outreach.apply_script')}</option>${scriptOpts}</select>
     <select id="student-bulk-account" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">${t('outreach.apply_ig')}</option>${accountOpts}</select>
     <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyStudentLeadsBulk()">${t('common.apply')}</button>
-    <button class="btn" style="background:var(--bg2);color:var(--text2);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearStudentLeadsSelection()">${t('common.deselect')}</button>
+    <button class="btn" style="background:var(--bg2);color:var(--text-secondary);border:none;padding:6px 14px;font-size:12px;cursor:pointer" onclick="clearStudentLeadsSelection()">${t('common.deselect')}</button>
   </div>`;
 }
 
@@ -120,17 +120,17 @@ async function renderStudentHome() {
 
     <!-- Progression -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.my_progression')} — ${pct}%</h3>
-      <div style="display:flex;gap:4px;margin-bottom:16px;height:8px;border-radius:4px;overflow:hidden;background:var(--bg3)">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">${t('student.my_progression')} — ${pct}%</h3>
+      <div style="display:flex;gap:4px;margin-bottom:16px;height:8px;border-radius:4px;overflow:hidden;background:var(--bg-elevated)">
         <div style="width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width 0.5s"></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${STEPS.map((s, i) => {
           const done = i <= stepIdx;
           const active = i === stepIdx;
-          return `<div style="flex:1;min-width:80px;text-align:center;padding:10px 6px;border-radius:8px;background:${active ? 'var(--accent-glow)' : done ? 'var(--green-bg)' : 'var(--bg3)'};border:1px solid ${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--border)'}">
+          return `<div style="flex:1;min-width:80px;text-align:center;padding:10px 6px;border-radius:8px;background:${active ? 'var(--accent-glow)' : done ? 'var(--green-bg)' : 'var(--bg-elevated)'};border:1px solid ${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--border)'}">
             <div style="font-size:20px;margin-bottom:4px">${s.icon}</div>
-            <div style="font-size:11px;font-weight:600;color:${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--text3)'}">${getStepLabel(s)}</div>
+            <div style="font-size:11px;font-weight:600;color:${active ? 'var(--accent)' : done ? 'var(--green)' : 'var(--text-tertiary)'}">${getStepLabel(s)}</div>
           </div>`;
         }).join('')}
       </div>
@@ -139,14 +139,14 @@ async function renderStudentHome() {
     <!-- KPIs -->
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value">${leadStats.dm_sent || 0}</div><div class="stat-label">${t('student.dms_sent')}</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${leadStats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">${leadStats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--green)">${studentData.recruits.filter(r => r.status === 'signed').length}</div><div class="stat-label">${t('student.signed_models')}</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${studentData.models.length}</div><div class="stat-label">${t('student.managed_models')}</div></div>
     </div>
 
     <!-- Daily leads & DMs chart -->
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.leads_dms_daily')}</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">${t('student.leads_dms_daily')}</h3>
       <div style="position:relative;height:220px"><canvas id="chart-student-daily"></canvas></div>
     </div>
 
@@ -157,7 +157,7 @@ async function renderStudentHome() {
           <strong style="font-size:14px">${t('student.call_request_label')}</strong>
           <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="showCallRequestForm()">${t('student.request_call')}</button>
         </div>
-        ${studentData.callRequests.length === 0 ? '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('student.no_request') + '</div>' :
+        ${studentData.callRequests.length === 0 ? '<div style="color:var(--text-tertiary);font-size:13px;text-align:center;padding:16px">' + t('student.no_request') + '</div>' :
           studentData.callRequests.slice(0, 5).map(c => {
             const stColor = c.status === 'pending' ? 'var(--yellow)' : c.status === 'accepted' ? 'var(--green)' : 'var(--red)';
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
@@ -175,11 +175,11 @@ async function renderStudentHome() {
             ${avatarHTML(c, 32)}
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">${c.display_name}</div>
-              <div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${c.last_message || t('student.no_message')}</div>
+              <div style="font-size:11px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${c.last_message || t('student.no_message')}</div>
             </div>
             ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + c.unread + '</span>' : ''}
           </div>
-        `).join('') || '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('student.no_message') + '</div>'}
+        `).join('') || '<div style="color:var(--text-tertiary);font-size:13px;text-align:center;padding:16px">' + t('student.no_message') + '</div>'}
       </div>
     </div>
   `;
@@ -198,11 +198,11 @@ async function renderStudentHome() {
           data: {
             labels: daily.map(function(d) { var dt = new Date(d.day); return dt.getDate() + '/' + (dt.getMonth()+1); }),
             datasets: [
-              { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
+              { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
               { label: 'DMs', data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
             ]
           },
-          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 12 } } } }
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' }, grid: { color: 'rgba(59,130,246,0.06)' } }, x: { ticks: { color: '#A1A1AA', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 12 } } } }
         });
       }
     }
@@ -219,11 +219,11 @@ function showCallRequestForm() {
   form.className = 'panel';
   form.style.cssText = 'padding:20px;margin-bottom:20px';
   form.innerHTML = `
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">${t('student.request_call')}</h3>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">${t('student.request_call')}</h3>
     <div style="display:grid;gap:12px;max-width:500px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.call_subject')}</label>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.call_subject')}</label>
         <textarea id="cr-message" class="form-input" rows="2" placeholder="${t('student.call_subject_placeholder')}"></textarea></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.call_availability')}</label>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.call_availability')}</label>
         <input type="text" id="cr-avail" class="form-input" placeholder="${t('student.call_availability_placeholder')}"></div>
       <button class="btn btn-primary" onclick="submitCallRequest()">${t('student.send_request')}</button>
     </div>`;
@@ -256,21 +256,21 @@ async function renderStudentOutreach() {
 
   var marketLabel = currentStudentMarket === 'us' ? 'US' : 'FR';
   c.innerHTML = `
-    ${usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="switchStudentMarket(\'fr\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='fr'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='fr'?'white':'var(--text2)') + '">Outreach FR</button><button onclick="switchStudentMarket(\'us\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='us'?'var(--accent)':'var(--bg3)') + ';color:' + (currentStudentMarket==='us'?'white':'var(--text2)') + '">Outreach US</button></div>' : ''}
+    ${usEnabled ? '<div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="switchStudentMarket(\'fr\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='fr'?'var(--accent)':'var(--bg-elevated)') + ';color:' + (currentStudentMarket==='fr'?'white':'var(--text-secondary)') + '">Outreach FR</button><button onclick="switchStudentMarket(\'us\')" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:' + (currentStudentMarket==='us'?'var(--accent)':'var(--bg-elevated)') + ';color:' + (currentStudentMarket==='us'?'white':'var(--text-secondary)') + '">Outreach US</button></div>' : ''}
     <div class="page-header"><div><div class="page-title">${t('student.outreach_title')} ${marketLabel}</div><div class="page-subtitle">${t('student.outreach_subtitle')} ${marketLabel}</div></div>
-      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="showStudentLeadForm()">${t('common.new_lead')}</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="showOptionsManager()">${t('outreach.my_options')}</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">${t('outreach.import_csv')}</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
+      <div class="header-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="showStudentLeadForm()">${t('common.new_lead')}</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary);border:none;cursor:pointer" onclick="showOptionsManager()">${t('outreach.my_options')}</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary);border:none;cursor:pointer" onclick="document.getElementById('csv-import-input').click()">${t('outreach.import_csv')}</button><input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importStudentCSV(this)"></div></div>
     <div class="stats-grid" style="margin-bottom:20px">
       <div class="stat-card"><div class="stat-value">${stats.leads_today || 0}</div><div class="stat-label">${t('student.leads_today')}</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--blue)">${stats.dm_sent_today || 0}</div><div class="stat-label">${t('student.dms_today')}</div></div>
       <div class="stat-card"><div class="stat-value">${stats.dm_sent || 0}</div><div class="stat-label">${t('student.dms_total')}</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">${stats.talking_warm || 0}</div><div class="stat-label">${t('dash.talking_warm')}</div></div>
       <div class="stat-card"><div class="stat-value" style="color:var(--green)">${stats.call_booked || 0}</div><div class="stat-label">${t('dash.call_booked')}</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">${stats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">${stats.reply_rate || 0}%</div><div class="stat-label">${t('student.reply_rate')}</div></div>
     </div>
-    ${stats.shared && stats.contributions ? '<div class="panel" style="padding:14px;margin-bottom:20px"><strong style="font-size:13px;color:var(--accent2);display:block;margin-bottom:10px">' + t('student.contributions') + '</strong><div style="display:flex;gap:16px;flex-wrap:wrap">' + stats.contributions.map(function(c) { return '<div style="background:var(--bg3);padding:10px 14px;border-radius:8px;flex:1;min-width:150px"><strong style="font-size:13px">' + c.name + '</strong><div style="font-size:12px;color:var(--text2);margin-top:4px">' + c.leads_added + ' ' + t('student.leads_added') + '</div><div style="font-size:12px;color:var(--blue)">' + c.dms_today + ' ' + t('student.dms_short') + '</div><div style="font-size:12px;color:var(--text3)">' + c.dms_total + ' ' + t('student.dms_total') + '</div></div>'; }).join('') + '</div></div>' : ''}
+    ${stats.shared && stats.contributions ? '<div class="panel" style="padding:14px;margin-bottom:20px"><strong style="font-size:13px;color:var(--accent-blue-light);display:block;margin-bottom:10px">' + t('student.contributions') + '</strong><div style="display:flex;gap:16px;flex-wrap:wrap">' + stats.contributions.map(function(c) { return '<div style="background:var(--bg-elevated);padding:10px 14px;border-radius:8px;flex:1;min-width:150px"><strong style="font-size:13px">' + c.name + '</strong><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">' + c.leads_added + ' ' + t('student.leads_added') + '</div><div style="font-size:12px;color:var(--blue)">' + c.dms_today + ' ' + t('student.dms_short') + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + c.dms_total + ' ' + t('student.dms_total') + '</div></div>'; }).join('') + '</div></div>' : ''}
     <div id="student-lead-form-wrap"></div>
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg3)'};color:${studentLeadFilter===f?'white':'var(--text2)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
+      ${['all','to-send','sent','talking-cold','talking-warm','call-booked','signed'].map(f => `<button class="btn lead-filter ${studentLeadFilter===f?'active':''}" onclick="filterStudentLeads('${f}',this)" style="font-size:12px;padding:6px 14px;border-radius:20px;background:${studentLeadFilter===f?'var(--accent)':'var(--bg-elevated)'};color:${studentLeadFilter===f?'white':'var(--text-secondary)'};border:none;cursor:pointer">${f==='all'?'Tous':leadStatusColors[f]?.label||f}</button>`).join('')}
     </div>
     <div style="margin-bottom:16px"><input type="text" id="student-lead-search" class="form-input" placeholder="${t('outreach.search_placeholder')}" oninput="debouncedRenderStudentLeadTable()" style="max-width:350px"></div>
     <div id="student-leads-bulk-bar" style="display:none"></div>
@@ -281,7 +281,7 @@ async function renderStudentOutreach() {
 
 function inlineSelect(leadId, field, currentValue, optType) {
   const opts = userOptions[optType] || [];
-  const selectStyle = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
+  const selectStyle = 'background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);padding:4px 6px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;min-height:28px;width:100%';
   let html = '<select onchange="updateStudentLeadField(' + leadId + ',\'' + field + '\',this.value)" style="' + selectStyle + '">';
   html += '<option value="">-</option>';
   // Ajouter la valeur actuelle si elle n'est pas dans les options
@@ -308,16 +308,16 @@ function renderStudentLeadTable() {
     const igLink = l.ig_link ? '<a href="' + l.ig_link + '" target="_blank" style="color:var(--accent)">' + l.username + '</a>' : l.username;
     const checked = selectedStudentLeadIds.has(l.id) ? 'checked' : '';
     return '<tr><td data-label="" style="width:30px"><input type="checkbox" class="student-lead-cb" data-id="' + l.id + '" ' + checked + ' onchange="toggleStudentLeadSelection(' + l.id + ',this.checked)"></td>'
-      + '<td data-label="#" style="color:var(--text3);font-size:12px">' + (filtered.length - idx) + '</td>'
+      + '<td data-label="#" style="color:var(--text-tertiary);font-size:12px">' + (filtered.length - idx) + '</td>'
       + '<td data-label="" class="mc-title"><strong>' + igLink + '</strong></td>'
       + '<td data-label="Type" class="mc-half">' + leadTypeSelect(l.id, l.lead_type, 'updateStudentLeadField(' + l.id + ',\'lead_type\',this.value)') + '</td>'
       + '<td data-label="Script" class="mc-half">' + inlineSelect(l.id, 'script_used', l.script_used, 'script') + '</td>'
       + '<td data-label="Compte" class="mc-half">' + inlineSelect(l.id, 'ig_account_used', l.ig_account_used, 'account') + '</td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="var s=leadStatusColors[this.value]||leadStatusColors[\'sent\'];this.style.background=s.bg;this.style.color=s.color;updateStudentLead(' + l.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(leadStatusColors).map(([k,v]) => '<option value="' + k + '"' + (l.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
-      + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent2)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
-      + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (l.notes || '-') + '</td>'
-      + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
+      + '<td data-label="Modifié par" class="mc-half" style="font-size:11px;color:var(--accent-blue-light)">' + (l.modified_by_name || l.added_by_name || '-') + '</td>'
+      + '<td data-label="Notes" class="mc-full" style="color:var(--text-secondary);font-size:12px">' + (l.notes || '-') + '</td>'
+      + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text-tertiary)">' + date + '</td>'
       + '<td data-label=""><button class="btn-delete-small" onclick="deleteStudentLead(' + l.id + ')">✕</button></td></tr>';
   }).join('') || '<tr><td colspan="11">' + emptyStateHTML('search', t('student.no_lead'), '+ Nouveau lead', 'showStudentLeadForm()') + '</td></tr>';
   renderStudentBulkBar();
@@ -325,7 +325,7 @@ function renderStudentLeadTable() {
 
 function filterStudentLeads(f, btn) {
   studentLeadFilter = f;
-  document.querySelectorAll('#section-student-outreach .lead-filter').forEach(b => { b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; });
+  document.querySelectorAll('#section-student-outreach .lead-filter').forEach(b => { b.style.background = 'var(--bg-elevated)'; b.style.color = 'var(--text-secondary)'; });
   if (btn) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; }
   renderStudentLeadTable();
 }
@@ -337,7 +337,7 @@ function optionSelect(id, optType, placeholder) {
     + '<option value="">-- ' + placeholder + ' --</option>'
     + opts.map(o => '<option value="' + o.value + '">' + o.value + '</option>').join('')
     + '</select>'
-    + '<button class="btn" style="padding:6px 10px;font-size:14px;background:var(--bg3);color:var(--accent);border:none;cursor:pointer" onclick="addNewOption(\'' + optType + '\',\'' + id + '\')" title="Ajouter">+</button>'
+    + '<button class="btn" style="padding:6px 10px;font-size:14px;background:var(--bg-elevated);color:var(--accent);border:none;cursor:pointer" onclick="addNewOption(\'' + optType + '\',\'' + id + '\')" title="Ajouter">+</button>'
     + '</div>';
 }
 
@@ -345,16 +345,16 @@ function showStudentLeadForm() {
   const wrap = document.getElementById('student-lead-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('student.add_lead_title') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">' + t('student.add_lead_title') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.username_label') + '</label><input type="text" id="sl-username" class="form-input" placeholder="' + t('student.username_placeholder') + '"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('outreach.ig_link') + '</label><input type="text" id="sl-iglink" class="form-input" placeholder="' + t('student.ig_link_placeholder') + '" oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="sl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('outreach.script') + '</label>' + optionSelect('sl-script', 'script', t('student.script_placeholder')) + '</div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.account_label') + '</label>' + optionSelect('sl-account', 'account', t('student.account_placeholder')) + '</div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="sl-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.username_label') + '</label><input type="text" id="sl-username" class="form-input" placeholder="' + t('student.username_placeholder') + '"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('outreach.ig_link') + '</label><input type="text" id="sl-iglink" class="form-input" placeholder="' + t('student.ig_link_placeholder') + '" oninput="autoFillUsername(this.value,\'sl-username\')"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="sl-type" class="form-input"><option value="">-- Type --</option>' + Object.entries(leadTypeColors).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('') + '</select></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('outreach.script') + '</label>' + optionSelect('sl-script', 'script', t('student.script_placeholder')) + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.account_label') + '</label>' + optionSelect('sl-account', 'account', t('student.account_placeholder')) + '</div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="sl-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentLead()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary)" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 
@@ -453,19 +453,19 @@ function showOptionsManager() {
   if (wrap.querySelector('#options-manager')) { wrap.innerHTML = ''; return; }
   const labels = { type: t('student.leads_types'), script: t('student.scripts'), account: t('student.ig_accounts') };
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px" id="options-manager">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('outreach.manage_options') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('outreach.manage_options') + '</h3>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">'
     + Object.entries(labels).map(([key, label]) => {
       const opts = userOptions[key] || [];
-      return '<div style="background:var(--bg3);padding:14px;border-radius:10px">'
+      return '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px">'
         + '<strong style="font-size:13px;display:block;margin-bottom:10px">' + label + '</strong>'
-        + (opts.length === 0 ? '<div style="color:var(--text3);font-size:12px">' + t('student.no_option') + '</div>' : '')
+        + (opts.length === 0 ? '<div style="color:var(--text-tertiary);font-size:12px">' + t('student.no_option') + '</div>' : '')
         + opts.map(o => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px"><span>' + o.value + '</span><button class="btn-delete-small" onclick="deleteOption(' + o.id + ')" style="font-size:10px">✕</button></div>').join('')
         + '<div style="display:flex;gap:6px;margin-top:10px"><input type="text" id="new-opt-' + key + '" class="form-input" style="font-size:12px;padding:6px 8px;flex:1" placeholder="' + t('student.add_option_placeholder') + '"><button class="btn btn-primary" style="padding:6px 10px;font-size:11px" onclick="addOptionFromManager(\'' + key + '\')">+</button></div>'
         + '</div>';
     }).join('')
     + '</div>'
-    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.close') + '</button></div>'
+    + '<div style="margin-top:12px"><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary);border:none;cursor:pointer" onclick="document.getElementById(\'student-lead-form-wrap\').innerHTML=\'\'">' + t('common.close') + '</button></div>'
     + '</div>';
 }
 
@@ -549,8 +549,8 @@ async function renderStudentRecruits() {
     return '<tr><td data-label="" class="mc-title"><strong>' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</strong></td>'
       + '<td data-label="Statut" class="mc-half"><select onchange="updateRecruit(' + r.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;min-height:32px">'
       + Object.entries(RECRUIT_STATUSES).map(([k,v]) => '<option value="' + k + '"' + (r.status===k?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + v.label + '</option>').join('') + '</select></td>'
-      + '<td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">' + (r.notes || '-') + '</td>'
-      + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text3)">' + date + '</td>'
+      + '<td data-label="Notes" class="mc-full" style="color:var(--text-secondary);font-size:12px">' + (r.notes || '-') + '</td>'
+      + '<td data-label="Date" class="mc-half" style="font-size:12px;color:var(--text-tertiary)">' + date + '</td>'
       + '<td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteRecruit(' + r.id + ')">✕</button></td></tr>';
   }).join('') || '<tr><td colspan="5">' + emptyStateHTML('users', t('student.no_recruit')) + '</td></tr>';
 }
@@ -560,11 +560,11 @@ function showRecruitForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.ig_name_label')}</label><input type="text" id="rec-name" class="form-input" placeholder="@username"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.profile_link')}</label><input type="text" id="rec-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,'rec-name')"></div>
-      <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('common.notes')}</label><input type="text" id="rec-notes" class="form-input" placeholder="${t('student.notes_placeholder')}"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.ig_name_label')}</label><input type="text" id="rec-name" class="form-input" placeholder="@username"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.profile_link')}</label><input type="text" id="rec-link" class="form-input" placeholder="https://instagram.com/..." oninput="autoFillUsername(this.value,'rec-name')"></div>
+      <div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('common.notes')}</label><input type="text" id="rec-notes" class="form-input" placeholder="${t('student.notes_placeholder')}"></div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addRecruit()">${t('common.add')}</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('recruit-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
+    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addRecruit()">${t('common.add')}</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary)" onclick="document.getElementById('recruit-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
   </div>`;
 }
 
@@ -602,25 +602,25 @@ async function renderStudentModels() {
 
   const cards = document.getElementById('smodel-cards');
   cards.innerHTML = studentData.models.map(m => {
-    const stColors = { active: 'var(--green)', onboarding: 'var(--yellow)', pause: 'var(--text3)' };
+    const stColors = { active: 'var(--green)', onboarding: 'var(--yellow)', pause: 'var(--text-tertiary)' };
     const modelRev = studentData.revenue.filter(r => r.student_model_id === m.id);
     const totalRev = modelRev.reduce((s, r) => s + parseFloat(r.revenue), 0);
     const commission = totalRev * (parseFloat(m.commission_rate) / 100);
     return `<div class="panel" style="padding:16px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><strong style="font-size:16px">${m.name}</strong> <span style="font-size:12px;color:var(--text3)">${m.of_handle || ''}</span></div>
+        <div><strong style="font-size:16px">${m.name}</strong> <span style="font-size:12px;color:var(--text-tertiary)">${m.of_handle || ''}</span></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <select onchange="updateStudentModel(${m.id},{status:this.value})" style="background:var(--bg3);color:${stColors[m.status]||'var(--text)'};border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+          <select onchange="updateStudentModel(${m.id},{status:this.value})" style="background:var(--bg-elevated);color:${stColors[m.status]||'var(--text)'};border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
             <option value="active" ${m.status==='active'?'selected':''}>${t('models.active_status')}</option><option value="onboarding" ${m.status==='onboarding'?'selected':''}>${t('models.onboarding')}</option><option value="pause" ${m.status==='pause'?'selected':''}>${t('model.status_pause')}</option>
           </select>
           <button class="btn-delete-small" onclick="deleteStudentModel(${m.id})">✕</button>
         </div>
       </div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
-        <div><span style="color:var(--text3)">Fans:</span> <strong>${m.fans_count}</strong></div>
-        <div><span style="color:var(--text3)">Commission:</span> <strong>${m.commission_rate}%</strong></div>
-        <div><span style="color:var(--text3)">${t('student.revenue_total_label')}:</span> <strong style="color:var(--green)">$${totalRev.toFixed(2)}</strong></div>
-        <div><span style="color:var(--text3)">${t('student.commission_due')}:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
+        <div><span style="color:var(--text-tertiary)">Fans:</span> <strong>${m.fans_count}</strong></div>
+        <div><span style="color:var(--text-tertiary)">Commission:</span> <strong>${m.commission_rate}%</strong></div>
+        <div><span style="color:var(--text-tertiary)">${t('student.revenue_total_label')}:</span> <strong style="color:var(--green)">$${totalRev.toFixed(2)}</strong></div>
+        <div><span style="color:var(--text-tertiary)">${t('student.commission_due')}:</span> <strong style="color:var(--accent)">$${commission.toFixed(2)}</strong></div>
       </div>
     </div>`;
   }).join('') || '<div class="panel">' + emptyStateHTML('users', t('student.no_model'), t('student.add_model'), 'showStudentModelForm()') + '</div>';
@@ -631,12 +631,12 @@ function showStudentModelForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.model_name_label')}</label><input type="text" id="sm-name" class="form-input" placeholder="${t('student.model_name_placeholder')}"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.profile_handle')}</label><input type="text" id="sm-handle" class="form-input" placeholder="${t('student.handle_placeholder')}"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.fans_count')}</label><input type="number" id="sm-fans" class="form-input" placeholder="0" min="0"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.commission_rate')}</label><input type="number" id="sm-commission" class="form-input" placeholder="15" min="0" max="100" step="0.5"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.model_name_label')}</label><input type="text" id="sm-name" class="form-input" placeholder="${t('student.model_name_placeholder')}"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.profile_handle')}</label><input type="text" id="sm-handle" class="form-input" placeholder="${t('student.handle_placeholder')}"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.fans_count')}</label><input type="number" id="sm-fans" class="form-input" placeholder="0" min="0"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.commission_rate')}</label><input type="number" id="sm-commission" class="form-input" placeholder="15" min="0" max="100" step="0.5"></div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentModel()">${t('common.add')}</button><button class="btn" style="background:var(--bg3);color:var(--text2)" onclick="document.getElementById('smodel-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
+    <div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addStudentModel()">${t('common.add')}</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary)" onclick="document.getElementById('smodel-form-wrap').innerHTML=''">${t('common.cancel')}</button></div>
   </div>`;
 }
 
@@ -680,18 +680,18 @@ async function renderStudentRevenue() {
       <div class="stat-card"><div class="stat-value">${studentData.models.length}</div><div class="stat-label">Modèles</div></div>
     </div>
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">${t('student.add_revenue')}</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">${t('student.add_revenue')}</h3>
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.model_select')}</label>
+        <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.model_select')}</label>
           <select id="rev-model" class="form-input">${studentData.models.map(m => '<option value="' + m.id + '">' + m.name + '</option>').join('')}</select></div>
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.month_select')}</label>
+        <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.month_select')}</label>
           <input type="month" id="rev-month" class="form-input" value="${currentMonth}"></div>
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">${t('student.amount_label')}</label>
+        <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">${t('student.amount_label')}</label>
           <input type="number" id="rev-amount" class="form-input" placeholder="0.00" step="0.01" min="0"></div>
         <button class="btn btn-primary" onclick="addStudentRevenue()">${t('common.add')}</button>
       </div>
     </div>
-    <div class="panel" style="padding:20px;margin-bottom:20px"><h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t('student.monthly_evolution')}</h3><div style="position:relative;height:250px"><canvas id="chart-student-revenue"></canvas></div></div>
+    <div class="panel" style="padding:20px;margin-bottom:20px"><h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">${t('student.monthly_evolution')}</h3><div style="position:relative;height:250px"><canvas id="chart-student-revenue"></canvas></div></div>
     <div class="panel"><table class="table mobile-cards" id="revenue-table"><thead><tr><th>Mois</th><th>Modèle</th><th>Revenue</th><th>Commission</th></tr></thead><tbody>
       ${studentData.revenue.map(r => {
         const comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
@@ -705,7 +705,7 @@ async function renderStudentRevenue() {
   if (months.length > 0 && typeof Chart !== 'undefined') {
     const revByMonth = months.map(m => studentData.revenue.filter(r => r.month === m).reduce((s, r) => s + parseFloat(r.revenue), 0));
     new Chart(document.getElementById('chart-student-revenue'), {
-      type: 'bar', data: { labels: months, datasets: [{ label: t('student.revenue_chart_label'), data: revByMonth, backgroundColor: '#A855F7cc', borderRadius: 4 }] },
+      type: 'bar', data: { labels: months, datasets: [{ label: t('student.revenue_chart_label'), data: revByMonth, backgroundColor: '#3B82F6cc', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b80' }, beginAtZero: true } }, plugins: { legend: { labels: { color: '#e4e4eb' } } } }
     });
   }
@@ -747,15 +747,15 @@ function renderChatContacts() {
   const contacts = document.getElementById('chat-contacts');
   if (!contacts) return;
   contacts.innerHTML = studentData.conversations.map(c => `
-    <div onclick="openChat(${c.id})" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);background:${currentChatUserId===c.id?'var(--bg3)':'transparent'}" id="contact-${c.id}">
+    <div onclick="openChat(${c.id})" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);background:${currentChatUserId===c.id?'var(--bg-elevated)':'transparent'}" id="contact-${c.id}">
       ${avatarHTML(c, 36)}
       <div style="flex:1;overflow:hidden">
         <div style="font-size:13px;font-weight:600">${c.display_name}</div>
-        <div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.last_message || '...'}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.last_message || '...'}</div>
       </div>
       ${parseInt(c.unread) > 0 ? '<span style="background:var(--red);color:white;font-size:10px;padding:2px 6px;border-radius:10px">' + c.unread + '</span>' : ''}
     </div>
-  `).join('') || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">' + t('student.no_conversation') + '</div>';
+  `).join('') || '<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">' + t('student.no_conversation') + '</div>';
 }
 
 async function openChat(userId) {
@@ -775,7 +775,7 @@ function renderChatMessages() {
   container.innerHTML = studentData.messages.map(m => {
     const isMe = m.from_user_id === currentUser.id;
     return `<div style="display:flex;justify-content:${isMe?'flex-end':'flex-start'}">
-      <div style="max-width:70%;padding:10px 14px;border-radius:${isMe?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isMe?'var(--accent)':'var(--bg3)'};color:${isMe?'white':'var(--text)'};font-size:13px">
+      <div style="max-width:70%;padding:10px 14px;border-radius:${isMe?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isMe?'var(--accent)':'var(--bg-elevated)'};color:${isMe?'white':'var(--text)'};font-size:13px">
         ${m.content}
         <div style="font-size:10px;margin-top:4px;opacity:0.6">${new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
       </div>
@@ -812,12 +812,12 @@ async function renderStudentResources() {
     <div id="resource-form-wrap"></div>
     ${Object.entries(grouped).map(([cat, items]) => `
       <div class="panel" style="padding:20px;margin-bottom:16px">
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">${categories[cat] || cat}</h3>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">${categories[cat] || cat}</h3>
         <div style="display:grid;gap:10px">
-          ${items.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:8px">
+          ${items.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-elevated);border-radius:8px">
             <div>
               <div style="font-size:14px;font-weight:600">${r.title}</div>
-              ${r.description ? '<div style="font-size:12px;color:var(--text3);margin-top:2px">' + r.description + '</div>' : ''}
+              ${r.description ? '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">' + r.description + '</div>' : ''}
             </div>
             <div style="display:flex;gap:8px;align-items:center">
               ${r.url ? '<a href="' + r.url + '" target="_blank" class="btn btn-primary" style="padding:6px 12px;font-size:11px;text-decoration:none">' + t('student.open_btn') + '</a>' : ''}
@@ -836,12 +836,12 @@ function showAddResourceForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `<div class="panel" style="padding:20px;margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:600px">
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.resource_title_label') + '</label><input type="text" id="res-title" class="form-input" placeholder="Titre"></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.category_label') + '</label><select id="res-cat" class="form-input"><option value="outreach">' + t('resource.outreach') + '</option><option value="chatting">' + t('resource.chatting') + '</option><option value="traffic">' + t('resource.traffic') + '</option><option value="general">' + t('resource.general') + '</option></select></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="res-type" class="form-input" onchange="document.getElementById(\'res-url-wrap\').style.display=this.value===\'link\'?\'\':\'none\';document.getElementById(\'res-file-wrap\').style.display=this.value===\'file\'?\'\':\'none\'"><option value="link">' + t('student.type_link') + '</option><option value="file">' + t('student.type_file') + '</option></select></div>
-      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="res-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>
-      <div id="res-url-wrap" style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.url_label') + '</label><input type="text" id="res-url" class="form-input" placeholder="' + t('student.url_placeholder') + '"></div>
-      <div id="res-file-wrap" style="grid-column:1/-1;display:none"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('student.file_label') + '</label><input type="file" id="res-file" class="form-input"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.resource_title_label') + '</label><input type="text" id="res-title" class="form-input" placeholder="Titre"></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.category_label') + '</label><select id="res-cat" class="form-input"><option value="outreach">' + t('resource.outreach') + '</option><option value="chatting">' + t('resource.chatting') + '</option><option value="traffic">' + t('resource.traffic') + '</option><option value="general">' + t('resource.general') + '</option></select></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.type_label') + '</label><select id="res-type" class="form-input" onchange="document.getElementById(\'res-url-wrap\').style.display=this.value===\'link\'?\'\':\'none\';document.getElementById(\'res-file-wrap\').style.display=this.value===\'file\'?\'\':\'none\'"><option value="link">' + t('student.type_link') + '</option><option value="file">' + t('student.type_file') + '</option></select></div>
+      <div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="res-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>
+      <div id="res-url-wrap" style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.url_label') + '</label><input type="text" id="res-url" class="form-input" placeholder="' + t('student.url_placeholder') + '"></div>
+      <div id="res-file-wrap" style="grid-column:1/-1;display:none"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('student.file_label') + '</label><input type="file" id="res-file" class="form-input"></div>
     </div>
     <div style="margin-top:12px"><button class="btn btn-primary" onclick="addResource()">' + t('common.add') + '</button></div>
   </div>`;
@@ -889,12 +889,12 @@ async function renderStudentObjectives() {
   c.innerHTML = `
     <div class="page-header"><div><div class="page-title">${t("student.objectives_title")}</div><div class="page-subtitle">${t("student.week_of")} ${thisWeek}</div></div></div>
     <div class="panel" style="padding:20px;margin-bottom:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">${t("student.this_week")}</h3>
-      ${weekObjectives.length === 0 ? '<div style="color:var(--text3);text-align:center;padding:16px">' + t('student.no_objectives') + '</div>' :
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">${t("student.this_week")}</h3>
+      ${weekObjectives.length === 0 ? '<div style="color:var(--text-tertiary);text-align:center;padding:16px">' + t('student.no_objectives') + '</div>' :
         '<div style="display:grid;gap:12px">' + weekObjectives.map(o => {
           const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
           const done = pct >= 100;
-          return `<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:3px solid ${done?'var(--green)':'var(--accent)'}">
+          return `<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;border-left:3px solid ${done?'var(--green)':'var(--accent)'}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <strong style="font-size:14px">${o.description || o.obj_type}</strong>
               <span style="font-size:13px;font-weight:700;color:${done?'var(--green)':'var(--accent)'}">${o.current} / ${o.target}</span>
@@ -905,7 +905,7 @@ async function renderStudentObjectives() {
         }).join('') + '</div>'}
     </div>
     ${pastObjectives.length > 0 ? `<div class="panel" style="padding:20px">
-      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text2)">${t("student.past_weeks")}</h3>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text-secondary)">${t("student.past_weeks")}</h3>
       ${pastObjectives.map(o => {
         const pct = o.target > 0 ? Math.min(100, Math.round((o.current / o.target) * 100)) : 0;
         return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>' + o.week_start + ' — ' + (o.description || o.obj_type) + '</span><span style="color:' + (pct>=100?'var(--green)':'var(--red)') + '">' + o.current + '/' + o.target + ' (' + pct + '%)</span></div>';
@@ -968,9 +968,9 @@ async function renderStudentPlanning() {
   let html = '<div class="page-header"><div><div class="page-title">' + t('student.planning_title') + '</div><div class="page-subtitle">' + t('student.week_of') + ' ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun) + '</div></div></div>'
     + '<div class="panel" style="padding:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<button onclick="studentPlanNavigate(-1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
+    + '<button onclick="studentPlanNavigate(-1)" style="padding:8px 14px;background:var(--bg-elevated);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
     + '<div style="text-align:center"><div style="font-size:15px;font-weight:700">' + mon.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}) + ' — ' + sun.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) + '</div></div>'
-    + '<button onclick="studentPlanNavigate(1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
+    + '<button onclick="studentPlanNavigate(1)" style="padding:8px 14px;background:var(--bg-elevated);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
     + '</div>'
     + '<div style="display:grid;gap:8px">';
 
@@ -983,7 +983,7 @@ async function renderStudentPlanning() {
     const dayShiftEntries = dayShifts.filter(s => s.entry_type !== 'task');
     const dayTaskEntries = dayShifts.filter(s => s.entry_type === 'task');
 
-    html += '<div style="background:' + (isToday ? 'rgba(212,165,116,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
+    html += '<div style="background:' + (isToday ? 'rgba(212,165,116,0.08)' : 'var(--bg-elevated)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
       + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + ';margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">' + t('common.today') + '</span>' : '') + '</div>';
 
     if (isLeave) {
@@ -1002,7 +1002,7 @@ async function renderStudentPlanning() {
           html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
             + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
             + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
-            + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '')
+            + (s.notes ? '<div style="font-size:11px;color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '')
             + '</div>';
         });
       }
@@ -1014,7 +1014,7 @@ async function renderStudentPlanning() {
           html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px;border-left:3px solid ' + (isUrgent ? 'var(--red)' : 'var(--green)') + '">'
             + '<div style="min-width:50px">'
             + (s.start_time ? '<div style="font-size:12px;font-weight:700;color:var(--text)">' + s.start_time + '</div>' : '')
-            + (s.end_time ? '<div style="font-size:10px;color:var(--text3)">' + s.end_time + '</div>' : '')
+            + (s.end_time ? '<div style="font-size:10px;color:var(--text-tertiary)">' + s.end_time + '</div>' : '')
             + '</div>'
             + '<div style="flex:1;min-width:0">'
             + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + desc + '</div>'
@@ -1023,15 +1023,15 @@ async function renderStudentPlanning() {
         });
       }
       if (dayShifts.length === 0) {
-        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">' + t('planning.no_shift') + '</div>';
+        html += '<div style="color:var(--text-tertiary);font-size:12px;font-style:italic">' + t('planning.no_shift') + '</div>';
       }
     }
     html += '</div>';
   });
 
   html += '</div>'
-    + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg3);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
-    + '<span style="font-size:13px;color:var(--text2)">' + t('planning.week_total') + '</span>'
+    + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg-elevated);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-size:13px;color:var(--text-secondary)">' + t('planning.week_total') + '</span>'
     + '<span style="font-size:18px;font-weight:800;color:var(--accent)">' + totalHours.toFixed(0) + 'h</span>'
     + '</div>'
     + '</div>';
@@ -1063,17 +1063,17 @@ async function renderStudentTasks() {
     const overdue = dl && dl < today && t.status !== 'completed';
     const borderColor = overdue ? 'var(--red)' : isUrgent ? 'var(--red)' : 'var(--accent)';
     const st = statusColors[t.status] || statusColors['pending'];
-    return '<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
+    return '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
       + (isUrgent ? '<span style="position:absolute;top:10px;right:10px;background:var(--red);color:white;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">URGENT</span>' : '')
       + '<strong style="font-size:14px;display:block;margin-bottom:6px;' + (t.status === 'completed' ? 'text-decoration:line-through;opacity:0.5' : '') + '">' + t.title + '</strong>'
-      + (t.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + t.description + '</div>' : '')
+      + (t.description ? '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + t.description + '</div>' : '')
       + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
       + '<select onchange="updateStudentTaskStatus(' + t.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
       + '<option value="pending"' + (t.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.pending_label') + '</option>'
       + '<option value="in_progress"' + (t.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.in_progress_label') + '</option>'
       + '<option value="completed"' + (t.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + window.t('tasks.completed_label') + '</option></select>'
-      + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text3)') + '">📅 ' + dl + (overdue ? ' (' + _overdueLabel + ')' : '') + '</div>' : '')
-      + (t.creator_name ? '<div style="color:var(--text3)">' + _createdByLabel + ' ' + t.creator_name + '</div>' : '')
+      + (dl ? '<div style="color:' + (overdue ? 'var(--red);font-weight:600' : 'var(--text-tertiary)') + '">📅 ' + dl + (overdue ? ' (' + _overdueLabel + ')' : '') + '</div>' : '')
+      + (t.creator_name ? '<div style="color:var(--text-tertiary)">' + _createdByLabel + ' ' + t.creator_name + '</div>' : '')
       + (t.created_by === currentUser.id ? '<button class="btn-delete-small" onclick="deleteStudentTask(' + t.id + ')" style="margin-left:auto">✕</button>' : '')
       + '</div></div>';
   }
@@ -1082,10 +1082,10 @@ async function renderStudentTasks() {
     + '<div class="header-actions"><button class="btn btn-primary" onclick="showStudentTaskForm()">' + t('student.add_task') + '</button></div></div>'
     + '<div id="student-task-form-wrap"></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:16px">'
-    + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('student.todo_section') + '</h3>'
+    + '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">' + t('student.todo_section') + '</h3>'
     + (pending.length === 0 ? emptyStateHTML('clipboard', t('student.no_task'), '+ Créer une tâche', 'showStudentTaskForm()') : '<div style="display:grid;gap:10px">' + pending.map(card).join('') + '</div>')
     + '</div>'
-    + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text2)">' + t('student.done_section') + '</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
+    + (completed.length > 0 ? '<div class="panel" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text-secondary)">' + t('student.done_section') + '</h3><div style="display:grid;gap:10px">' + completed.map(card).join('') + '</div></div>' : '');
 }
 
 function showStudentTaskForm() {
@@ -1094,12 +1094,12 @@ function showStudentTaskForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:16px;background:var(--bg2)">'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.task_title_label') + '</label><input type="text" id="st-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="st-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.priority_label') + '</label><select id="st-priority" class="form-input"><option value="normal">' + t('student.priority_normal') + '</option><option value="urgent">' + t('student.priority_urgent') + '</option></select></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('student.deadline_label') + '</label><input type="date" id="st-deadline" class="form-input"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('student.task_title_label') + '</label><input type="text" id="st-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('student.description_label') + '</label><input type="text" id="st-desc" class="form-input" placeholder="' + t('student.description_placeholder') + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('student.priority_label') + '</label><select id="st-priority" class="form-input"><option value="normal">' + t('student.priority_normal') + '</option><option value="urgent">' + t('student.priority_urgent') + '</option></select></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('student.deadline_label') + '</label><input type="date" id="st-deadline" class="form-input"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="addStudentTask()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'student-task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="addStudentTask()">' + t('common.add') + '</button><button class="btn" style="background:var(--bg-elevated);color:var(--text-secondary);border:none;cursor:pointer" onclick="document.getElementById(\'student-task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 
@@ -1155,12 +1155,12 @@ async function renderStudentAnalytics() {
 
   c.innerHTML = '<div class="page-header"><div><div class="page-title">' + t('student.analytics_title') + '</div><div class="page-subtitle">' + t('student.analytics_subtitle') + '</div></div></div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('common.today') + '</h3>'
-    + '<div id="sa-today-stats"><div style="color:var(--text3);font-size:13px">' + t('common.loading') + '</div></div>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('common.today') + '</h3>'
+    + '<div id="sa-today-stats"><div style="color:var(--text-tertiary);font-size:13px">' + t('common.loading') + '</div></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('student.leads_dms_daily') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light)">' + t('student.leads_dms_daily') + '</h3>'
     + '<div style="display:flex;gap:4px" id="student-daily-btns">'
     + '<button class="filter-chip" onclick="loadStudentDailyChart(1,this)">1j</button>'
     + '<button class="filter-chip" onclick="loadStudentDailyChart(2,this)">2j</button>'
@@ -1172,11 +1172,11 @@ async function renderStudentAnalytics() {
     + '<div style="position:relative;height:280px"><canvas id="chart-sa-daily"></canvas></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.hourly_chart') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('student.hourly_chart') + '</h3>'
     + '<div style="position:relative;height:220px"><canvas id="chart-sa-hourly"></canvas></div>'
     + '</div>'
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('student.by_person') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('student.by_person') + '</h3>'
     + '<div id="sa-by-person"></div>'
     + '</div>';
 
@@ -1203,7 +1203,7 @@ async function loadStudentDailyChart(days, btn) {
       var todayLeads = todayByPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
       var todayDms = todayByPerson.reduce(function(s, p) { return s + parseInt(p.dms); }, 0);
       todayDiv.innerHTML = '<div class="stats-grid" style="margin-bottom:12px">'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent2)">' + todayLeads + '</div><div class="stat-label">' + t('student.leads_today') + '</div></div>'
+        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">' + todayLeads + '</div><div class="stat-label">' + t('student.leads_today') + '</div></div>'
         + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + todayDms + '</div><div class="stat-label">' + t('student.dms_today') + '</div></div>'
         + '</div>'
         + (todayByPerson.length > 0 ? '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th></tr></thead><tbody>'
@@ -1211,7 +1211,7 @@ async function loadStudentDailyChart(days, btn) {
           return '<tr><td data-label="" class="mc-title"><strong>' + (p.name || t('student.unknown')) + '</strong></td>'
             + '<td data-label="Leads" class="mc-half" style="color:var(--accent)">' + p.leads + '</td>'
             + '<td data-label="DMs" class="mc-half" style="color:var(--blue)">' + p.dms + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div style="color:var(--text3);font-size:13px;text-align:center">' + t('student.no_activity_today') + '</div>');
+        }).join('') + '</tbody></table>' : '<div style="color:var(--text-tertiary);font-size:13px;text-align:center">' + t('student.no_activity_today') + '</div>');
     }
 
     // Daily chart
@@ -1223,11 +1223,11 @@ async function loadStudentDailyChart(days, btn) {
         data: {
           labels: daily.map(function(d) { var dt = new Date(d.day); return dt.getDate() + '/' + (dt.getMonth()+1); }),
           datasets: [
-            { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 4 },
+            { label: 'Leads', data: daily.map(function(d) { return parseInt(d.leads); }), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
             { label: 'DMs', data: daily.map(function(d) { return parseInt(d.dms); }), backgroundColor: 'rgba(34,211,238,0.6)', borderRadius: 4 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 16 } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' }, grid: { color: 'rgba(59,130,246,0.06)' } }, x: { ticks: { color: '#A1A1AA', maxRotation: 45 }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 16 } } } }
       });
     }
 
@@ -1243,11 +1243,11 @@ async function loadStudentDailyChart(days, btn) {
         data: {
           labels: hours.map(function(h) { return h + 'h'; }),
           datasets: [
-            { label: 'Leads', data: hLeads, backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 3 },
+            { label: 'Leads', data: hLeads, backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 3 },
             { label: 'DMs', data: hDms, backgroundColor: 'rgba(34,211,238,0.5)', borderRadius: 3 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#9585B0' }, grid: { color: 'rgba(168,85,247,0.06)' } }, x: { ticks: { color: '#9585B0', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 12 } } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#A1A1AA' }, grid: { color: 'rgba(59,130,246,0.06)' } }, x: { ticks: { color: '#A1A1AA', font: { size: 10 } }, grid: { display: false } } }, plugins: { legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 12 } } } }
       });
     }
 
@@ -1255,7 +1255,7 @@ async function loadStudentDailyChart(days, btn) {
     var personDiv = document.getElementById('sa-by-person');
     if (personDiv) {
       if (byPerson.length === 0) {
-        personDiv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px">' + t('student.no_data_chart') + '</div>';
+        personDiv.innerHTML = '<div style="color:var(--text-tertiary);text-align:center;padding:16px">' + t('student.no_data_chart') + '</div>';
       } else {
         var totalLeads = byPerson.reduce(function(s, p) { return s + parseInt(p.leads); }, 0);
         personDiv.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Nom</th><th>Leads</th><th>DMs</th><th>%</th></tr></thead><tbody>'

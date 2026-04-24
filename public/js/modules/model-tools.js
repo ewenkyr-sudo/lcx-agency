@@ -13,14 +13,14 @@ var CONTENT_PREF_OPTIONS = [
 async function renderModelProfile(modelId) {
   var container = document.getElementById('cockpit-profile-content');
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">' + t('common.loading') + '</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary)">' + t('common.loading') + '</div>';
   var res = await fetch('/api/model-profile/' + modelId, { credentials: 'include' });
   var p = await res.json();
   var canEdit = isAdmin();
 
   container.innerHTML = '<form id="profile-form" style="display:grid;gap:20px;max-width:700px">'
     // Section 1: Infos de base
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.info_base') + '</h4>'
+    + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.info_base') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + pf(t('mp.online_name'), 'online_name', p.online_name) + pf(t('mp.age'), 'age', p.age, 'number')
     + pf(t('mp.birth_date'), 'birth_date', p.birth_date ? p.birth_date.substring(0,10) : '', 'date') + pf(t('mp.zodiac'), 'zodiac_sign', p.zodiac_sign)
@@ -31,7 +31,7 @@ async function renderModelProfile(modelId) {
     + pf(t('mp.english_level'), 'english_level', p.english_level)
     + '</div></div>'
     // Section 2: Profil personnel
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.personal_profile') + '</h4>'
+    + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.personal_profile') + '</h4>'
     + pfArea(t('mp.about'), 'about', p.about)
     + pfArea(t('mp.personality'), 'personality', p.personality)
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
@@ -42,7 +42,7 @@ async function renderModelProfile(modelId) {
     + pf(t('mp.specialty'), 'specialty', p.specialty) + pf(t('mp.other_job'), 'other_job', p.other_job)
     + '</div></div>'
     // Section 3: Préférences de contenu
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.content_prefs') + '</h4>'
+    + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.content_prefs') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="pref-checks">'
     + CONTENT_PREF_OPTIONS.map(function(opt) {
       var checked = p.content_prefs && p.content_prefs[opt];
@@ -54,7 +54,7 @@ async function renderModelProfile(modelId) {
     + pfBool(t('mp.live_of'), 'live_of', p.live_of) + pfBool(t('mp.other_people'), 'other_people', p.other_people)
     + '</div></div>'
     // Section 4: Notes supplémentaires
-    + '<div style="background:var(--bg3);padding:16px;border-radius:12px"><h4 style="color:var(--accent2);margin-bottom:12px;font-size:14px">' + t('mp.extra_notes') + '</h4>'
+    + '<div style="background:var(--bg-base);padding:16px;border-radius:12px"><h4 style="color:var(--accent-blue-light);margin-bottom:12px;font-size:14px">' + t('mp.extra_notes') + '</h4>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + pf(t('mp.relationship'), 'relationship_status', p.relationship_status)
     + pf(t('mp.travel'), 'travel_experience', p.travel_experience)
@@ -160,7 +160,7 @@ async function renderModelSchedule(modelId) {
   var dayNames = getMSDayNames();
   var hours = ['10:00','12:00','14:00','17:00','18:00','18:30','19:00','20:00','21:30','22:00','23:00','23:30','00:00'];
   var today = new Date(); today.setHours(0,0,0,0);
-  var catColors = { content: '#22D3EE', live: '#dc2626', call: '#FBBF24', deadline: '#F472B6', task: '#A855F7' };
+  var catColors = { content: '#22D3EE', live: '#dc2626', call: '#FBBF24', deadline: '#8B5CF6', task: '#3B82F6' };
 
   var html = '<div class="cp-toolbar">'
     + '<button class="cp-nav-btn" onclick="msNavigate(-1,' + modelId + ')">←</button>'
@@ -175,17 +175,17 @@ async function renderModelSchedule(modelId) {
   html += '<div style="background:var(--bg4);padding:8px;border-bottom:1px solid var(--border)"></div>';
   for (var i = 0; i < 7; i++) {
     var isToday = days[i].getTime() === today.getTime();
-    html += '<div style="background:var(--bg4);padding:8px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday?'var(--accent)':'var(--text3)') + ';border-bottom:1px solid var(--border);border-left:1px solid var(--border)">' + dayNames[i] + '<br>' + days[i].getDate() + '/' + (days[i].getMonth()+1) + '</div>';
+    html += '<div style="background:var(--bg4);padding:8px;text-align:center;font-size:10px;font-weight:700;color:' + (isToday?'var(--accent)':'var(--text-tertiary)') + ';border-bottom:1px solid var(--border);border-left:1px solid var(--border)">' + dayNames[i] + '<br>' + days[i].getDate() + '/' + (days[i].getMonth()+1) + '</div>';
   }
   // Rows
   for (var hi = 0; hi < hours.length; hi++) {
-    html += '<div style="padding:4px 6px;font-size:10px;color:var(--text3);text-align:right;border-bottom:1px solid var(--border);min-height:40px;display:flex;align-items:flex-start;justify-content:flex-end">' + hours[hi] + '</div>';
+    html += '<div style="padding:4px 6px;font-size:10px;color:var(--text-tertiary);text-align:right;border-bottom:1px solid var(--border);min-height:40px;display:flex;align-items:flex-start;justify-content:flex-end">' + hours[hi] + '</div>';
     for (var di = 0; di < 7; di++) {
       var dayStr = fmtDateISO(days[di]);
       var cellItems = msItems.filter(function(it) { return it.day_date && it.day_date.substring(0,10) === dayStr && (it.time_slot === hours[hi] || (!it.time_slot && hi === 0)); });
       html += '<div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px;min-height:40px;cursor:pointer" onclick="' + (isAdmin()?'openMSModal('+modelId+',\''+dayStr+'\',\''+hours[hi]+'\')':'') + '">';
       cellItems.forEach(function(it) {
-        var col = catColors[it.category] || it.color || '#A855F7';
+        var col = catColors[it.category] || it.color || '#3B82F6';
         html += '<div onclick="event.stopPropagation();openMSModal(' + modelId + ',null,null,' + it.id + ')" style="background:' + col + ';color:white;padding:3px 6px;border-radius:4px;font-size:9px;font-weight:600;margin:1px 0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + it.title + '</div>';
       });
       html += '</div>';
@@ -198,11 +198,11 @@ async function renderModelSchedule(modelId) {
   var agencyTasks = msItems.filter(function(it) { return it.category === 'agency_task'; });
   if (modelTasks.length > 0 || agencyTasks.length > 0) {
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">';
-    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.model_tasks') + '</strong>';
-    modelTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + tk.title + '</div>'; });
+    html += '<div style="background:var(--bg-base);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.model_tasks') + '</strong>';
+    modelTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">• ' + tk.title + '</div>'; });
     html += '</div>';
-    html += '<div style="background:var(--bg3);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.agency_tasks') + '</strong>';
-    agencyTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text2);padding:2px 0">• ' + tk.title + '</div>'; });
+    html += '<div style="background:var(--bg-base);padding:12px;border-radius:10px"><strong style="font-size:12px;display:block;margin-bottom:8px">' + t('ms.agency_tasks') + '</strong>';
+    agencyTasks.forEach(function(tk) { html += '<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">• ' + tk.title + '</div>'; });
     html += '</div></div>';
   }
 
@@ -217,8 +217,8 @@ function getMSCategories() {
     { val: 'content', label: t('ms.cat_content'), col: '#22D3EE' },
     { val: 'live', label: t('ms.cat_live'), col: '#dc2626' },
     { val: 'call', label: t('ms.cat_call'), col: '#FBBF24' },
-    { val: 'deadline', label: t('ms.cat_deadline'), col: '#F472B6' },
-    { val: 'task', label: t('ms.cat_task'), col: '#A855F7' },
+    { val: 'deadline', label: t('ms.cat_deadline'), col: '#8B5CF6' },
+    { val: 'task', label: t('ms.cat_task'), col: '#3B82F6' },
     { val: 'model_task', label: t('ms.cat_model_task'), col: '#10B981' },
     { val: 'agency_task', label: t('ms.cat_agency_task'), col: '#3B82F6' }
   ];
@@ -275,13 +275,13 @@ async function renderModelTracklinks(modelId) {
   var html = isAdmin() ? '<div style="margin-bottom:12px"><button class="btn btn-primary" style="font-size:12px" onclick="addTracklink(' + modelId + ')">' + t('tl.add_link') + '</button></div>' : '';
   html += '<table class="table mobile-cards"><thead><tr><th>' + t('tl.social_prompt') + '</th><th>Account</th><th>Link</th>' + (isAdmin()?'<th></th>':'') + '</tr></thead><tbody>';
   if (links.length === 0) {
-    html += '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">' + t('tl.no_tracklinks') + '</td></tr>';
+    html += '<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px">' + t('tl.no_tracklinks') + '</td></tr>';
   } else {
     links.forEach(function(l) {
       html += '<tr>'
         + '<td data-label="' + t('tl.social_prompt') + '" class="mc-half"><strong>' + l.platform + '</strong></td>'
         + '<td data-label="Account" class="mc-half">' + (l.account_name || '-') + '</td>'
-        + '<td data-label="Link" class="mc-full">' + (l.link ? '<a href="' + l.link + '" target="_blank" style="color:var(--accent2);word-break:break-all">' + l.link + '</a>' : '-') + '</td>'
+        + '<td data-label="Link" class="mc-full">' + (l.link ? '<a href="' + l.link + '" target="_blank" style="color:var(--accent-blue-light);word-break:break-all">' + l.link + '</a>' : '-') + '</td>'
         + (isAdmin() ? '<td data-label="" class="mc-half"><button class="btn-delete-small" onclick="deleteTracklink(' + l.id + ',' + modelId + ')">✕</button></td>' : '')
         + '</tr>';
     });

@@ -66,7 +66,7 @@ function renderFanKPIs(stats) {
 function renderFanList(fans) {
   var el = document.getElementById('fan-list');
   if (!el) return;
-  if (fans.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">' + t('fan.no_fans') + '</div>'; return; }
+  if (fans.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:40px">' + t('fan.no_fans') + '</div>'; return; }
   var platIcons = { onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
   el.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Fan</th><th>' + t('fan.spent_col') + '</th><th>' + t('fan.tags_col') + '</th><th>' + t('fan.last_interaction_col') + '</th><th>' + t('fan.sub_col') + '</th><th></th></tr></thead><tbody>'
     + fans.map(function(f) {
@@ -75,17 +75,17 @@ function renderFanList(fans) {
       var tags = [];
       try { tags = typeof f.tags === 'string' ? JSON.parse(f.tags) : (f.tags || []); } catch(e) {}
       var lastInt = f.last_interaction_at ? timeSince(f.last_interaction_at) : '-';
-      var subColor = f.subscription_status === 'active' ? 'var(--green)' : f.subscription_status === 'expired' ? 'var(--red)' : 'var(--text3)';
+      var subColor = f.subscription_status === 'active' ? 'var(--green)' : f.subscription_status === 'expired' ? 'var(--red)' : 'var(--text-tertiary)';
       return '<tr onclick="openFanDetail(' + f.id + ')" style="cursor:pointer">'
         + '<td data-label="" class="mc-title"><div style="display:flex;align-items:center;gap:8px">'
         + '<div style="width:32px;height:32px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + (f.username||'?').charAt(0).toUpperCase() + '</div>'
-        + '<div><strong>' + f.username + '</strong>' + (f.display_name ? '<div style="font-size:11px;color:var(--text3)">' + f.display_name + '</div>' : '') + '</div>'
+        + '<div><strong>' + f.username + '</strong>' + (f.display_name ? '<div style="font-size:11px;color:var(--text-tertiary)">' + f.display_name + '</div>' : '') + '</div>'
         + '<span style="font-size:12px">' + (platIcons[f.platform] || '') + '</span>'
-        + (!fanModelId ? '<span style="font-size:10px;color:var(--text3)">' + (f.model_name || '') + '</span>' : '')
+        + (!fanModelId ? '<span style="font-size:10px;color:var(--text-tertiary)">' + (f.model_name || '') + '</span>' : '')
         + '</div></td>'
         + '<td data-label="' + t('fan.spent_col') + '" class="mc-half" style="font-weight:700;color:' + (seg === 'whale' ? '#3B82F6' : seg === 'vip' ? '#F59E0B' : 'var(--text)') + '">' + segIcon + '$' + parseFloat(f.total_spent).toFixed(0) + '</td>'
-        + '<td data-label="' + t('fan.tags_col') + '" class="mc-half">' + tags.map(function(t) { return '<span style="font-size:10px;padding:2px 6px;border-radius:6px;background:' + (TAG_COLORS[t]||'var(--bg4)') + '20;color:' + (TAG_COLORS[t]||'var(--text3)') + ';font-weight:600">' + t + '</span>'; }).join(' ') + '</td>'
-        + '<td data-label="' + t('fan.interaction_col') + '" class="mc-half" style="font-size:12px;color:var(--text2)">' + lastInt + '</td>'
+        + '<td data-label="' + t('fan.tags_col') + '" class="mc-half">' + tags.map(function(t) { return '<span style="font-size:10px;padding:2px 6px;border-radius:6px;background:' + (TAG_COLORS[t]||'var(--bg4)') + '20;color:' + (TAG_COLORS[t]||'var(--text-tertiary)') + ';font-weight:600">' + t + '</span>'; }).join(' ') + '</td>'
+        + '<td data-label="' + t('fan.interaction_col') + '" class="mc-half" style="font-size:12px;color:var(--text-secondary)">' + lastInt + '</td>'
         + '<td data-label="' + t('fan.sub_col') + '" class="mc-half"><span style="font-size:11px;font-weight:600;color:' + subColor + '">' + (f.subscription_status || '-') + '</span></td>'
         + '<td data-label="" class="mc-half">' + (f.is_important ? '⭐' : '') + '</td></tr>';
     }).join('') + '</tbody></table>';
@@ -98,7 +98,7 @@ function renderFanPagination() {
   if (totalPages <= 1) { el.innerHTML = ''; return; }
   el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 0">'
     + '<button class="btn btn-secondary" style="font-size:12px" onclick="fanPage=Math.max(0,fanPage-1);loadFans()" ' + (fanPage <= 0 ? 'disabled' : '') + '>' + t('fan.prev_page') + '</button>'
-    + '<span style="font-size:12px;color:var(--text2)">Page ' + (fanPage + 1) + ' / ' + totalPages + ' (' + fanTotal + ' fans)</span>'
+    + '<span style="font-size:12px;color:var(--text-secondary)">Page ' + (fanPage + 1) + ' / ' + totalPages + ' (' + fanTotal + ' fans)</span>'
     + '<button class="btn btn-secondary" style="font-size:12px" onclick="fanPage++;loadFans()" ' + (fanPage >= totalPages - 1 ? 'disabled' : '') + '>' + t('fan.next_page') + '</button></div>';
 }
 
@@ -118,32 +118,32 @@ async function openFanDetail(fanId) {
     // Header info
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">'
     + '<div><div style="font-size:24px;font-weight:800;color:' + (seg === 'whale' ? '#3B82F6' : seg === 'vip' ? '#F59E0B' : 'var(--text)') + '">$' + parseFloat(f.total_spent).toFixed(2) + '</div>'
-    + '<div style="font-size:12px;color:var(--text3)">' + (seg ? SEGMENT_ICONS[seg] + ' ' + seg.toUpperCase() : 'Regular') + ' · ' + f.platform + ' · ' + (f.model_name || '') + '</div></div>'
+    + '<div style="font-size:12px;color:var(--text-tertiary)">' + (seg ? SEGMENT_ICONS[seg] + ' ' + seg.toUpperCase() : 'Regular') + ' · ' + f.platform + ' · ' + (f.model_name || '') + '</div></div>'
     + '<button onclick="toggleFanImportant(' + f.id + ',' + !f.is_important + ')" style="background:none;border:none;font-size:24px;cursor:pointer" title="Top fan">' + (f.is_important ? '⭐' : '☆') + '</button></div>'
     // Sub status
     + '<div style="display:flex;gap:12px;margin-bottom:16px">'
-    + '<div style="background:var(--bg3);padding:8px 12px;border-radius:8px;font-size:12px"><strong>Sub:</strong> <span style="color:' + (f.subscription_status === 'active' ? 'var(--green)' : 'var(--red)') + '">' + (f.subscription_status || '-') + '</span></div>'
-    + (f.subscription_expires_at ? '<div style="background:var(--bg3);padding:8px 12px;border-radius:8px;font-size:12px"><strong>Expire:</strong> ' + new Date(f.subscription_expires_at).toLocaleDateString('fr-FR') + '</div>' : '')
+    + '<div style="background:var(--bg-base);padding:8px 12px;border-radius:8px;font-size:12px"><strong>Sub:</strong> <span style="color:' + (f.subscription_status === 'active' ? 'var(--green)' : 'var(--red)') + '">' + (f.subscription_status || '-') + '</span></div>'
+    + (f.subscription_expires_at ? '<div style="background:var(--bg-base);padding:8px 12px;border-radius:8px;font-size:12px"><strong>Expire:</strong> ' + new Date(f.subscription_expires_at).toLocaleDateString('fr-FR') + '</div>' : '')
     + '</div>'
     // Tags
-    + '<div style="margin-bottom:16px"><strong style="font-size:12px;color:var(--text2)">Tags</strong><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'
-    + tags.map(function(t) { return '<span style="font-size:11px;padding:3px 8px;border-radius:8px;background:' + (TAG_COLORS[t] || 'var(--bg4)') + '20;color:' + (TAG_COLORS[t] || 'var(--text3)') + ';font-weight:600">' + t + ' <button onclick="removeFanTag(' + f.id + ',\'' + t + '\')" style="background:none;border:none;color:inherit;cursor:pointer;font-size:10px">✕</button></span>'; }).join('')
-    + (isAdmin() ? '<button onclick="addFanTag(' + f.id + ')" style="font-size:11px;padding:3px 8px;border-radius:8px;background:var(--bg4);color:var(--text3);border:1px dashed var(--border);cursor:pointer">+ Tag</button>' : '')
+    + '<div style="margin-bottom:16px"><strong style="font-size:12px;color:var(--text-secondary)">Tags</strong><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'
+    + tags.map(function(t) { return '<span style="font-size:11px;padding:3px 8px;border-radius:8px;background:' + (TAG_COLORS[t] || 'var(--bg4)') + '20;color:' + (TAG_COLORS[t] || 'var(--text-tertiary)') + ';font-weight:600">' + t + ' <button onclick="removeFanTag(' + f.id + ',\'' + t + '\')" style="background:none;border:none;color:inherit;cursor:pointer;font-size:10px">✕</button></span>'; }).join('')
+    + (isAdmin() ? '<button onclick="addFanTag(' + f.id + ')" style="font-size:11px;padding:3px 8px;border-radius:8px;background:var(--bg4);color:var(--text-tertiary);border:1px dashed var(--border);cursor:pointer">+ Tag</button>' : '')
     + '</div></div>'
     // Notes
-    + '<div style="margin-bottom:16px"><strong style="font-size:12px;color:var(--text2)">Notes</strong>'
+    + '<div style="margin-bottom:16px"><strong style="font-size:12px;color:var(--text-secondary)">Notes</strong>'
     + '<textarea id="fan-notes-' + f.id + '" class="form-input" rows="2" style="margin-top:6px;font-size:12px" onblur="saveFanNotes(' + f.id + ')">' + (f.notes || '') + '</textarea></div>'
     // Timeline
-    + '<div><strong style="font-size:12px;color:var(--text2)">Timeline</strong>'
+    + '<div><strong style="font-size:12px;color:var(--text-secondary)">Timeline</strong>'
     + (isAdmin() ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;margin-left:8px" onclick="addFanInteraction(' + f.id + ')">+ Interaction</button>' : '')
     + '<div style="margin-top:8px;max-height:250px;overflow-y:auto">'
-    + (ints.length === 0 ? '<div style="color:var(--text3);font-size:12px;padding:12px;text-align:center">' + t('fan.no_interaction') + '</div>' : '')
+    + (ints.length === 0 ? '<div style="color:var(--text-tertiary);font-size:12px;padding:12px;text-align:center">' + t('fan.no_interaction') + '</div>' : '')
     + ints.map(function(int) {
       var icons = { note_added: '📝', purchase: '💰', tip: '💵', message: '💬', tag_added: '🏷️', flagged: '🚩' };
       return '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">'
         + '<span>' + (icons[int.interaction_type] || '📌') + '</span>'
-        + '<div style="flex:1"><div style="color:var(--text2)">' + (int.content || int.interaction_type) + '</div>'
-        + '<div style="font-size:10px;color:var(--text3)">' + (int.user_name || '') + ' · ' + timeSince(int.created_at) + (int.amount ? ' · $' + parseFloat(int.amount).toFixed(2) : '') + '</div></div></div>';
+        + '<div style="flex:1"><div style="color:var(--text-secondary)">' + (int.content || int.interaction_type) + '</div>'
+        + '<div style="font-size:10px;color:var(--text-tertiary)">' + (int.user_name || '') + ' · ' + timeSince(int.created_at) + (int.amount ? ' · $' + parseFloat(int.amount).toFixed(2) : '') + '</div></div></div>';
     }).join('')
     + '</div></div>'
     + '</div></div></div>';
@@ -268,7 +268,7 @@ function previewCSV() {
     csvHeaders = parseCSVLineFront(csvLines[0]);
     var preview = document.getElementById('csv-preview');
     preview.style.display = '';
-    preview.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + (csvLines.length - 1) + ' ' + t('fan.lines_detected') + ' · ' + csvHeaders.length + ' ' + t('fan.columns_detected') + '</div>'
+    preview.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + (csvLines.length - 1) + ' ' + t('fan.lines_detected') + ' · ' + csvHeaders.length + ' ' + t('fan.columns_detected') + '</div>'
       + '<div style="overflow-x:auto;max-height:150px"><table class="table" style="font-size:11px"><thead><tr>' + csvHeaders.map(function(h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>'
       + csvLines.slice(1, 4).map(function(l) { var cols = parseCSVLineFront(l); return '<tr>' + csvHeaders.map(function(h, i) { return '<td>' + (cols[i] || '') + '</td>'; }).join('') + '</tr>'; }).join('')
       + '</tbody></table></div>';
@@ -293,10 +293,10 @@ function csvStep2() {
   var title = document.querySelector('#csv-modal .modal-title');
   if (title) title.textContent = t('fan.import_step2');
   var fields = [{ key: '', label: t('fan.ignore_field') }, { key: 'username', label: t('fan.username_field') }, { key: 'display_name', label: t('fan.display_name_field') }, { key: 'total_spent', label: t('fan.total_spent_field') }, { key: 'subscription_status', label: t('fan.sub_status_field') }];
-  body.innerHTML = '<p style="font-size:12px;color:var(--text3);margin-bottom:12px">' + t('fan.mapping_instruction') + '</p>'
+  body.innerHTML = '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">' + t('fan.mapping_instruction') + '</p>'
     + '<div style="display:grid;gap:8px">' + csvHeaders.map(function(h, i) {
       var autoMatch = h.toLowerCase().includes('user') ? 'username' : h.toLowerCase().includes('spent') || h.toLowerCase().includes('total') ? 'total_spent' : h.toLowerCase().includes('name') && !h.toLowerCase().includes('user') ? 'display_name' : h.toLowerCase().includes('status') ? 'subscription_status' : '';
-      return '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:600;min-width:150px;color:var(--text2)">' + h + '</span>'
+      return '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:600;min-width:150px;color:var(--text-secondary)">' + h + '</span>'
         + '<select class="form-input" style="font-size:12px;padding:6px" id="csv-map-' + i + '">' + fields.map(function(f) { return '<option value="' + f.key + '"' + (f.key === autoMatch ? ' selected' : '') + '>' + f.label + '</option>'; }).join('') + '</select></div>';
     }).join('') + '</div>';
   var footer = document.querySelector('#csv-modal .modal-footer');
@@ -316,7 +316,7 @@ async function csvStep3() {
   var title = document.querySelector('#csv-modal .modal-title');
   if (title) title.textContent = t('fan.import_progress');
   var body = document.getElementById('csv-body');
-  body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><div style="color:var(--text3);margin-top:12px">' + t('fan.importing_fans', { count: csvLines.length - 1 }) + '</div></div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><div style="color:var(--text-tertiary);margin-top:12px">' + t('fan.importing_fans', { count: csvLines.length - 1 }) + '</div></div>';
 
   var res = await fetch('/api/fans/import-csv', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -328,9 +328,9 @@ async function csvStep3() {
   body.innerHTML = '<div style="text-align:center;padding:20px">'
     + '<div style="font-size:48px;margin-bottom:12px">✅</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">'
-    + '<div style="background:var(--green-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--green)">' + (data.imported || 0) + '</div><div style="font-size:11px;color:var(--text3)">' + t('fan.created_label') + '</div></div>'
-    + '<div style="background:var(--blue-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--blue)">' + (data.updated || 0) + '</div><div style="font-size:11px;color:var(--text3)">' + t('fan.updated_label') + '</div></div>'
-    + '<div style="background:var(--red-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--red)">' + ((data.errors || []).length) + '</div><div style="font-size:11px;color:var(--text3)">' + t('fan.errors_label') + '</div></div>'
+    + '<div style="background:var(--green-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--green)">' + (data.imported || 0) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.created_label') + '</div></div>'
+    + '<div style="background:var(--blue-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--blue)">' + (data.updated || 0) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.updated_label') + '</div></div>'
+    + '<div style="background:var(--red-bg);padding:12px;border-radius:10px"><div style="font-size:20px;font-weight:800;color:var(--red)">' + ((data.errors || []).length) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('fan.errors_label') + '</div></div>'
     + '</div>'
     + ((data.errors || []).length > 0 ? '<div style="text-align:left;max-height:100px;overflow-y:auto;font-size:11px;color:var(--red)">' + data.errors.map(function(e) { return '<div>' + t('fan.line_error', { line: e.line }) + ': ' + e.error + '</div>'; }).join('') + '</div>' : '')
     + '</div>';

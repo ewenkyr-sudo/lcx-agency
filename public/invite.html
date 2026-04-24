@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#7C3AED">
+<meta name="theme-color" content="#2563EB">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <title data-i18n="app.invite_title">Fuzion Pilot — Activer votre compte</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @keyframes auroraFloat {
     0%, 100% { opacity: 0.4; transform: translate(0, 0) scale(1); }
@@ -18,13 +18,13 @@
     50% { opacity: 1; }
   }
   @keyframes mysticPulse {
-    0%, 100% { box-shadow: 0 8px 48px rgba(168,85,247,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset; }
-    50% { box-shadow: 0 8px 48px rgba(168,85,247,0.5), 0 0 60px rgba(168,85,247,0.15), 0 0 0 1px rgba(255,255,255,0.12) inset; }
+    0%, 100% { box-shadow: 0 8px 48px rgba(59,130,246,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset; }
+    50% { box-shadow: 0 8px 48px rgba(59,130,246,0.5), 0 0 60px rgba(59,130,246,0.15), 0 0 0 1px rgba(255,255,255,0.12) inset; }
   }
   body {
-    font-family: 'Sora', sans-serif;
-    background: #04020A;
-    color: #EDE4FF;
+    font-family: var(--font-sans);
+    background: #050507;
+    color: #FAFAFA;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -38,7 +38,7 @@
     position: fixed;
     top: -20%; left: -10%;
     width: 60vw; height: 60vh;
-    background: radial-gradient(ellipse, rgba(168,85,247,0.08) 0%, rgba(34,211,238,0.03) 40%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, rgba(34,211,238,0.03) 40%, transparent 70%);
     animation: auroraFloat 15s ease-in-out infinite;
     pointer-events: none;
   }
@@ -47,7 +47,7 @@
     position: fixed;
     bottom: -15%; right: -10%;
     width: 50vw; height: 50vh;
-    background: radial-gradient(ellipse, rgba(240,171,252,0.06) 0%, rgba(168,85,247,0.03) 40%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(59,130,246,0.06) 0%, rgba(59,130,246,0.03) 40%, transparent 70%);
     animation: auroraFloat 20s ease-in-out infinite reverse;
     pointer-events: none;
   }
@@ -55,7 +55,7 @@
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
   }
   .star {
-    position: absolute; width: 2px; height: 2px; background: #C084FC; border-radius: 50%;
+    position: absolute; width: 2px; height: 2px; background: #60A5FA; border-radius: 50%;
     box-shadow: 0 0 6px rgba(192,132,252,0.4); animation: constellationTwinkle 3s ease-in-out infinite;
   }
   .star:nth-child(1) { top: 8%; left: 20%; animation-delay: 0s; }
@@ -64,7 +64,7 @@
   .star:nth-child(4) { top: 42%; left: 55%; animation-delay: 2.2s; background: #22D3EE; box-shadow: 0 0 8px rgba(34,211,238,0.5); }
   .star:nth-child(5) { top: 82%; left: 42%; animation-delay: 0.4s; }
   .star:nth-child(6) { top: 20%; left: 60%; animation-delay: 1.9s; }
-  .star:nth-child(7) { top: 72%; left: 88%; animation-delay: 2.6s; background: #F0ABFC; box-shadow: 0 0 6px rgba(240,171,252,0.4); }
+  .star:nth-child(7) { top: 72%; left: 88%; animation-delay: 2.6s; background: #8B5CF6; box-shadow: 0 0 6px rgba(59,130,246,0.4); }
   .star:nth-child(8) { top: 48%; left: 5%; animation-delay: 1.2s; width: 1px; height: 1px; }
   .container { width: 440px; max-width: 92vw; position: relative; z-index: 1; }
   .logo {
@@ -73,7 +73,7 @@
   }
   .logo-icon {
     width: 76px; height: 76px;
-    background: linear-gradient(135deg, #7C3AED, #A855F7, #22D3EE);
+    background: linear-gradient(135deg, #2563EB, #3B82F6, #22D3EE);
     border-radius: 24px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 36px;
@@ -86,53 +86,53 @@
     position: absolute;
     inset: -3px;
     border-radius: 27px;
-    background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(34,211,238,0.2));
+    background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(34,211,238,0.2));
     z-index: -1;
     filter: blur(12px);
   }
-  .logo h1 { font-family: 'Cinzel', serif; font-size: 28px; font-weight: 700; letter-spacing: 1px; background: linear-gradient(135deg, #EDE4FF, #C084FC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .logo p { color: #9585B0; font-size: 14px; margin-top: 8px; }
+  .logo h1 { font-family: var(--font-sans); font-size: 28px; font-weight: 700; letter-spacing: 1px; background: linear-gradient(135deg, #FAFAFA, #60A5FA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo p { color: #A1A1AA; font-size: 14px; margin-top: 8px; }
   .card {
     background: rgba(10,6,21,0.6);
     backdrop-filter: blur(40px) saturate(1.8);
     -webkit-backdrop-filter: blur(40px) saturate(1.8);
-    border: 1px solid rgba(168,85,247,0.12);
+    border: 1px solid rgba(59,130,246,0.12);
     border-radius: 24px;
     padding: 40px;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 80px rgba(168,85,247,0.04), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 80px rgba(59,130,246,0.04), 0 0 0 1px rgba(255,255,255,0.04) inset;
   }
   .form-group { margin-bottom: 20px; }
   .form-label {
     display: block; font-size: 11px; font-weight: 600;
-    color: #9585B0; margin-bottom: 8px;
+    color: #A1A1AA; margin-bottom: 8px;
     text-transform: uppercase; letter-spacing: 1px;
   }
   .form-input {
     width: 100%; padding: 13px 16px;
-    background: rgba(168,85,247,0.04);
-    border: 1px solid rgba(168,85,247,0.1);
-    border-radius: 12px; color: #EDE4FF;
+    background: rgba(59,130,246,0.04);
+    border: 1px solid rgba(59,130,246,0.1);
+    border-radius: 12px; color: #FAFAFA;
     font-size: 14px; font-family: inherit; outline: none;
     transition: all 0.25s ease;
   }
   .form-input:focus {
-    border-color: rgba(168,85,247,0.4);
-    box-shadow: 0 0 0 3px rgba(168,85,247,0.1), 0 0 24px rgba(168,85,247,0.06);
-    background: rgba(168,85,247,0.06);
+    border-color: rgba(59,130,246,0.4);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1), 0 0 24px rgba(59,130,246,0.06);
+    background: rgba(59,130,246,0.06);
   }
-  .form-input::placeholder { color: #6B5A84; }
+  .form-input::placeholder { color: #52525B; }
   @keyframes btnShimmer {
     0% { background-position: 200% center; }
     100% { background-position: -200% center; }
   }
   .btn-submit {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #A855F7, #7C3AED);
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
     color: white; border: none; border-radius: 14px;
     font-size: 15px; font-weight: 700; cursor: pointer;
     font-family: inherit; transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     margin-top: 8px;
-    box-shadow: 0 4px 20px rgba(168,85,247,0.3);
+    box-shadow: 0 4px 20px rgba(59,130,246,0.3);
     position: relative;
     overflow: hidden;
   }
@@ -144,14 +144,14 @@
     background-size: 200% 100%;
     animation: btnShimmer 3s ease-in-out infinite;
   }
-  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(168,85,247,0.45), 0 0 40px rgba(168,85,247,0.1); }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(59,130,246,0.45), 0 0 40px rgba(59,130,246,0.1); }
   .btn-submit:active { transform: scale(0.98); }
   .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-submit:disabled::before { display: none; }
   .error-msg {
     background: rgba(251,113,133,0.08);
     border: 1px solid rgba(251,113,133,0.15);
-    color: #FB7185;
+    color: #EF4444;
     padding: 12px 16px; border-radius: 12px;
     font-size: 13px; margin-bottom: 20px;
     display: none; text-align: center;
@@ -163,26 +163,26 @@
     display: none;
   }
   .success-msg.show { display: block; }
-  .success-msg h2 { font-family: 'Cinzel', serif; font-size: 22px; margin-bottom: 12px; background: linear-gradient(135deg, #EDE4FF, #C084FC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .success-msg p { color: #9585B0; font-size: 14px; margin-bottom: 24px; }
+  .success-msg h2 { font-family: var(--font-sans); font-size: 22px; margin-bottom: 12px; background: linear-gradient(135deg, #FAFAFA, #60A5FA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .success-msg p { color: #A1A1AA; font-size: 14px; margin-bottom: 24px; }
   .success-msg a {
     display: inline-block;
-    background: linear-gradient(135deg, #A855F7, #7C3AED);
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
     color: white; padding: 14px 32px;
     border-radius: 14px; font-size: 15px; font-weight: 700;
     text-decoration: none;
-    box-shadow: 0 4px 20px rgba(168,85,247,0.3);
+    box-shadow: 0 4px 20px rgba(59,130,246,0.3);
   }
   .token-invalid {
     text-align: center;
     display: none;
   }
   .token-invalid.show { display: block; }
-  .token-invalid h2 { font-family: 'Cinzel', serif; font-size: 20px; color: #FB7185; margin-bottom: 12px; }
-  .token-invalid p { color: #9585B0; font-size: 14px; line-height: 1.6; }
-  .token-invalid a { color: #C084FC; text-decoration: underline; }
-  .hint { font-size: 11px; color: #6B5A84; margin-top: 6px; }
-  .footer { text-align: center; margin-top: 24px; color: #6B5A84; font-size: 12px; }
+  .token-invalid h2 { font-family: var(--font-sans); font-size: 20px; color: #EF4444; margin-bottom: 12px; }
+  .token-invalid p { color: #A1A1AA; font-size: 14px; line-height: 1.6; }
+  .token-invalid a { color: #60A5FA; text-decoration: underline; }
+  .hint { font-size: 11px; color: #52525B; margin-top: 6px; }
+  .footer { text-align: center; margin-top: 24px; color: #52525B; font-size: 12px; }
 </style>
 </head>
 <body>

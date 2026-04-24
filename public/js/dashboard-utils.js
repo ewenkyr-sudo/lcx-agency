@@ -57,7 +57,7 @@ function paginationHTML(page, totalPages, onPageFn) {
   if (totalPages <= 1) return '';
   return '<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0">'
     + '<button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="' + onPageFn + '(' + (page - 1) + ')" ' + (page <= 1 ? 'disabled style="opacity:0.4;pointer-events:none;font-size:12px;padding:6px 14px"' : '') + '>← Précédent</button>'
-    + '<span style="font-size:13px;color:var(--text2)">Page ' + page + ' sur ' + totalPages + '</span>'
+    + '<span style="font-size:13px;color:var(--text-secondary)">Page ' + page + ' sur ' + totalPages + '</span>'
     + '<button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="' + onPageFn + '(' + (page + 1) + ')" ' + (page >= totalPages ? 'disabled style="opacity:0.4;pointer-events:none;font-size:12px;padding:6px 14px"' : '') + '>Suivant →</button>'
     + '</div>';
 }
@@ -68,23 +68,31 @@ function showToast(message, type = 'info') {
   if (!container) {
     container = document.createElement('div');
     container.id = 'toast-container';
-    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px';
     document.body.appendChild(container);
   }
   const colors = {
-    error: { bg: '#dc2626', icon: '✕' },
-    success: { bg: '#16a34a', icon: '✓' },
-    info: { bg: 'var(--accent)', icon: 'ℹ' },
-    warning: { bg: '#d97706', icon: '⚠' }
+    error: { bg: 'var(--bg-elevated)', border: 'rgba(239,68,68,0.3)', accent: 'var(--accent-red)', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' },
+    success: { bg: 'var(--bg-elevated)', border: 'rgba(34,197,94,0.3)', accent: 'var(--accent-green)', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' },
+    info: { bg: 'var(--bg-elevated)', border: 'rgba(59,130,246,0.3)', accent: 'var(--accent-blue)', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' },
+    warning: { bg: 'var(--bg-elevated)', border: 'rgba(245,158,11,0.3)', accent: 'var(--accent-yellow)', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' }
   };
   const c = colors[type] || colors.info;
   const toast = document.createElement('div');
-  toast.style.cssText = `background:${c.bg};color:white;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideIn 0.3s ease;max-width:400px`;
-  toast.innerHTML = `<span style="font-size:16px">${c.icon}</span> ${message}`;
+  toast.style.cssText = 'background:' + c.bg + ';color:var(--text-primary);padding:12px 16px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-xl);animation:ds-fade-in-up 0.3s var(--ease-out);max-width:380px;border:1px solid ' + c.border + ';backdrop-filter:blur(16px)';
+  toast.innerHTML = '<span style="color:' + c.accent + ';display:flex;flex-shrink:0">' + c.icon + '</span><span style="flex:1">' + message + '</span><button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px;display:flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
   container.appendChild(toast);
+  // Auto-dismiss progress
+  var progress = document.createElement('div');
+  progress.style.cssText = 'position:absolute;bottom:0;left:0;height:2px;background:' + c.accent + ';border-radius:0 0 var(--radius-lg) var(--radius-lg);width:100%;transform-origin:left;animation:ds-toast-progress 4s linear forwards;opacity:0.5';
+  toast.style.position = 'relative';
+  toast.style.overflow = 'hidden';
+  toast.appendChild(progress);
   setTimeout(() => {
-    toast.style.animation = 'fadeOut 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-8px)';
+    toast.style.transition = 'opacity 0.2s, transform 0.2s';
+    setTimeout(() => toast.remove(), 200);
   }, 4000);
 }
 
@@ -92,12 +100,12 @@ function showToast(message, type = 'info') {
 function showPromptModal(title, placeholder) {
   return new Promise(function(resolve) {
     var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease';
-    overlay.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px;width:400px;max-width:90vw;box-shadow:0 24px 80px rgba(0,0,0,0.5)">'
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:ds-fade-in 0.2s ease';
+    overlay.innerHTML = '<div style="background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-2xl);padding:28px;width:400px;max-width:90vw;box-shadow:var(--shadow-xl)">'
       + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px">' + title + '</h3>'
       + '<input type="text" id="prompt-modal-input" class="form-input" placeholder="' + (placeholder || '') + '" style="margin-bottom:16px" autofocus>'
       + '<div style="display:flex;gap:10px;justify-content:flex-end">'
-      + '<button id="prompt-modal-cancel" class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer">Annuler</button>'
+      + '<button id="prompt-modal-cancel" class="btn" style="background:var(--bg-elevated);color:var(--text-secondary);border:none;cursor:pointer">Annuler</button>'
       + '<button id="prompt-modal-ok" class="btn btn-primary">Ajouter</button>'
       + '</div></div>';
     document.body.appendChild(overlay);
@@ -143,12 +151,12 @@ function accountAvatarHTML(accountId, handle, platform, size) {
   size = size || 36;
   var platColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#0080FF', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316' };
   var platIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
-  var color = platColors[platform] || '#A855F7';
+  var color = platColors[platform] || '#3B82F6';
   var initial = (handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
   var avatarUrl = (platform === 'instagram' || platform === 'tiktok') ? 'https://unavatar.io/' + platform + '/' + (handle||'').replace(/^@/,'') : '/api/accounts/' + accountId + '/avatar';
   return '<div style="display:flex;align-items:center;gap:8px">'
     + '<img src="' + avatarUrl + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;border:2px solid ' + color + '30;background:' + color + '20" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
     + '<div style="display:none;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color + ';align-items:center;justify-content:center;font-size:' + Math.round(size*0.4) + 'px;font-weight:700;color:white;flex-shrink:0">' + initial + '</div>'
     + '<div style="min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (handle || '') + '</div>'
-    + '<div style="font-size:10px;color:var(--text3)">' + (platIcons[platform] || '') + ' ' + (platform || '') + '</div></div></div>';
+    + '<div style="font-size:10px;color:var(--text-tertiary)">' + (platIcons[platform] || '') + ' ' + (platform || '') + '</div></div></div>';
 }

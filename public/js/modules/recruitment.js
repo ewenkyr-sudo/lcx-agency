@@ -70,7 +70,7 @@ async function renderRecruitment() {
       + '</div>'
       // Recruiters panel
       + '<div class="panel" style="padding:20px;margin-bottom:20px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('recruit.recruiters') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruiterForm()">' + t('recruit.add_recruiter') + '</button></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light)">' + t('recruit.recruiters') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruiterForm()">' + t('recruit.add_recruiter') + '</button></div>'
       + '<div id="add-recruiter-form-wrap"></div>'
       + '<table class="table mobile-cards"><thead><tr><th>' + t('common.name') + '</th><th>' + t('recruit.leads') + '</th><th>' + t('recruit.signed') + '</th><th>' + t('recruit.conversion') + '</th><th>' + t('recruit.commission_pct') + '</th><th>' + t('recruit.gains') + '</th><th>' + t('common.status') + '</th></tr></thead><tbody>'
       + (_recruiters.length > 0 ? _recruiters.map(function(r) {
@@ -83,11 +83,11 @@ async function renderRecruitment() {
             + '<td data-label="%" class="mc-half">' + r.commission_percentage + '%</td>'
             + '<td data-label="' + t('recruit.gains') + '" class="mc-half" style="color:var(--green)">$' + gains + '</td>'
             + '<td data-label="" class="mc-half"><span style="color:' + (r.is_active ? 'var(--green)' : 'var(--red)') + ';font-size:11px;font-weight:600">' + (r.is_active ? t('status.active') : t('status.inactive')) + '</span></td></tr>';
-        }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">' + t('recruit.no_recruiters') + '</td></tr>')
+        }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:20px">' + t('recruit.no_recruiters') + '</td></tr>')
       + '</tbody></table></div>'
       // All leads panel
       + '<div class="panel" style="padding:20px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('recruit.all_leads') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruitLeadForm()">' + t('recruit.add_lead') + '</button></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light)">' + t('recruit.all_leads') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruitLeadForm()">' + t('recruit.add_lead') + '</button></div>'
       + '<div id="add-recruit-lead-form-wrap"></div>'
       + '<div id="recruit-leads-table">' + renderRecruitLeadsTable(true) + '</div>'
       + '</div>';
@@ -105,7 +105,7 @@ async function renderRecruitment() {
       + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:var(--green)">$' + myGains + '</div><div class="coaching-kpi-label">' + t('recruit.commission_earned') + '</div></div>'
       + '</div>'
       + '<div class="panel" style="padding:20px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent2)">' + t('recruit.my_leads') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruitLeadForm()">' + t('recruit.add_lead') + '</button></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light)">' + t('recruit.my_leads') + '</h3><button class="btn btn-primary" style="font-size:12px" onclick="showAddRecruitLeadForm()">' + t('recruit.add_lead') + '</button></div>'
       + '<div id="add-recruit-lead-form-wrap"></div>'
       + '<div id="recruit-leads-table">' + renderRecruitLeadsTable(false) + '</div>'
       + '</div>';
@@ -114,7 +114,7 @@ async function renderRecruitment() {
 
 function renderRecruitLeadsTable(isOwner) {
   var leads = _recruitLeads;
-  if (leads.length === 0) return '<div style="text-align:center;color:var(--text3);padding:24px">' + t('recruit.no_leads') + '</div>';
+  if (leads.length === 0) return '<div style="text-align:center;color:var(--text-tertiary);padding:24px">' + t('recruit.no_leads') + '</div>';
   var statusOpts = Object.entries(RECRUIT_STATUSES_MAP).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label() + '</option>'; }).join('');
   return '<table class="table mobile-cards"><thead><tr><th>' + t('recruit.platform') + '</th><th>' + t('recruit.prospect_pseudo') + '</th>'
     + (isOwner ? '<th>' + t('recruit.recruiter') + '</th>' : '')
@@ -125,12 +125,12 @@ function renderRecruitLeadsTable(isOwner) {
         var stObj = RECRUIT_STATUSES_MAP[l.status] || RECRUIT_STATUSES_MAP['prospect_chaud'];
         return '<tr>'
           + '<td data-label="" class="mc-half">' + (PLATFORM_ICONS[l.platform] || l.platform) + '</td>'
-          + '<td data-label="" class="mc-title"><strong>' + (l.prospect_pseudo || '') + '</strong>' + (l.prospect_name ? '<div style="font-size:11px;color:var(--text3)">' + l.prospect_name + '</div>' : '') + '</td>'
+          + '<td data-label="" class="mc-title"><strong>' + (l.prospect_pseudo || '') + '</strong>' + (l.prospect_name ? '<div style="font-size:11px;color:var(--text-tertiary)">' + l.prospect_name + '</div>' : '') + '</td>'
           + (isOwner ? '<td data-label="' + t('recruit.recruiter') + '" class="mc-half" style="font-size:12px">' + (l.recruiter_name || '-') + '</td>' : '')
           + '<td data-label="Call R" class="mc-half"><input type="checkbox" ' + (l.call_recruiter ? 'checked' : '') + ' onchange="updateRecruitLead(' + l.id + ',{call_recruiter:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>'
           + (isOwner ? '<td data-label="Call 1:1" class="mc-half"><input type="checkbox" ' + (l.call_owner ? 'checked' : '') + ' onchange="updateRecruitLead(' + l.id + ',{call_owner:this.checked})" style="width:18px;height:18px;cursor:pointer"></td>' : '')
-          + '<td data-label="' + t('recruit.status') + '" class="mc-half"><select onchange="updateRecruitLead(' + l.id + ',{status:this.value})" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">' + Object.entries(RECRUIT_STATUSES_MAP).map(function(e) { return '<option value="' + e[0] + '"' + (l.status === e[0] ? ' selected' : '') + '>' + e[1].label() + '</option>'; }).join('') + '</select></td>'
-          + '<td data-label="Notes" class="mc-full" style="font-size:12px;color:var(--text2)">' + (l.notes || '-') + '</td>'
+          + '<td data-label="' + t('recruit.status') + '" class="mc-half"><select onchange="updateRecruitLead(' + l.id + ',{status:this.value})" style="background:var(--bg-base);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">' + Object.entries(RECRUIT_STATUSES_MAP).map(function(e) { return '<option value="' + e[0] + '"' + (l.status === e[0] ? ' selected' : '') + '>' + e[1].label() + '</option>'; }).join('') + '</select></td>'
+          + '<td data-label="Notes" class="mc-full" style="font-size:12px;color:var(--text-secondary)">' + (l.notes || '-') + '</td>'
           + '<td data-label="" class="mc-half"><button class="btn-delete-small" onclick="deleteRecruitLead(' + l.id + ')">✕</button></td>'
           + '</tr>';
       }).join('') + '</tbody></table>';
@@ -140,10 +140,10 @@ function showAddRecruiterForm() {
   var wrap = document.getElementById('add-recruiter-form-wrap');
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   var memberOpts = allUsers.filter(function(u) { return u.role !== 'platform_admin' && !_recruiters.some(function(r) { return r.user_id === u.id; }); }).map(function(u) { return '<option value="' + u.id + '">' + u.display_name + ' (' + u.role + ')</option>'; }).join('');
-  wrap.innerHTML = '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+  wrap.innerHTML = '<div style="background:var(--bg-base);padding:14px;border-radius:10px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<select id="recruit-member-select" class="form-input" style="max-width:200px;font-size:12px;padding:6px 8px"><option value="">' + t('recruit.select_member') + '</option>' + memberOpts + '</select>'
     + '<input type="number" id="recruit-commission" class="form-input" style="max-width:100px;font-size:12px;padding:6px 8px" placeholder="10" value="10" min="0" max="100">'
-    + '<span style="font-size:12px;color:var(--text3)">%</span>'
+    + '<span style="font-size:12px;color:var(--text-tertiary)">%</span>'
     + '<button class="btn btn-primary" style="font-size:12px;padding:6px 14px" onclick="addRecruiter()">' + t('common.add') + '</button>'
     + '</div>';
 }
@@ -163,14 +163,14 @@ function showAddRecruitLeadForm() {
   var isOwner = currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'platform_admin';
   var recruiterSelect = '';
   if (isOwner && _recruiters.length > 0) {
-    recruiterSelect = '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.recruiter') + '</label><select id="recruit-lead-recruiter" class="form-input" style="font-size:12px;padding:6px 8px">' + _recruiters.filter(function(r) { return r.is_active; }).map(function(r) { return '<option value="' + r.id + '">' + r.display_name + '</option>'; }).join('') + '</select></div>';
+    recruiterSelect = '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.recruiter') + '</label><select id="recruit-lead-recruiter" class="form-input" style="font-size:12px;padding:6px 8px">' + _recruiters.filter(function(r) { return r.is_active; }).map(function(r) { return '<option value="' + r.id + '">' + r.display_name + '</option>'; }).join('') + '</select></div>';
   }
-  wrap.innerHTML = '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">'
+  wrap.innerHTML = '<div style="background:var(--bg-base);padding:14px;border-radius:10px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">'
     + recruiterSelect
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.platform') + '</label><select id="recruit-lead-platform" class="form-input" style="font-size:12px;padding:6px 8px"><option value="instagram">Instagram</option><option value="whop">Whop</option><option value="discord">Discord</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option></select></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.prospect_pseudo') + '</label><input type="text" id="recruit-lead-pseudo" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="@pseudo"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('recruit.prospect_name') + '</label><input type="text" id="recruit-lead-name" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="Nom"></div>'
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="recruit-lead-notes" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="Notes..."></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.platform') + '</label><select id="recruit-lead-platform" class="form-input" style="font-size:12px;padding:6px 8px"><option value="instagram">Instagram</option><option value="whop">Whop</option><option value="discord">Discord</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option></select></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.prospect_pseudo') + '</label><input type="text" id="recruit-lead-pseudo" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="@pseudo"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('recruit.prospect_name') + '</label><input type="text" id="recruit-lead-name" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="Nom"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="recruit-lead-notes" class="form-input" style="font-size:12px;padding:6px 8px" placeholder="Notes..."></div>'
     + '<button class="btn btn-primary" style="font-size:12px;padding:8px 14px" onclick="addRecruitLead()">' + t('recruit.add_lead') + '</button>'
     + '</div>';
 }

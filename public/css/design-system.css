@@ -1,0 +1,375 @@
+/* =============================================
+   FUZION PILOT — DESIGN SYSTEM v2.0
+   "Dark Premium Addictive"
+   ============================================= */
+
+/* ===== CSS TOKENS ===== */
+:root {
+  /* --- Backgrounds --- */
+  --bg-base: #050507;
+  --bg-surface: #0A0A0C;
+  --bg-elevated: #131316;
+  --bg-subtle: rgba(255,255,255,0.03);
+  --bg-overlay: rgba(0,0,0,0.45);
+  --bg-hover: rgba(255,255,255,0.04);
+  --bg-active: rgba(59,130,246,0.08);
+
+  /* --- Borders --- */
+  --border-default: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --border-accent: rgba(59,130,246,0.2);
+  --border-subtle: rgba(255,255,255,0.04);
+
+  /* --- Text --- */
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --text-muted: #52525B;
+
+  /* --- Accent Colors --- */
+  --accent-blue: #3B82F6;
+  --accent-blue-light: #60A5FA;
+  --accent-blue-dark: #2563EB;
+  --accent-blue-glow: rgba(59,130,246,0.12);
+  --accent-blue-subtle: rgba(59,130,246,0.06);
+
+  --accent-green: #22C55E;
+  --accent-green-bg: rgba(34,197,94,0.1);
+  --accent-green-glow: rgba(34,197,94,0.15);
+
+  --accent-red: #EF4444;
+  --accent-red-bg: rgba(239,68,68,0.1);
+  --accent-red-glow: rgba(239,68,68,0.15);
+
+  --accent-yellow: #F59E0B;
+  --accent-yellow-light: #FBBF24;
+  --accent-yellow-bg: rgba(245,158,11,0.1);
+
+  --accent-purple: #8B5CF6;
+  --accent-purple-bg: rgba(139,92,246,0.1);
+  --accent-purple-glow: rgba(139,92,246,0.15);
+
+  --accent-cyan: #06B6D4;
+  --accent-cyan-bg: rgba(6,182,212,0.1);
+  --accent-cyan-glow: rgba(6,182,212,0.12);
+
+  --accent-gold: #F59E0B;
+  --accent-gold-bg: rgba(245,158,11,0.1);
+
+  /* --- Metric Colors (KPI cards) --- */
+  --metric-revenue: var(--accent-blue);
+  --metric-revenue-bg: var(--accent-blue-subtle);
+  --metric-ppv: var(--accent-purple);
+  --metric-ppv-bg: var(--accent-purple-bg);
+  --metric-fans: var(--accent-cyan);
+  --metric-fans-bg: var(--accent-cyan-bg);
+  --metric-whales: var(--accent-gold);
+  --metric-whales-bg: var(--accent-gold-bg);
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.25), 0 1px 4px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+  --shadow-glow-blue: 0 0 20px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05);
+  --shadow-glow-blue-strong: 0 0 30px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.08);
+
+  /* --- Radii --- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+
+  /* --- Spacing --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+
+  /* --- Typography --- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --text-display: 28px;
+  --text-h1: 22px;
+  --text-h2: 18px;
+  --text-body: 14px;
+  --text-small: 13px;
+  --text-micro: 11px;
+
+  /* --- Transitions --- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.4, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.35s;
+
+  /* --- Layout --- */
+  --sidebar-width: 220px;
+  --topbar-height: 0px;
+
+  /* Legacy compatibility aliases */
+  --bg: var(--bg-base);
+  --bg2: var(--bg-surface);
+  --bg3: var(--bg-elevated);
+  --bg4: #1E1E22;
+  --accent: var(--accent-blue);
+  --accent2: var(--accent-blue-light);
+  --accent-glow: var(--accent-blue-glow);
+  --green: var(--accent-green);
+  --green-bg: var(--accent-green-bg);
+  --red: var(--accent-red);
+  --red-bg: var(--accent-red-bg);
+  --yellow: var(--accent-yellow);
+  --yellow-bg: var(--accent-yellow-bg);
+  --blue: var(--accent-cyan);
+  --blue-bg: var(--accent-cyan-bg);
+  --pink: var(--accent-purple);
+  --pink-bg: var(--accent-purple-bg);
+  --text: var(--text-primary);
+  --text2: var(--text-secondary);
+  --text3: var(--text-tertiary);
+  --border: var(--border-default);
+  --radius: var(--radius-lg);
+  --shadow: var(--shadow-lg);
+  --glass: rgba(59,130,246,0.03);
+  --glow-violet: var(--accent-blue-glow);
+  --glow-cyan: var(--accent-cyan-glow);
+  --glow-rose: var(--accent-purple-glow);
+}
+
+
+/* ===== KEYFRAME ANIMATIONS ===== */
+
+/* Shimmer — passes over KPI revenue card */
+@keyframes ds-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Pulse — live status dots */
+@keyframes ds-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Ping — expanding ring on live indicators */
+@keyframes ds-ping {
+  0% { transform: scale(1); opacity: 0.75; }
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Glow breathe — subtle glow intensity cycle */
+@keyframes ds-glow-breathe {
+  0%, 100% { box-shadow: 0 0 20px rgba(59,130,246,0.08); }
+  50% { box-shadow: 0 0 40px rgba(59,130,246,0.18); }
+}
+
+/* Fade in up — page entry */
+@keyframes ds-fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in — simple opacity */
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Slide in from left — sidebar items */
+@keyframes ds-slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Spin — loaders */
+@keyframes ds-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Skeleton shimmer */
+@keyframes ds-skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Button shimmer — subtle light pass */
+@keyframes ds-btn-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* Float — subtle vertical drift */
+@keyframes ds-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Toast progress bar — auto-dismiss countdown */
+@keyframes ds-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+
+/* ===== UTILITY CLASSES ===== */
+
+/* Gradient text — for page titles */
+.text-gradient {
+  background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient text — blue accent */
+.text-gradient-blue {
+  background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #2563EB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Mono font for data/numbers */
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1, 'ss01' 1;
+}
+
+/* Micro label — uppercase tiny text */
+.text-micro {
+  font-size: var(--text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+/* Glow effects */
+.glow-blue {
+  box-shadow: var(--shadow-glow-blue);
+}
+.glow-blue-strong {
+  box-shadow: var(--shadow-glow-blue-strong);
+}
+
+/* Shimmer overlay — place inside a positioned parent */
+.shimmer-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.shimmer-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.08), transparent);
+  animation: ds-shimmer 3s ease-in-out infinite;
+}
+
+/* Live pulse dot */
+.pulse-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
+}
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: ds-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Skeleton loading bar */
+.skeleton-bar {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, #1E1E22 50%, var(--bg-elevated) 75%);
+  background-size: 200% 100%;
+  animation: ds-skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Card hover effect — add to interactive cards */
+.card-hover {
+  transition: transform var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-slow) var(--ease-out);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+
+/* ===== AMBIENT BACKGROUND HALOS ===== */
+
+/* Main ambient glow — positioned behind key dashboard areas */
+.ambient-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+/* Top-left blue halo */
+body::before {
+  content: '';
+  position: fixed;
+  top: -15%;
+  left: 10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bottom-right subtle purple halo */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -10%;
+  right: -5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139,92,246,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+
+/* ===== ACCESSIBILITY: REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .shimmer-overlay::after {
+    animation: none;
+  }
+
+  .pulse-dot::before {
+    animation: none;
+  }
+}

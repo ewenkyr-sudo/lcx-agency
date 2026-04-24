@@ -3,7 +3,7 @@
 
 let chartRevenue = null;
 let chartLeads = null;
-const chartColors = ['#A855F7','#F0ABFC','#22D3EE','#A78BFA','#FBBF24','#FB7185','#34D399','#84cc16'];
+const chartColors = ['#3B82F6','#8B5CF6','#22D3EE','#A78BFA','#FBBF24','#EF4444','#22C55E','#84cc16'];
 var _perfDays = 7;
 
 function renderPerformances() {
@@ -15,8 +15,8 @@ async function loadPerformances(days, btn) {
   // Update active button
   if (btn) {
     document.querySelectorAll('.perf-period').forEach(b => {
-      b.style.background = 'var(--bg3)';
-      b.style.color = 'var(--text2)';
+      b.style.background = 'var(--bg-elevated)';
+      b.style.color = 'var(--text-secondary)';
     });
     btn.style.background = 'var(--accent)';
     btn.style.color = 'white';
@@ -65,19 +65,19 @@ function renderPerfTopPerformers(top) {
   function tableRows(items, nameKey, showPpvTips) {
     return items.map(function(r, i) {
       var rev = parseFloat(r.revenue || r.total_spent || 0);
-      return '<tr><td style="color:var(--text3);width:30px">' + (i + 1) + '</td><td><strong>' + (r[nameKey] || r.display_name || r.username || '-') + '</strong>' + (r.model_name && nameKey !== 'model_name' ? ' <span style="color:var(--text3);font-size:11px">' + r.model_name + '</span>' : '') + '</td>'
+      return '<tr><td style="color:var(--text-tertiary);width:30px">' + (i + 1) + '</td><td><strong>' + (r[nameKey] || r.display_name || r.username || '-') + '</strong>' + (r.model_name && nameKey !== 'model_name' ? ' <span style="color:var(--text-tertiary);font-size:11px">' + r.model_name + '</span>' : '') + '</td>'
         + (showPpvTips ? '<td style="font-size:12px">$' + parseFloat(r.ppv||0).toFixed(0) + ' / $' + parseFloat(r.tips||0).toFixed(0) + '</td>' : '')
         + '<td style="color:var(--green);font-weight:700;text-align:right">$' + rev.toLocaleString(undefined,{maximumFractionDigits:0}) + '</td></tr>';
-    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">' + t('analytics.no_data') + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:12px">' + t('analytics.no_data') + '</td></tr>';
   }
 
   el.innerHTML = '<div class="panel" style="padding:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:12px">🏆 ' + t('perf.top_performers') + '</h3>'
-    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_models') + '</h4>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light);margin-bottom:12px">🏆 ' + t('perf.top_performers') + '</h3>'
+    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text-tertiary);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_models') + '</h4>'
     + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.models || [], 'model_name', true) + '</tbody></table></div>'
-    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_chatters') + '</h4>'
+    + '<div style="margin-bottom:16px"><h4 style="font-size:12px;color:var(--text-tertiary);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_chatters') + '</h4>'
     + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.chatters || [], 'display_name', true) + '</tbody></table></div>'
-    + '<div><h4 style="font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_whales') + '</h4>'
+    + '<div><h4 style="font-size:12px;color:var(--text-tertiary);margin-bottom:6px;text-transform:uppercase">' + t('perf.top_whales') + '</h4>'
     + '<table class="table" style="font-size:13px"><tbody>' + tableRows(top.fans || [], 'username', false) + '</tbody></table></div>'
     + '</div>';
 }
@@ -104,21 +104,21 @@ function renderPerfHeatmap(data) {
     for (var hi = 0; hi < hours.length; hi++) {
       var rev = (grid[d + '-' + hours[hi]] || 0) + (grid[d + '-' + (hours[hi]+1)] || 0);
       var intensity = maxRev > 0 ? Math.min(1, rev / maxRev) : 0;
-      var bg = intensity > 0 ? 'rgba(168,85,247,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg3)';
-      cells += '<div style="background:' + bg + ';border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:' + (intensity > 0.5 ? 'white' : 'var(--text3)') + '"' + (rev > 0 ? ' title="$' + rev.toFixed(0) + '"' : '') + '>' + (rev > 0 ? '$' + rev.toFixed(0) : '') + '</div>';
+      var bg = intensity > 0 ? 'rgba(59,130,246,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg-elevated)';
+      cells += '<div style="background:' + bg + ';border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:' + (intensity > 0.5 ? 'white' : 'var(--text-tertiary)') + '"' + (rev > 0 ? ' title="$' + rev.toFixed(0) + '"' : '') + '>' + (rev > 0 ? '$' + rev.toFixed(0) : '') + '</div>';
     }
   }
 
   el.innerHTML = '<div class="panel" style="padding:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:12px">🔥 ' + t('perf.activity_heatmap') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light);margin-bottom:12px">🔥 ' + t('perf.activity_heatmap') + '</h3>'
     + '<div style="display:grid;grid-template-columns:40px repeat(' + hours.length + ',1fr);gap:2px;font-size:10px">'
-    + '<div></div>' + hours.map(function(h) { return '<div style="text-align:center;color:var(--text3)">' + h + 'h</div>'; }).join('')
+    + '<div></div>' + hours.map(function(h) { return '<div style="text-align:center;color:var(--text-tertiary)">' + h + 'h</div>'; }).join('')
     + [0,1,2,3,4,5,6].map(function(d) {
-      return '<div style="display:flex;align-items:center;color:var(--text3);font-size:10px">' + dayLabels[d] + '</div>'
+      return '<div style="display:flex;align-items:center;color:var(--text-tertiary);font-size:10px">' + dayLabels[d] + '</div>'
         + hours.map(function(h) {
           var rev = (grid[d + '-' + h] || 0) + (grid[d + '-' + (h+1)] || 0);
           var intensity = maxRev > 0 ? Math.min(1, rev / maxRev) : 0;
-          var bg = intensity > 0 ? 'rgba(168,85,247,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg3)';
+          var bg = intensity > 0 ? 'rgba(59,130,246,' + (0.1 + intensity * 0.8).toFixed(2) + ')' : 'var(--bg-elevated)';
           return '<div style="background:' + bg + ';border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8px;color:' + (intensity > 0.5 ? 'white' : 'transparent') + '"' + (rev > 0 ? ' title="$' + rev.toFixed(0) + '"' : '') + '></div>';
         }).join('');
     }).join('')
@@ -130,7 +130,7 @@ function renderPerfModelComparison(models) {
   if (!el || !models || models.length === 0) return;
 
   el.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent2);margin-bottom:16px">📊 ' + t('perf.model_comparison') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light);margin-bottom:16px">📊 ' + t('perf.model_comparison') + '</h3>'
     + '<table class="table mobile-cards"><thead><tr><th>' + t('finance.model_col') + '</th><th>' + t('finance.revenue_total') + '</th><th>' + t('perf.variation') + '</th><th>Shifts</th><th>Fans</th></tr></thead><tbody>'
     + models.map(function(m) {
       var varColor = m.variation >= 0 ? 'var(--green)' : 'var(--red)';
@@ -189,7 +189,7 @@ function renderRevenueChart(data, days) {
         {
           label: 'PPV',
           data: data.map(d => parseFloat(d.ppv)),
-          backgroundColor: '#A855F7cc',
+          backgroundColor: '#3B82F6cc',
           borderRadius: 4
         },
         {
@@ -231,7 +231,7 @@ function renderLeadsChart(data, days) {
         {
           label: t('perf.replies_label'),
           data: data.map(d => parseInt(d.replies)),
-          backgroundColor: '#A855F7cc',
+          backgroundColor: '#3B82F6cc',
           borderRadius: 4
         }
       ]
@@ -248,17 +248,17 @@ function chartOptions(yTitle) {
     scales: {
       x: {
         grid: { color: 'rgba(255,255,255,0.05)' },
-        ticks: { color: '#6B5A84', maxTicksLimit: 15 }
+        ticks: { color: '#52525B', maxTicksLimit: 15 }
       },
       y: {
         grid: { color: 'rgba(255,255,255,0.05)' },
-        ticks: { color: '#6B5A84' },
-        title: { display: !!yTitle, text: yTitle, color: '#9585B0' },
+        ticks: { color: '#52525B' },
+        title: { display: !!yTitle, text: yTitle, color: '#A1A1AA' },
         beginAtZero: true
       }
     },
     plugins: {
-      legend: { labels: { color: '#EDE4FF', usePointStyle: true, padding: 16 } }
+      legend: { labels: { color: '#FAFAFA', usePointStyle: true, padding: 16 } }
     }
   };
 }
@@ -323,8 +323,8 @@ function showPlanningForm(modelId) {
   var wrap = document.getElementById('planning-form-' + modelId);
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px">'
-    + '<input type="text" id="plan-label-' + modelId + '" placeholder="' + t('perf.planning_placeholder') + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
-    + '<input type="text" id="plan-link-' + modelId + '" placeholder="' + t('perf.drive_placeholder') + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<input type="text" id="plan-label-' + modelId + '" placeholder="' + t('perf.planning_placeholder') + '" style="flex:1;background:var(--bg-base);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
+    + '<input type="text" id="plan-link-' + modelId + '" placeholder="' + t('perf.drive_placeholder') + '" style="flex:1;background:var(--bg-base);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;font-family:inherit">'
     + '<button onclick="addPlanning(' + modelId + ')" style="background:var(--accent);color:white;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">OK</button>'
     + '</div>';
 }
@@ -345,12 +345,12 @@ async function loadModelPlanning(modelId) {
   if (!res.ok) return;
   var items = await res.json();
   container.innerHTML = items.map(function(p) {
-    return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:11px">'
+    return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-base);border-radius:6px;font-size:11px">'
       + '<span style="flex:1;font-weight:600">' + p.label + '</span>'
       + '<a href="' + p.drive_link + '" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600">' + t('perf.open_link') + '</a>'
       + '<button onclick="deletePlanning(' + p.id + ',' + modelId + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:10px">✕</button>'
       + '</div>';
-  }).join('') || '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text3)">' + emptyStateSVG.calendar.replace('width="28"','width="20"') + ' ' + t('perf.no_planning') + '</div>';
+  }).join('') || '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-tertiary)">' + emptyStateSVG.calendar.replace('width="28"','width="20"') + ' ' + t('perf.no_planning') + '</div>';
 }
 
 async function deletePlanning(id, modelId) {
@@ -414,7 +414,7 @@ async function loadChatterKPIs() {
           <div class="stat-card"><div class="stat-value">$${s.today.ppv.toFixed(2)}</div><div class="stat-label">${t('chatters.ppv_today')}</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${s.today.tips.toFixed(2)}</div><div class="stat-label">${t('chatters.tips_today')}</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${s.week.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_week')}</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${s.total.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">$${s.total.revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
           <div class="stat-card"><div class="stat-value">${s.total.shifts}</div><div class="stat-label">Total shifts</div></div>
         `;
       }
@@ -442,7 +442,7 @@ async function loadChatterKPIs() {
           <div class="stat-card"><div class="stat-value">$${totals.today_ppv.toFixed(2)}</div><div class="stat-label">${t('chatters.ppv_today')}</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--yellow)">$${totals.today_tips.toFixed(2)}</div><div class="stat-label">${t('chatters.tips_today')}</div></div>
           <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${weekRev.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_week')}</div></div>
-          <div class="stat-card"><div class="stat-value" style="color:var(--accent2)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
+          <div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">$${totals.total_revenue.toFixed(2)}</div><div class="stat-label">${t('chatters.revenue_total')}</div></div>
           <div class="stat-card"><div class="stat-value">${totals.total_shifts}</div><div class="stat-label">Total shifts</div></div>
         `;
 
@@ -477,13 +477,13 @@ function renderShifts() {
   tbody.innerHTML = allShifts.map((s, idx) => {
     const revenue = (parseFloat(s.ppv_total) + parseFloat(s.tips_total)).toFixed(2);
     return `<tr>
-      <td data-label="#" style="color:var(--text3);font-size:12px">${allShifts.length - idx}</td>
+      <td data-label="#" style="color:var(--text-tertiary);font-size:12px">${allShifts.length - idx}</td>
       <td data-label="" class="mc-title"><strong>${s.model_name}</strong> — ${s.date}</td>
       <td data-label="PPV" class="mc-half">$${parseFloat(s.ppv_total).toFixed(2)}</td>
       <td data-label="Tips" class="mc-half" style="color:var(--yellow)">$${parseFloat(s.tips_total).toFixed(2)}</td>
       <td data-label="Revenue" class="mc-half" style="color:var(--green)"><strong>$${revenue}</strong></td>
-      ${userIsAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent2)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
-      <td data-label="Notes" class="mc-full" style="color:var(--text2);font-size:12px">${s.shift_notes || '-'}</td>
+      ${userIsAdmin ? `<td data-label="Chatter" class="mc-half" style="color:var(--accent-blue-light)">${s.chatter_name || '-'}</td>` : `<td data-label="" class="mc-half"></td>`}
+      <td data-label="Notes" class="mc-full" style="color:var(--text-secondary);font-size:12px">${s.shift_notes || '-'}</td>
       <td data-label="" class="mc-actions"><button class="btn-delete-small" onclick="deleteShift(${s.id})" title="${t('common.delete')}">✕</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="9">' + emptyStateHTML('clock', t('chatters.no_shift_report')) + '</td></tr>';

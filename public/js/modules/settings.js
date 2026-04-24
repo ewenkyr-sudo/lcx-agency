@@ -45,7 +45,7 @@ function renderSettings() {
   // Users table
   const tbody = document.getElementById('settings-users-table');
   const roleLabels = { platform_admin: 'Platform', super_admin: 'Super Admin', admin: 'Admin', chatter: 'Chatter', outreach: 'Outreach', va: 'VA', model: t('settings.role_model'), student: t('settings.role_student') };
-  const roleColors = { admin: 'var(--pink)', chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', model: 'var(--accent)', student: 'var(--text3)' };
+  const roleColors = { admin: 'var(--pink)', chatter: 'var(--blue)', outreach: 'var(--green)', va: 'var(--yellow)', model: 'var(--accent)', student: 'var(--text-tertiary)' };
 
   tbody.innerHTML = allUsers.map(u => `
     <tr>
@@ -58,13 +58,13 @@ function renderSettings() {
           <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid var(--bg2)">+</div>
           <input type="file" id="avatar-input-${u.id}" accept="image/*" style="display:none" onchange="uploadAvatar(${u.id}, this)">
         </div>
-        <strong>${u.display_name}</strong> <span style="color:var(--text3);font-size:12px">@${u.username}</span>
+        <strong>${u.display_name}</strong> <span style="color:var(--text-tertiary);font-size:12px">@${u.username}</span>
       </td>
       <td data-label="${t('settings.current_password_col')}" class="mc-half">
-        <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--text3)">••••••</code>
+        <code style="background:var(--bg-elevated);padding:4px 8px;border-radius:4px;font-size:12px;color:var(--text-tertiary)">••••••</code>
       </td>
       <td data-label="${t('settings.role_col')}" class="mc-half">
-        <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg3)" ${u.id === currentUser.id ? 'disabled' : ''}>
+        <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg-elevated)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </td>
@@ -82,7 +82,7 @@ function renderSettings() {
         </div>
       </td>
       <td data-label="" class="mc-actions">
-        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="${t('common.delete')}">✕</button>` : '<span style="color:var(--text3);font-size:11px">' + t('settings.you_label') + '</span>'}
+        ${u.id !== currentUser.id ? `<button class="btn-delete-small" onclick="deleteUser(${u.id})" title="${t('common.delete')}">✕</button>` : '<span style="color:var(--text-tertiary);font-size:11px">' + t('settings.you_label') + '</span>'}
       </td>
     </tr>
   `).join('');
@@ -93,7 +93,7 @@ function renderSettings() {
     const platforms = Array.isArray(m.platforms) ? m.platforms : JSON.parse(m.platforms || '[]');
     const modelAccounts = allAccounts.filter(a => a.model_id === m.id);
     return `
-    <div class="panel" style="padding:16px;margin-bottom:12px;background:var(--bg3)">
+    <div class="panel" style="padding:16px;margin-bottom:12px;background:var(--bg-elevated)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:10px">
           <strong style="font-size:15px">${m.name}</strong>
@@ -101,10 +101,10 @@ function renderSettings() {
         </div>
         <button class="btn-delete-small" onclick="deleteModel(${m.id})">✕</button>
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${t('settings.platforms_label')}${platforms.join(', ') || t('settings.no_platform')}</div>
-      <div style="font-size:12px;color:var(--text3)">${t('settings.accounts_label')}${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' ' + t('settings.followers_count') + ')').join(', ') || t('settings.no_account')}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${t('settings.platforms_label')}${platforms.join(', ') || t('settings.no_platform')}</div>
+      <div style="font-size:12px;color:var(--text-tertiary)">${t('settings.accounts_label')}${modelAccounts.map(a => a.platform + ' (' + a.handle + ' — ' + a.current_followers + ' ' + t('settings.followers_count') + ')').join(', ') || t('settings.no_account')}</div>
     </div>`;
-  }).join('') || '<p style="color:var(--text3)">' + t('settings.no_model') + '</p>';
+  }).join('') || '<p style="color:var(--text-tertiary)">' + t('settings.no_model') + '</p>';
 
   // Outreach status preview
   var statusPreview = document.getElementById('outreach-status-preview');
@@ -119,8 +119,8 @@ function renderSettings() {
   if (stepsPreview) {
     stepsPreview.innerHTML = STEPS.map(function(s, i) {
       return '<div style="display:flex;align-items:center;gap:6px">'
-        + '<span style="padding:6px 14px;border-radius:8px;background:var(--bg3);font-size:13px;font-weight:600">' + s.icon + ' ' + t(s.labelKey) + '</span>'
-        + (i < STEPS.length - 1 ? '<span style="color:var(--text3)">→</span>' : '')
+        + '<span style="padding:6px 14px;border-radius:8px;background:var(--bg-elevated);font-size:13px;font-weight:600">' + s.icon + ' ' + t(s.labelKey) + '</span>'
+        + (i < STEPS.length - 1 ? '<span style="color:var(--text-tertiary)">→</span>' : '')
         + '</div>';
     }).join('');
   }
@@ -152,8 +152,8 @@ async function loadAgencyInfo() {
     document.getElementById('agency-info-loading').style.display = 'none';
     document.getElementById('agency-info-content').style.display = 'block';
     document.getElementById('agency-edit-name').value = agency.name || '';
-    document.getElementById('agency-edit-color').value = agency.primary_color || '#A855F7';
-    document.getElementById('agency-color-label').textContent = agency.primary_color || '#A855F7';
+    document.getElementById('agency-edit-color').value = agency.primary_color || '#3B82F6';
+    document.getElementById('agency-color-label').textContent = agency.primary_color || '#3B82F6';
     document.getElementById('agency-stat-members').textContent = agency.user_count || 0;
     document.getElementById('agency-stat-models').textContent = agency.model_count || 0;
     document.getElementById('agency-stat-leads').textContent = agency.lead_count || 0;

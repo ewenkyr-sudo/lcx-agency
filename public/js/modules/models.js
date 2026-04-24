@@ -111,7 +111,7 @@ function closeCockpit() {
 
 async function renderModelCockpit(modelId) {
   const container = document.getElementById('cockpit-content');
-  container.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><div style="color:var(--text3);margin-top:12px">' + t('models.cockpit_loading') + '</div></div>';
+  container.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><div style="color:var(--text-tertiary);margin-top:12px">' + t('models.cockpit_loading') + '</div></div>';
 
   // Destroy old charts
   Object.values(cockpitCharts).forEach(c => c.destroy());
@@ -135,9 +135,9 @@ async function renderModelCockpit(modelId) {
         <button class="cockpit-nav-btn" onclick="navigateCockpit('next')" title="Modèle suivant">›</button>
         <div style="flex:1">
           <div style="font-size:22px;font-weight:800">${model.name}</div>
-          <div style="font-size:13px;color:var(--text3)">${(model.platforms||[]).join(' · ')} · ${d.accounts.length} compte${d.accounts.length>1?'s':''}</div>
+          <div style="font-size:13px;color:var(--text-tertiary)">${(model.platforms||[]).join(' · ')} · ${d.accounts.length} compte${d.accounts.length>1?'s':''}</div>
         </div>
-        <div style="font-size:12px;color:var(--text3)">${modelIdx+1} / ${allModels.length}</div>
+        <div style="font-size:12px;color:var(--text-tertiary)">${modelIdx+1} / ${allModels.length}</div>
       </div>
 
       <!-- Cockpit Tabs -->
@@ -222,12 +222,12 @@ async function renderModelCockpit(modelId) {
         clockInfo = last.clock_out ? inTime + ' - ' + new Date(last.clock_out).toLocaleTimeString(loc,{hour:'2-digit',minute:'2-digit'}) : t('models.since').replace('{time}', inTime);
       }
       teamHtml += '<div class="cockpit-team-row">'
-        + '<div class="cockpit-online-dot" style="background:' + (tm.online ? 'var(--green)' : 'var(--text3)') + '"></div>'
+        + '<div class="cockpit-online-dot" style="background:' + (tm.online ? 'var(--green)' : 'var(--text-tertiary)') + '"></div>'
         + '<div style="flex:1"><strong style="font-size:13px">' + tm.name + '</strong>'
-        + (clockInfo ? '<div style="font-size:11px;color:var(--text3)">' + clockInfo + '</div>' : '')
+        + (clockInfo ? '<div style="font-size:11px;color:var(--text-tertiary)">' + clockInfo + '</div>' : '')
         + '</div>'
         + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">$' + tm.monthRevenue.toFixed(2) + '</div>'
-        + '<div style="font-size:10px;color:var(--text3)">' + tm.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
+        + '<div style="font-size:10px;color:var(--text-tertiary)">' + tm.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
         + '</div>';
     });
     document.getElementById('cockpit-team').innerHTML = teamHtml;
@@ -255,13 +255,13 @@ async function renderModelCockpit(modelId) {
       var pct = Math.min(100, d.revenueMonth / d.objective.target * 100).toFixed(0);
       var status = pct >= 100 ? t('models.reached') : pct >= 60 ? t('models.in_progress') : t('models.behind');
       var statusColor = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
-      objHtml += '<div style="display:flex;align-items:center;gap:16px;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:8px">'
+      objHtml += '<div style="display:flex;align-items:center;gap:16px;padding:14px;background:var(--bg-elevated);border-radius:10px;margin-bottom:8px">'
         + '<div style="flex:1"><div style="font-size:14px;font-weight:600">' + t('models.revenue_monthly_label') + '</div>'
-        + '<div style="font-size:12px;color:var(--text3);margin-top:2px">$' + d.revenueMonth.toFixed(2) + ' / $' + d.objective.target.toFixed(0) + '</div>'
+        + '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">$' + d.revenueMonth.toFixed(2) + ' / $' + d.objective.target.toFixed(0) + '</div>'
         + '<div class="cockpit-progress" style="margin-top:8px"><div class="cockpit-progress-bar" style="width:' + pct + '%;background:' + statusColor + '"></div></div></div>'
         + '<div style="text-align:right"><div style="font-size:20px;font-weight:800">' + pct + '%</div><div style="font-size:11px;color:' + statusColor + ';font-weight:600">' + status + '</div></div></div>';
     } else {
-      objHtml = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">' + t('models.no_objective_month') + '</div>';
+      objHtml = '<div style="color:var(--text-tertiary);font-size:13px;text-align:center;padding:16px">' + t('models.no_objective_month') + '</div>';
     }
     document.getElementById('cockpit-objectives').innerHTML = objHtml;
 
@@ -282,7 +282,7 @@ async function renderModelCockpit(modelId) {
 }
 
 function renderCockpitCharts(d) {
-  var chartDefaults = { color: '#9585B0', borderColor: '#1C1333' };
+  var chartDefaults = { color: '#A1A1AA', borderColor: '#1E1E22' };
 
   // Revenue 30 days line chart
   var ctx1 = document.getElementById('cockpit-chart-revenue');
@@ -294,23 +294,23 @@ function renderCockpitCharts(d) {
         datasets: [{
           label: 'PPV',
           data: d.rev30.map(function(r) { return parseFloat(r.ppv); }),
-          borderColor: '#A855F7',
-          backgroundColor: 'rgba(168,85,247,0.1)',
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
           fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
         }, {
           label: 'Tips',
           data: d.rev30.map(function(r) { return parseFloat(r.tips); }),
-          borderColor: '#ec4899',
+          borderColor: '#8B5CF6',
           backgroundColor: 'rgba(236,72,153,0.1)',
           fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9585B0', font: { size: 11 } } } },
+        plugins: { legend: { labels: { color: '#A1A1AA', font: { size: 11 } } } },
         scales: {
-          x: { ticks: { color: '#6B5A84', font: { size: 10 } }, grid: { color: '#1C1333' } },
-          y: { ticks: { color: '#6B5A84', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1C1333' } }
+          x: { ticks: { color: '#52525B', font: { size: 10 } }, grid: { color: '#1E1E22' } },
+          y: { ticks: { color: '#52525B', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1E1E22' } }
         }
       }
     });
@@ -326,7 +326,7 @@ function renderCockpitCharts(d) {
         labels: ['PPV', 'Tips', 'Autres'],
         datasets: [{
           data: [d.ppvMonth, d.tipsMonth, msgRevenue],
-          backgroundColor: ['#A855F7', '#F0ABFC', '#22D3EE'],
+          backgroundColor: ['#3B82F6', '#8B5CF6', '#22D3EE'],
           borderWidth: 0
         }]
       },
@@ -334,7 +334,7 @@ function renderCockpitCharts(d) {
         responsive: true, maintainAspectRatio: false,
         cutout: '65%',
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#9585B0', font: { size: 11 }, padding: 16 } }
+          legend: { position: 'bottom', labels: { color: '#A1A1AA', font: { size: 11 }, padding: 16 } }
         }
       }
     });
@@ -350,7 +350,7 @@ function renderCockpitCharts(d) {
         datasets: [{
           label: 'PPV',
           data: d.revWeekly.map(function(r) { return parseFloat(r.ppv); }),
-          backgroundColor: 'rgba(168,85,247,0.7)', borderRadius: 4
+          backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 4
         }, {
           label: 'Tips',
           data: d.revWeekly.map(function(r) { return parseFloat(r.tips); }),
@@ -359,10 +359,10 @@ function renderCockpitCharts(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9585B0', font: { size: 11 } } } },
+        plugins: { legend: { labels: { color: '#A1A1AA', font: { size: 11 } } } },
         scales: {
-          x: { stacked: true, ticks: { color: '#6B5A84', font: { size: 10 } }, grid: { display: false } },
-          y: { stacked: true, ticks: { color: '#6B5A84', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1C1333' } }
+          x: { stacked: true, ticks: { color: '#52525B', font: { size: 10 } }, grid: { display: false } },
+          y: { stacked: true, ticks: { color: '#52525B', font: { size: 10 }, callback: function(v) { return '$' + v; } }, grid: { color: '#1E1E22' } }
         }
       }
     });

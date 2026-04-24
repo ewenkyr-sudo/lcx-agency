@@ -10,14 +10,14 @@ var planSelectedUser = null;
 var SHIFT_TYPES = {
   'morning':   { labelKey: 'planning.morning', time: '6h-14h', start: '06:00', end: '14:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   'afternoon': { labelKey: 'planning.afternoon', time: '14h-22h', start: '14:00', end: '22:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  'night':     { labelKey: 'planning.night', time: '22h-06h', start: '22:00', end: '06:00', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
-  'off':       { labelKey: null, label: 'Off', time: '', start: null, end: null, color: '#6B5A84', bg: 'rgba(107,107,128,0.12)' },
-  'custom':    { labelKey: null, label: 'Custom', time: '', start: null, end: null, color: '#A855F7', bg: 'rgba(168,85,247,0.12)' }
+  'night':     { labelKey: 'planning.night', time: '22h-06h', start: '22:00', end: '06:00', color: '#8B5CF6', bg: 'rgba(236,72,153,0.12)' },
+  'off':       { labelKey: null, label: 'Off', time: '', start: null, end: null, color: '#52525B', bg: 'rgba(107,107,128,0.12)' },
+  'custom':    { labelKey: null, label: 'Custom', time: '', start: null, end: null, color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' }
 };
 // Get shift label dynamically (t() not available at load time)
 function getShiftLabel(st) { return st.labelKey ? t(st.labelKey) : (st.label || ''); }
 
-var ROLE_COLORS = { chatter: '#3b82f6', outreach: '#10b981', va: '#f59e0b', admin: '#ec4899', student: '#06B6D4', model: '#6B5A84' };
+var ROLE_COLORS = { chatter: '#3b82f6', outreach: '#10b981', va: '#f59e0b', admin: '#8B5CF6', student: '#06B6D4', model: '#52525B' };
 var ROLE_BG = { chatter: 'rgba(59,130,246,0.12)', outreach: 'rgba(16,185,129,0.12)', va: 'rgba(245,158,11,0.12)', admin: 'rgba(236,72,153,0.12)', student: 'rgba(6,182,212,0.12)', model: 'rgba(107,107,128,0.12)' };
 
 function getMonday(d) { var dt = new Date(d); var day = dt.getDay(); var diff = dt.getDate() - day + (day === 0 ? -6 : 1); dt.setDate(diff); dt.setHours(0,0,0,0); return dt; }
@@ -54,8 +54,8 @@ function renderPlanMemberList() {
 
   container.innerHTML = '<div class="panel" style="padding:0;overflow:hidden">'
     + members.map(function(u) {
-      var rc = ROLE_COLORS[u.role] || '#6B5A84';
-      var rbg = ROLE_BG[u.role] || 'var(--bg3)';
+      var rc = ROLE_COLORS[u.role] || '#52525B';
+      var rbg = ROLE_BG[u.role] || 'var(--bg-elevated)';
       var selected = planSelectedUser === u.id;
       var online = typeof isUserOnline === 'function' && isUserOnline(u.id);
       var av = u.avatar_url
@@ -63,7 +63,7 @@ function renderPlanMemberList() {
         : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,' + rc + ',var(--pink));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0">' + (u.display_name||'?').charAt(0) + '</div>';
       return '<div onclick="selectPlanMember(' + u.id + ')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-left:3px solid ' + (selected ? rc : 'transparent') + ';background:' + (selected ? rbg : 'transparent') + ';transition:all 0.15s">'
         + '<div style="position:relative">' + av + (online ? '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--bg2)"></span>' : '') + '</div>'
-        + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (selected?'700':'500') + ';color:' + (selected?'var(--text)':'var(--text2)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + u.display_name + '</div>'
+        + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (selected?'700':'500') + ';color:' + (selected?'var(--text)':'var(--text-secondary)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + u.display_name + '</div>'
         + '<div style="font-size:11px;color:' + rc + ';font-weight:600">' + u.role + '</div></div>'
         + '</div>';
     }).join('')
@@ -89,7 +89,7 @@ async function renderPlanDetail() {
   var user = allUsers.find(function(u) { return u.id === planSelectedUser; });
   var userName = user ? user.display_name : '';
   var userRole = user ? user.role : '';
-  var rc = ROLE_COLORS[userRole] || '#6B5A84';
+  var rc = ROLE_COLORS[userRole] || '#52525B';
 
   document.getElementById('planning-subtitle').textContent = userName + ' — ' + t('cp.week_of_label') + ' ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun);
 
@@ -124,9 +124,9 @@ async function renderPlanDetail() {
   var html = '<div class="panel" style="padding:20px">'
     // Nav semaine
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
-    + '<button onclick="planNavigate(-1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
+    + '<button onclick="planNavigate(-1)" style="padding:8px 14px;background:var(--bg-base);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
     + '<div style="text-align:center"><div style="font-size:15px;font-weight:700">' + mon.toLocaleDateString(i18n.getLang() === 'en' ? 'en-US' : 'fr-FR',{day:'numeric',month:'long'}) + ' — ' + sun.toLocaleDateString(i18n.getLang() === 'en' ? 'en-US' : 'fr-FR',{day:'numeric',month:'long',year:'numeric'}) + '</div></div>'
-    + '<button onclick="planNavigate(1)" style="padding:8px 14px;background:var(--bg3);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
+    + '<button onclick="planNavigate(1)" style="padding:8px 14px;background:var(--bg-base);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
     + '</div>'
     // Jours
     + '<div style="display:grid;gap:8px">';
@@ -141,7 +141,7 @@ async function renderPlanDetail() {
     var dayShiftEntries = dayShifts.filter(function(s) { return s.entry_type !== 'task'; });
     var dayTaskEntries = dayShifts.filter(function(s) { return s.entry_type === 'task'; });
 
-    html += '<div style="background:' + (isToday ? 'rgba(168,85,247,0.08)' : 'var(--bg3)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
+    html += '<div style="background:' + (isToday ? 'rgba(59,130,246,0.08)' : 'var(--bg-elevated)') + ';border-radius:12px;padding:14px 18px;border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + '">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:' + (dayShifts.length > 0 || isLeave ? '10px' : '0') + '">'
       + '<div style="font-size:14px;font-weight:600;text-transform:capitalize;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + '">' + dayLabel + (isToday ? ' <span style="font-size:11px;background:var(--accent);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">' + t('planning.today_label') + '</span>' : '') + '</div>'
       + '<div style="display:flex;gap:6px">'
@@ -168,8 +168,8 @@ async function renderPlanDetail() {
           html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px">'
             + '<div style="padding:6px 12px;border-radius:8px;background:' + st.bg + ';color:' + st.color + ';font-size:12px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : getShiftLabel(st)) + '</div>'
             + (timeStr ? '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
-            + (modelNames.length > 0 ? '<div style="display:flex;gap:4px;flex-wrap:wrap">' + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('') + '</div>' : '')
-            + (s.notes ? '<div style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
+            + (modelNames.length > 0 ? '<div style="display:flex;gap:4px;flex-wrap:wrap">' + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg-base);color:var(--text-secondary)">' + n + '</span>'; }).join('') + '</div>' : '')
+            + (s.notes ? '<div style="font-size:11px;color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
             + '<div style="display:flex;gap:4px;flex-shrink:0">'
             + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px">✕</button>'
             + '</div></div>';
@@ -189,13 +189,13 @@ async function renderPlanDetail() {
           html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:4px;border-left:3px solid ' + (isUrgent ? 'var(--red)' : 'var(--green)') + '">'
             + '<div style="min-width:50px">'
             + (timeStr ? '<div style="font-size:12px;font-weight:700;color:var(--text)">' + (s.start_time || '') + '</div>' : '')
-            + (s.end_time && s.start_time ? '<div style="font-size:10px;color:var(--text3)">' + s.end_time + '</div>' : '')
+            + (s.end_time && s.start_time ? '<div style="font-size:10px;color:var(--text-tertiary)">' + s.end_time + '</div>' : '')
             + '</div>'
             + '<div style="flex:1;min-width:0">'
             + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + desc + '</div>'
             + '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">'
             + (isUrgent ? '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--red-bg);color:var(--red);font-weight:600">URGENT</span>' : '')
-            + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg3);color:var(--text2)">' + n + '</span>'; }).join('')
+            + modelNames.map(function(n) { return '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg-base);color:var(--text-secondary)">' + n + '</span>'; }).join('')
             + '</div></div>'
             + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:4px;flex-shrink:0">✕</button>'
             + '</div>';
@@ -203,7 +203,7 @@ async function renderPlanDetail() {
       }
 
       if (dayShifts.length === 0) {
-        html += '<div style="color:var(--text3);font-size:12px;font-style:italic">' + t('planning.no_shift') + '</div>';
+        html += '<div style="color:var(--text-tertiary);font-size:12px;font-style:italic">' + t('planning.no_shift') + '</div>';
       }
     }
     html += '</div>';
@@ -211,8 +211,8 @@ async function renderPlanDetail() {
 
   html += '</div>'
     // Weekly summary bar
-    + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg3);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
-    + '<span style="font-size:13px;color:var(--text2)">' + t('planning.week_total') + '</span>'
+    + '<div style="margin-top:16px;padding:14px 18px;background:var(--bg-base);border-radius:10px;display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-size:13px;color:var(--text-secondary)">' + t('planning.week_total') + '</span>'
     + '<span style="font-size:18px;font-weight:800;color:' + rc + '">' + totalHours.toFixed(0) + 'h</span>'
     + '</div>'
     + '</div>';
@@ -235,27 +235,27 @@ function showPlanShiftForm(userId, dateStr, defaultEntryType) {
     + '<input type="hidden" id="ps-user" value="' + targetUser + '">'
     // Toggle shift / tâche
     + '<div style="display:flex;gap:0;margin-bottom:14px">'
-    + '<button id="ps-toggle-shift" onclick="toggleEntryType(\'shift\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:8px 0 0 8px;background:' + (entryType==='shift'?'var(--accent)':'var(--bg3)') + ';color:' + (entryType==='shift'?'white':'var(--text2)') + '">' + t('planning.shift_type') + '</button>'
-    + '<button id="ps-toggle-task" onclick="toggleEntryType(\'task\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:0 8px 8px 0;background:' + (entryType==='task'?'var(--green)':'var(--bg3)') + ';color:' + (entryType==='task'?'white':'var(--text2)') + '">' + t('planning.planned_task') + '</button>'
+    + '<button id="ps-toggle-shift" onclick="toggleEntryType(\'shift\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:8px 0 0 8px;background:' + (entryType==='shift'?'var(--accent)':'var(--bg-elevated)') + ';color:' + (entryType==='shift'?'white':'var(--text-secondary)') + '">' + t('planning.shift_type') + '</button>'
+    + '<button id="ps-toggle-task" onclick="toggleEntryType(\'task\')" style="flex:1;padding:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;border-radius:0 8px 8px 0;background:' + (entryType==='task'?'var(--green)':'var(--bg-elevated)') + ';color:' + (entryType==='task'?'white':'var(--text-secondary)') + '">' + t('planning.planned_task') + '</button>'
     + '</div>'
     + '<input type="hidden" id="ps-entry-type" value="' + entryType + '">'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Date</label><input type="date" id="ps-date" class="form-input" style="font-size:12px" value="' + (dateStr || fmtDate(new Date())) + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">Date</label><input type="date" id="ps-date" class="form-input" style="font-size:12px" value="' + (dateStr || fmtDate(new Date())) + '"></div>'
     // Shift fields
     + '<div id="ps-shift-fields" style="display:' + (entryType==='shift'?'contents':'none') + '">'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.shift_select') + '</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.shift_select') + '</label><select id="ps-type" class="form-input" style="font-size:12px" onchange="onShiftTypeChange()">'
     + Object.entries(SHIFT_TYPES).map(function(e) { return '<option value="' + e[0] + '">' + getShiftLabel(e[1]) + (e[1].time ? ' (' + e[1].time + ')' : '') + '</option>'; }).join('')
     + '</select></div></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.start') + '</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'18:00':'06:00') + '"></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.end') + '</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'19:00':'14:00') + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.start') + '</label><input type="time" id="ps-start" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'18:00':'06:00') + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.end') + '</label><input type="time" id="ps-end" class="form-input" style="font-size:12px" value="' + (entryType==='task'?'19:00':'14:00') + '"></div>'
     // Task fields
     + '<div id="ps-task-fields" style="display:' + (entryType==='task'?'contents':'none') + '">'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.priority') + '</label><select id="ps-priority" class="form-input" style="font-size:12px"><option value="normal">' + t('planning.normal') + '</option><option value="urgent">' + t('planning.urgent') + '</option></select></div></div>'
-    + '<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.models_accounts') + '</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="2"><option value="">' + t('common.none') + '</option>' + modelOpts + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.priority') + '</label><select id="ps-priority" class="form-input" style="font-size:12px"><option value="normal">' + t('planning.normal') + '</option><option value="urgent">' + t('planning.urgent') + '</option></select></div></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.models_accounts') + '</label><select id="ps-models" class="form-input" style="font-size:12px" multiple size="2"><option value="">' + t('common.none') + '</option>' + modelOpts + '</select></div>'
     // Description (task) or Notes (shift)
-    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px" id="ps-desc-label">' + (entryType==='task'?t('planning.description_task'):t('common.notes')) + '</label><input type="text" id="ps-description" class="form-input" style="font-size:12px" placeholder="' + (entryType==='task'?t('planning.task_placeholder'):t('planning.notes_placeholder')) + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px" id="ps-desc-label">' + (entryType==='task'?t('planning.description_task'):t('common.notes')) + '</label><input type="text" id="ps-description" class="form-input" style="font-size:12px" placeholder="' + (entryType==='task'?t('planning.task_placeholder'):t('planning.notes_placeholder')) + '"></div>'
     + '</div>'
-    + '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addPlanShift()">' + t('common.add') + '</button><button class="btn" style="font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'plan-shift-form-inline\').remove()">' + t('common.cancel') + '</button></div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="addPlanShift()">' + t('common.add') + '</button><button class="btn" style="font-size:12px;background:var(--bg-base);color:var(--text-secondary);border:none;cursor:pointer" onclick="document.getElementById(\'plan-shift-form-inline\').remove()">' + t('common.cancel') + '</button></div>'
     + '</div>';
 
   var detail = document.getElementById('planning-detail');
@@ -265,10 +265,10 @@ function showPlanShiftForm(userId, dateStr, defaultEntryType) {
 
 function toggleEntryType(type) {
   document.getElementById('ps-entry-type').value = type;
-  document.getElementById('ps-toggle-shift').style.background = type==='shift' ? 'var(--accent)' : 'var(--bg3)';
-  document.getElementById('ps-toggle-shift').style.color = type==='shift' ? 'white' : 'var(--text2)';
-  document.getElementById('ps-toggle-task').style.background = type==='task' ? 'var(--green)' : 'var(--bg3)';
-  document.getElementById('ps-toggle-task').style.color = type==='task' ? 'white' : 'var(--text2)';
+  document.getElementById('ps-toggle-shift').style.background = type==='shift' ? 'var(--accent)' : 'var(--bg-elevated)';
+  document.getElementById('ps-toggle-shift').style.color = type==='shift' ? 'white' : 'var(--text-secondary)';
+  document.getElementById('ps-toggle-task').style.background = type==='task' ? 'var(--green)' : 'var(--bg-elevated)';
+  document.getElementById('ps-toggle-task').style.color = type==='task' ? 'white' : 'var(--text-secondary)';
   document.getElementById('ps-shift-fields').style.display = type==='shift' ? 'contents' : 'none';
   document.getElementById('ps-task-fields').style.display = type==='task' ? 'contents' : 'none';
   document.getElementById('ps-desc-label').textContent = type==='task' ? t('planning.description_task') : t('common.notes');
@@ -348,9 +348,9 @@ function showLeaveRequestForm() {
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:16px">'
     + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--yellow)">' + t('planning.leave_request_title') + '</h3>'
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">'
-    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.from') + '</label><input type="date" id="lr-start" class="form-input" style="font-size:12px"></div>'
-    + '<div><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.to') + '</label><input type="date" id="lr-end" class="form-input" style="font-size:12px"></div>'
-    + '<div style="flex:1"><label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">' + t('planning.reason') + '</label><input type="text" id="lr-reason" class="form-input" style="font-size:12px"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.from') + '</label><input type="date" id="lr-start" class="form-input" style="font-size:12px"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.to') + '</label><input type="date" id="lr-end" class="form-input" style="font-size:12px"></div>'
+    + '<div style="flex:1"><label style="font-size:12px;color:var(--text-tertiary);display:block;margin-bottom:4px">' + t('planning.reason') + '</label><input type="text" id="lr-reason" class="form-input" style="font-size:12px"></div>'
     + '<button class="btn btn-primary" style="font-size:12px" onclick="submitLeaveRequest()">' + t('common.send') + '</button>'
     + '</div></div>';
 }
@@ -375,10 +375,10 @@ function renderPlanLeaves() {
     + planLeaves.map(function(l) {
       var stColor = l.status === 'pending' ? 'var(--yellow)' : l.status === 'accepted' ? 'var(--green)' : 'var(--red)';
       var stLabel = l.status === 'pending' ? t('planning.pending') : l.status === 'accepted' ? t('planning.accepted') : t('planning.refused');
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:8px;border-left:3px solid ' + stColor + '">'
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-base);border-radius:8px;border-left:3px solid ' + stColor + '">'
         + '<strong style="font-size:13px;min-width:100px">' + l.user_name + '</strong>'
-        + '<span style="font-size:12px;color:var(--text2)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'
-        + (l.reason ? '<span style="font-size:11px;color:var(--text3);flex:1">' + l.reason + '</span>' : '<span style="flex:1"></span>')
+        + '<span style="font-size:12px;color:var(--text-secondary)">' + l.start_date.slice(0,10) + ' → ' + l.end_date.slice(0,10) + '</span>'
+        + (l.reason ? '<span style="font-size:11px;color:var(--text-tertiary);flex:1">' + l.reason + '</span>' : '<span style="flex:1"></span>')
         + (isAdmin() && l.status === 'pending'
           ? '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'accepted\')">' + t('planning.accept') + '</button>'
             + '<button class="btn" style="font-size:11px;padding:4px 10px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;border-radius:6px" onclick="handleLeave(' + l.id + ',\'refused\')">' + t('planning.refuse') + '</button>'
@@ -414,10 +414,10 @@ async function renderPlanStats(start, end) {
   ]);
 
   container.innerHTML = '<div class="panel" style="padding:20px;margin-top:16px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent2)">' + t('planning.hours_recap') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--accent-blue-light)">' + t('planning.hours_recap') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
     // Semaine
-    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">' + t('planning.this_week_label') + '</h4>'
+    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px">' + t('planning.this_week_label') + '</h4>'
     + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>' + t('common.name') + '</th><th>' + t('planning.planned') + '</th><th>' + t('planning.actual') + '</th></tr></thead><tbody>'
     + weekStats.map(function(s) {
       var planned = parseFloat(s.planned_hours);
@@ -426,10 +426,10 @@ async function renderPlanStats(start, end) {
       return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
         + '<td data-label="' + t('planning.planned') + '" class="mc-half">' + planned.toFixed(0) + 'h</td>'
         + '<td data-label="' + t('planning.actual') + '" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
-    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">' + t('planning.no_data') + '</td></tr>'
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-tertiary)">' + t('planning.no_data') + '</td></tr>'
     + '</tbody></table></div>'
     // Mois
-    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">' + t('planning.this_month_label') + ' (' + planDate.toLocaleDateString(i18n.getLang() === 'en' ? 'en-US' : 'fr-FR',{month:'long'}) + ')</h4>'
+    + '<div><h4 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px">' + t('planning.this_month_label') + ' (' + planDate.toLocaleDateString(i18n.getLang() === 'en' ? 'en-US' : 'fr-FR',{month:'long'}) + ')</h4>'
     + '<table class="table mobile-cards" style="margin:0"><thead><tr><th>' + t('planning.member') + '</th><th>' + t('planning.planned') + '</th><th>' + t('planning.actual') + '</th></tr></thead><tbody>'
     + monthStats.map(function(s) {
       var planned = parseFloat(s.planned_hours);
@@ -438,7 +438,7 @@ async function renderPlanStats(start, end) {
       return '<tr><td data-label="" class="mc-title"><strong>' + s.user_name + '</strong></td>'
         + '<td data-label="' + t('planning.planned') + '" class="mc-half">' + planned.toFixed(0) + 'h</td>'
         + '<td data-label="' + t('planning.actual') + '" class="mc-half" style="color:' + diffColor + '">' + actual.toFixed(1) + 'h</td></tr>';
-    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3)">' + t('planning.no_data') + '</td></tr>'
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-tertiary)">' + t('planning.no_data') + '</td></tr>'
     + '</tbody></table></div>'
     + '</div></div>';
 }

@@ -27,25 +27,25 @@ async function loadNotifications() {
     var res = await fetch('/api/notifications?limit=20', { credentials: 'include' });
     var notifs = await res.json();
     if (notifs.length === 0) {
-      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px" data-i18n="notifications.empty">' + t('notifications.empty') + '</div>';
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-tertiary);font-size:13px" data-i18n="notifications.empty">' + t('notifications.empty') + '</div>';
       return;
     }
     list.innerHTML = notifs.map(function(n) {
       var icon = getNotifIcon(n.type);
       var timeAgo = notifTimeAgo(n.created_at);
       var unread = !n.read_at;
-      return '<div onclick="clickNotif(' + n.id + ',\'' + (n.link || '').replace(/'/g, "\\'") + '\')" style="display:flex;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;' + (unread ? 'background:rgba(168,85,247,0.04);' : '') + '" onmouseover="this.style.background=\'rgba(168,85,247,0.08)\'" onmouseout="this.style.background=\'' + (unread ? 'rgba(168,85,247,0.04)' : 'transparent') + '\'">'
+      return '<div onclick="clickNotif(' + n.id + ',\'' + (n.link || '').replace(/'/g, "\\'") + '\')" style="display:flex;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;' + (unread ? 'background:rgba(59,130,246,0.04);' : '') + '" onmouseover="this.style.background=\'rgba(59,130,246,0.08)\'" onmouseout="this.style.background=\'' + (unread ? 'rgba(59,130,246,0.04)' : 'transparent') + '\'">'
         + '<div style="font-size:16px;flex-shrink:0;width:24px;text-align:center;padding-top:2px">' + icon + '</div>'
         + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:12px;font-weight:' + (unread ? '700' : '500') + ';color:' + (unread ? 'var(--text)' : 'var(--text2)') + '">' + n.title + '</div>'
-        + '<div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (n.description || '') + '</div>'
-        + '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + timeAgo + '</div>'
+        + '<div style="font-size:12px;font-weight:' + (unread ? '700' : '500') + ';color:' + (unread ? 'var(--text)' : 'var(--text-secondary)') + '">' + n.title + '</div>'
+        + '<div style="font-size:11px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (n.description || '') + '</div>'
+        + '<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">' + timeAgo + '</div>'
         + '</div>'
         + (unread ? '<div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:6px"></div>' : '')
         + '</div>';
     }).join('');
   } catch(e) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Erreur de chargement</div>';
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:12px">Erreur de chargement</div>';
   }
 }
 

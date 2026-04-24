@@ -30,14 +30,14 @@ async function renderActivityLog(page) {
   container.innerHTML = '<div class="panel" style="padding:20px">'
     + '<div style="display:grid;gap:6px">'
     + logs.map(function(l) {
-      var info = actionLabels[l.action] || { label: l.action, color: 'var(--text2)', icon: '📝' };
+      var info = actionLabels[l.action] || { label: l.action, color: 'var(--text-secondary)', icon: '📝' };
       var date = new Date(l.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:13px">'
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-base);border-radius:8px;font-size:13px">'
         + '<span style="font-size:16px">' + info.icon + '</span>'
-        + '<span style="color:var(--text3);font-size:11px;min-width:80px">' + date + '</span>'
+        + '<span style="color:var(--text-tertiary);font-size:11px;min-width:80px">' + date + '</span>'
         + '<strong style="color:' + info.color + '">' + info.label + '</strong>'
-        + '<span style="color:var(--text2)">' + (l.user_name || '?') + '</span>'
-        + (l.details ? '<span style="color:var(--text3);font-size:12px">' + l.details + '</span>' : '')
+        + '<span style="color:var(--text-secondary)">' + (l.user_name || '?') + '</span>'
+        + (l.details ? '<span style="color:var(--text-tertiary);font-size:12px">' + l.details + '</span>' : '')
         + '</div>';
     }).join('') || emptyStateHTML('clipboard', t('misc.no_activity'))
     + '</div>'

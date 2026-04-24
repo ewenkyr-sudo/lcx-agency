@@ -45,23 +45,23 @@ function renderTaskCard(tk) {
   const statusColors = { pending: { bg: 'var(--blue-bg)', color: 'var(--blue)', label: t('tasks.pending_label') }, in_progress: { bg: 'var(--yellow-bg)', color: 'var(--yellow)', label: t('tasks.in_progress_label') }, completed: { bg: 'var(--green-bg)', color: 'var(--green)', label: t('tasks.completed_label') } };
   const st = statusColors[tk.status] || statusColors['pending'];
   const dl = tk.deadline || '';
-  const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">' + t('tasks.overdue') + '</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">' + t('tasks.soon') + '</span>' : dl ? '<span style="color:var(--text3)">' + dl + '</span>' : '<span style="color:var(--text3)">' + t('tasks.no_deadline') + '</span>';
+  const dlLabel = dlState === 'overdue' ? '<span style="color:var(--red);font-weight:600">' + t('tasks.overdue') + '</span>' : dlState === 'soon' ? '<span style="color:#f59e0b;font-weight:600">' + t('tasks.soon') + '</span>' : dl ? '<span style="color:var(--text-tertiary)">' + dl + '</span>' : '<span style="color:var(--text-tertiary)">' + t('tasks.no_deadline') + '</span>';
 
-  return '<div style="background:var(--bg3);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
+  return '<div style="background:var(--bg-base);padding:14px;border-radius:10px;border-left:4px solid ' + borderColor + ';position:relative">'
     + (isUrgent ? '<span style="position:absolute;top:10px;right:40px;background:var(--red);color:white;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700">URGENT</span>' : '')
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">'
     + '<strong style="font-size:14px;' + (tk.status === 'completed' ? 'text-decoration:line-through;opacity:0.5' : '') + '">' + tk.title + '</strong>'
     + '<button class="btn-delete-small" onclick="deleteTask(' + tk.id + ')" style="flex-shrink:0">✕</button>'
     + '</div>'
-    + (tk.description ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">' + tk.description + '</div>' : '')
+    + (tk.description ? '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + tk.description + '</div>' : '')
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px">'
     + '<select onchange="updateTaskStatus(' + tk.id + ',this.value)" style="background:' + st.bg + ';color:' + st.color + ';border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;min-height:28px">'
     + '<option value="pending"' + (tk.status==='pending'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.pending_label') + '</option>'
     + '<option value="in_progress"' + (tk.status==='in_progress'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.in_progress_label') + '</option>'
     + '<option value="completed"' + (tk.status==='completed'?' selected':'') + ' style="background:var(--bg2);color:var(--text)">' + t('tasks.completed_label') + '</option></select>'
     + '<div>📅 ' + dlLabel + '</div>'
-    + (tk.assigned_name ? '<div>👤 <span style="color:var(--accent2)">' + tk.assigned_name + '</span></div>' : '')
-    + (tk.notes ? '<div style="color:var(--text3)">' + tk.notes + '</div>' : '')
+    + (tk.assigned_name ? '<div>👤 <span style="color:var(--accent-blue-light)">' + tk.assigned_name + '</span></div>' : '')
+    + (tk.notes ? '<div style="color:var(--text-tertiary)">' + tk.notes + '</div>' : '')
     + '</div></div>';
 }
 
@@ -87,8 +87,8 @@ function renderTaskWeek(container, tasks) {
     + days.map(function(day, i) {
       const isToday = day === todayStr;
       const dayTasks = tasks.filter(function(tk) { return tk.deadline === day; });
-      return '<div style="background:var(--bg3);border-radius:10px;padding:10px;min-height:120px;border:' + (isToday ? '2px solid var(--accent)' : '1px solid var(--border)') + '">'
-        + '<div style="font-size:11px;font-weight:700;color:' + (isToday ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:8px;text-align:center">' + dayNames[i] + ' ' + day.substring(8) + '</div>'
+      return '<div style="background:var(--bg-base);border-radius:10px;padding:10px;min-height:120px;border:' + (isToday ? '2px solid var(--accent)' : '1px solid var(--border)') + '">'
+        + '<div style="font-size:11px;font-weight:700;color:' + (isToday ? 'var(--accent)' : 'var(--text-tertiary)') + ';margin-bottom:8px;text-align:center">' + dayNames[i] + ' ' + day.substring(8) + '</div>'
         + (dayTasks.length === 0 ? '' : dayTasks.map(function(tk) {
           var isUrgent = tk.priority === 'urgent';
           var dlState = getTaskDeadlineState(tk.deadline);
@@ -100,23 +100,23 @@ function renderTaskWeek(container, tasks) {
         + '</div>';
     }).join('')
     + '</div>'
-    + (noDeadline.length > 0 ? '<div class="panel" style="padding:14px;margin-bottom:10px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">' + t('tasks.without_deadline') + '</strong><div style="display:grid;gap:6px">' + noDeadline.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '')
-    + (otherWeek.length > 0 ? '<div class="panel" style="padding:14px"><strong style="font-size:12px;color:var(--text3);display:block;margin-bottom:8px">' + t('tasks.other_weeks') + '</strong><div style="display:grid;gap:6px">' + otherWeek.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '');
+    + (noDeadline.length > 0 ? '<div class="panel" style="padding:14px;margin-bottom:10px"><strong style="font-size:12px;color:var(--text-tertiary);display:block;margin-bottom:8px">' + t('tasks.without_deadline') + '</strong><div style="display:grid;gap:6px">' + noDeadline.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '')
+    + (otherWeek.length > 0 ? '<div class="panel" style="padding:14px"><strong style="font-size:12px;color:var(--text-tertiary);display:block;margin-bottom:8px">' + t('tasks.other_weeks') + '</strong><div style="display:grid;gap:6px">' + otherWeek.map(function(tk) { return renderTaskCard(tk); }).join('') + '</div></div>' : '');
 }
 
 function filterTasks(filter, btn) {
   taskFilter = filter;
-  document.querySelectorAll('.task-filter').forEach(function(b) { b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; });
+  document.querySelectorAll('.task-filter').forEach(function(b) { b.style.background = 'var(--bg-elevated)'; b.style.color = 'var(--text-secondary)'; });
   if (btn) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; }
   renderTasks();
 }
 
 function setTaskView(view) {
   taskView = view;
-  document.getElementById('btn-task-list').style.background = view === 'list' ? 'var(--accent)' : 'var(--bg3)';
-  document.getElementById('btn-task-list').style.color = view === 'list' ? 'white' : 'var(--text2)';
-  document.getElementById('btn-task-week').style.background = view === 'week' ? 'var(--accent)' : 'var(--bg3)';
-  document.getElementById('btn-task-week').style.color = view === 'week' ? 'white' : 'var(--text2)';
+  document.getElementById('btn-task-list').style.background = view === 'list' ? 'var(--accent)' : 'var(--bg-elevated)';
+  document.getElementById('btn-task-list').style.color = view === 'list' ? 'white' : 'var(--text-secondary)';
+  document.getElementById('btn-task-week').style.background = view === 'week' ? 'var(--accent)' : 'var(--bg-elevated)';
+  document.getElementById('btn-task-week').style.color = view === 'week' ? 'white' : 'var(--text-secondary)';
   renderTasks();
 }
 
@@ -125,22 +125,22 @@ function showTaskForm() {
   if (wrap.children.length) { wrap.innerHTML = ''; return; }
   var assignSelect = '';
   if (isAdmin()) {
-    assignSelect = '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('cp.form_assigned') + '</label>'
+    assignSelect = '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('cp.form_assigned') + '</label>'
       + '<select id="tf-assign" class="form-input"><option value="">—</option>'
       + allUsers.map(function(u) { return '<option value="' + u.id + '">' + u.display_name + ' (' + u.role + ')</option>'; }).join('')
       + '</select></div>';
   }
   wrap.innerHTML = '<div class="panel" style="padding:20px;margin-bottom:20px">'
-    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent2)">' + t('tasks.new_task') + '</h3>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">' + t('tasks.new_task') + '</h3>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px">'
-    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.title_required') + '</label><input type="text" id="tf-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
-    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.description') + '</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="' + t('student.description_placeholder') + '"></textarea></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('tasks.title_required') + '</label><input type="text" id="tf-title" class="form-input" placeholder="' + t('student.task_title_placeholder') + '"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('tasks.description') + '</label><textarea id="tf-desc" class="form-input" rows="2" placeholder="' + t('student.description_placeholder') + '"></textarea></div>'
     + assignSelect
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.priority') + '</label><select id="tf-priority" class="form-input"><option value="normal">' + t('common.normal') + '</option><option value="urgent">' + t('common.urgent') + '</option></select></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('tasks.deadline') + '</label><input type="date" id="tf-deadline" class="form-input"></div>'
-    + '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="tf-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('common.priority') + '</label><select id="tf-priority" class="form-input"><option value="normal">' + t('common.normal') + '</option><option value="urgent">' + t('common.urgent') + '</option></select></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('tasks.deadline') + '</label><input type="date" id="tf-deadline" class="form-input"></div>'
+    + '<div><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">' + t('common.notes') + '</label><input type="text" id="tf-notes" class="form-input" placeholder="' + t('student.notes_placeholder') + '"></div>'
     + '</div>'
-    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addTask()">' + t('tasks.create') + '</button><button class="btn" style="background:var(--bg3);color:var(--text2);border:none;cursor:pointer" onclick="document.getElementById(\'task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
+    + '<div style="margin-top:12px;display:flex;gap:10px"><button class="btn btn-primary" onclick="addTask()">' + t('tasks.create') + '</button><button class="btn" style="background:var(--bg-base);color:var(--text-secondary);border:none;cursor:pointer" onclick="document.getElementById(\'task-form-wrap\').innerHTML=\'\'">' + t('common.cancel') + '</button></div>'
     + '</div>';
 }
 

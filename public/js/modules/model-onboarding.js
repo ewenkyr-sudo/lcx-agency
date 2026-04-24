@@ -39,8 +39,8 @@ function renderMOStep() {
   document.getElementById('mo-next').textContent = moStep === moTotalSteps ? t('mo.add_creator_btn') : t('common.continue');
 
   if (moStep === 1) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Identité</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Informations de base sur la créatrice</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Identité</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Informations de base sur la créatrice</p>'
       + moField(t('mo.firstname') + ' *', 'text', 'mo-name', 'Ex: Luna')
       + moField(t('mo.stage_name_alt'), 'text', 'mo-stage-name', 'Ex: Luna_exclusive')
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
@@ -53,8 +53,8 @@ function renderMOStep() {
       + '</div>'
       + moField(t('mo.photo_url'), 'url', 'mo-photo', 'https://...');
   } else if (moStep === 2) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Réseaux sociaux</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Ses comptes actuels sur les réseaux</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Réseaux sociaux</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Ses comptes actuels sur les réseaux</p>'
       + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
       + moField(t('mo.ig_label'), 'text', 'mo-ig', '@handle')
       + moField(t('mo.followers_ig'), 'number', 'mo-ig-followers', '0')
@@ -73,11 +73,11 @@ function renderMOStep() {
       { key: 'fanvue', label: '💚 Fanvue', icon: '💚', color: '#10B981' },
       { key: 'mym', label: '🔥 MYM', icon: '🔥', color: '#F97316' }
     ];
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Plateformes adultes</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Sur quelles plateformes la créatrice est-elle active ?</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Plateformes adultes</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Sur quelles plateformes la créatrice est-elle active ?</p>'
       + platforms.map(function(p) {
         var hasAccount = moData['has_' + p.key + '_account'];
-        return '<div style="background:var(--bg3);padding:14px;border-radius:10px;margin-bottom:10px;border-left:3px solid ' + p.color + '">'
+        return '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;margin-bottom:10px;border-left:3px solid ' + p.color + '">'
           + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
           + '<strong style="font-size:14px">' + p.label + '</strong>'
           + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mo-has-' + p.key + '" onchange="moTogglePlatform(\'' + p.key + '\')" ' + (hasAccount ? 'checked' : '') + ' style="width:18px;height:18px;cursor:pointer"><span style="font-size:12px">' + (hasAccount ? t('mo.active') : 'Non') + '</span></label>'
@@ -99,8 +99,8 @@ function renderMOStep() {
       });
     }, 20);
   } else if (moStep === 4) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Contenu</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Quel type de contenu elle produit</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Contenu</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Quel type de contenu elle produit</p>'
       + '<div class="form-group"><label class="form-label">Types de contenu</label>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px" id="mo-content-types">'
       + ['Photos', 'Vidéos', 'Customs', 'Sexting', 'Lives', 'PPV', 'Dick ratings'].map(function(t) {
@@ -114,8 +114,8 @@ function renderMOStep() {
       + moField(t('mo.content_stock'), 'number', 'mo-stock', '0')
       + '</div>';
   } else if (moStep === 5) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Objectifs</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Ses ambitions et disponibilités</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Objectifs</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Ses ambitions et disponibilités</p>'
       + moField(t('mo.revenue_goal'), 'number', 'mo-revenue-goal', 'Ex: 5000')
       + moField(t('mo.availability'), 'number', 'mo-availability', 'Ex: 20')
       + '<div class="form-group"><label class="form-label">Langues parlées</label>'
@@ -131,8 +131,8 @@ function renderMOStep() {
         return '<button class="filter-chip' + sel + '" onclick="this.classList.toggle(\'selected\')" data-val="' + m + '">' + m + '</button>';
       }).join('') + '</div></div>';
   } else if (moStep === 6) {
-    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px">Légal & admin</h3>'
-      + '<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Documents et notes internes</p>'
+    body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Légal & admin</h3>'
+      + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Documents et notes internes</p>'
       + moField(t('mo.contract_link'), 'url', 'mo-contract', 'https://drive.google.com/...')
       + '<div class="form-group"><label class="form-label">Accord RGPD / Conditions acceptées</label>'
       + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'

@@ -60,7 +60,7 @@ function renderStats() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div>
           <strong style="font-size:16px">${modelName}</strong>
-          <span style="color:var(--text3);font-size:13px;margin-left:10px">${modelTotal.toLocaleString()} followers total</span>
+          <span style="color:var(--text-tertiary);font-size:13px;margin-left:10px">${modelTotal.toLocaleString()} followers total</span>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px">
@@ -71,19 +71,19 @@ function renderStats() {
           const pct = prev > 0 ? ((diff / prev) * 100).toFixed(1) : '0.0';
           const isUp = diff > 0;
           const isDown = diff < 0;
-          const color = isUp ? 'var(--green)' : isDown ? 'var(--red)' : 'var(--text3)';
+          const color = isUp ? 'var(--green)' : isDown ? 'var(--red)' : 'var(--text-tertiary)';
           const arrow = isUp ? '↑' : isDown ? '↓' : '—';
           const sign = isUp ? '+' : '';
           const autoUpdated = acc.platform === 'instagram' || acc.platform === 'tiktok';
           const lastUpdate = acc.last_scraped ? new Date(acc.last_scraped).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
           let bottomHTML = '';
           if (autoUpdated) {
-            bottomHTML = '<div style="font-size:9px;color:var(--text3);margin-top:4px">Auto-refresh' + (lastUpdate ? ' — màj ' + lastUpdate : '') + '</div>';
+            bottomHTML = '<div style="font-size:9px;color:var(--text-tertiary);margin-top:4px">Auto-refresh' + (lastUpdate ? ' — màj ' + lastUpdate : '') + '</div>';
           } else {
             bottomHTML = '<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><input type="number" id="manual-followers-' + acc.id + '" class="form-input" style="padding:4px 8px;font-size:12px;width:100px" placeholder="' + curr + '" min="0"><button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="updateManualFollowers(' + acc.id + ')">OK</button></div>';
           }
 
-          return '<div style="background:var(--bg3);border-radius:10px;padding:14px;border-left:3px solid ' + (platformColors[acc.platform] || 'var(--accent)') + '">'
+          return '<div style="background:var(--bg-base);border-radius:10px;padding:14px;border-left:3px solid ' + (platformColors[acc.platform] || 'var(--accent)') + '">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
             + accountAvatarHTML(acc.id, acc.handle, acc.platform, 32)
             + '</div>'

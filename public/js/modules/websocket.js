@@ -208,10 +208,10 @@ function updateOnlineUI() {
         : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white">' + (u.display_name||'?').charAt(0) + '</div>';
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
         + '<div style="position:relative">' + av + '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--bg2)"></span></div>'
-        + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + u.display_name + '</div><div style="font-size:11px;color:var(--text3)">' + u.role + '</div></div>'
+        + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + u.display_name + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + u.role + '</div></div>'
         + '<span style="font-size:11px;color:var(--green)">' + timeSince(u.connected_at) + '</span>'
         + '</div>';
-    }).join('') || '<div style="color:var(--text3);padding:16px 0;text-align:center;font-size:13px">' + t('dash.nobody_online') + '</div>';
+    }).join('') || '<div style="color:var(--text-tertiary);padding:16px 0;text-align:center;font-size:13px">' + t('dash.nobody_online') + '</div>';
   }
 
   // Points verts sur les noms dans les tables équipe (chatters, outreach, va)
