@@ -31,7 +31,7 @@ async function renderAgencyAccounts() {
   var growing = agencyAccounts.filter(function(a) { return a.current_followers > a.previous_followers; }).length;
   var declining = agencyAccounts.filter(function(a) { return a.current_followers < a.previous_followers && a.previous_followers > 0; }).length;
 
-  var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:20px">'
+  var html = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr));margin-bottom:20px">'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + total + '</div><div class="coaching-kpi-label">' + t('acc.total') + '</div></div>'
     + ACCOUNT_CATEGORIES.map(function(c) {
       return '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:' + c.color + '">' + (byCat[c.key] || 0) + '</div><div class="coaching-kpi-label">' + c.icon + ' ' + getAccCatLabel(c) + '</div></div>';

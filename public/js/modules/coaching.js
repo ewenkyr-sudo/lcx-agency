@@ -160,7 +160,7 @@ function renderCoachingTabContent() {
             + '<div class="coaching-step ' + cls + '" onclick="updateStudentProgression(' + s.id + ',\'' + st.key + '\')">' + st.icon + ' ' + st.label + '</div>';
         }).join('') + '</div>'
       // KPIs
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin:16px 0">'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(0) + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.revenue_total_label') + '</div></div>'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent-blue-light)">' + models.length + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.models_managed') + '</div></div>'
       + '<div style="background:var(--bg-base);padding:12px;border-radius:10px;text-align:center"><div style="font-size:20px;font-weight:800">' + asgn.length + '</div><div style="font-size:10px;color:var(--text-tertiary)">' + t('coaching.outreach_assigned') + '</div></div>'

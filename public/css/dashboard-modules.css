@@ -155,10 +155,12 @@
     font-feature-settings: 'tnum' 1;
     background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .coaching-kpi-label {
     font-size: var(--text-micro); color: var(--text-tertiary);
-    margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+    margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .coaching-layout { display: grid; grid-template-columns: 300px 1fr; gap: 12px; align-items: start; }
   .coaching-sidebar {
@@ -262,7 +264,13 @@
     .coaching-sidebar { position: static; max-height: 300px; }
     .coaching-kpi-bar { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 500px) { .coaching-kpi-bar { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) {
+    .coaching-kpi { padding: 10px 8px; }
+    .coaching-kpi-value { font-size: 18px; }
+    .coaching-kpi-label { font-size: 9px; letter-spacing: 0.2px; }
+  }
+  @media (max-width: 500px) { .coaching-kpi-bar { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 380px) { .coaching-kpi-bar { grid-template-columns: repeat(2, 1fr); } }
 
   /* ===== RECRUITMENT MODULE — Dark Premium Addictive ===== */
   .recruit-status {

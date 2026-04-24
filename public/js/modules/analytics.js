@@ -143,14 +143,14 @@ async function renderAnalytics() {
     + '<div class="grid-2col" style="gap:20px">'
     + frVsUs.map(function(m) {
       var rate = parseInt(m.dm_sent) > 0 ? ((parseInt(m.replies) / parseInt(m.dm_sent)) * 100).toFixed(1) : '0';
-      return '<div style="background:var(--bg-base);padding:16px;border-radius:10px;text-align:center">'
-        + '<div style="font-size:20px;font-weight:800;color:var(--accent)">' + m.market.toUpperCase() + '</div>'
-        + '<div class="stats-grid" style="margin-top:12px">'
-        + '<div class="stat-card"><div class="stat-value">' + m.total + '</div><div class="stat-label">' + t('analytics.leads') + '</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--blue)">' + m.dm_sent + '</div><div class="stat-label">' + t('analytics.dms') + '</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow)">' + m.replies + '</div><div class="stat-label">' + t('analytics.replies') + '</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--green)">' + m.signed + '</div><div class="stat-label">' + t('analytics.signed') + '</div></div>'
-        + '<div class="stat-card"><div class="stat-value" style="color:var(--accent-blue-light)">' + rate + '%</div><div class="stat-label">' + t('analytics.reply_rate') + '</div></div>'
+      return '<div style="background:var(--bg-base);padding:16px;border-radius:var(--radius-lg);text-align:center">'
+        + '<div style="font-size:18px;font-weight:800;color:var(--accent);margin-bottom:12px">' + m.market.toUpperCase() + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px">'
+        + '<div class="stat-card" style="padding:12px 8px"><div class="stat-value" style="font-size:18px">' + m.total + '</div><div class="stat-label">' + t('analytics.leads') + '</div></div>'
+        + '<div class="stat-card" style="padding:12px 8px"><div class="stat-value" style="font-size:18px;color:var(--accent-cyan)">' + m.dm_sent + '</div><div class="stat-label">' + t('analytics.dms') + '</div></div>'
+        + '<div class="stat-card" style="padding:12px 8px"><div class="stat-value" style="font-size:18px;color:var(--accent-yellow)">' + m.replies + '</div><div class="stat-label">' + t('analytics.replies') + '</div></div>'
+        + '<div class="stat-card" style="padding:12px 8px"><div class="stat-value" style="font-size:18px;color:var(--accent-green)">' + m.signed + '</div><div class="stat-label">' + t('analytics.signed') + '</div></div>'
+        + '<div class="stat-card" style="padding:12px 8px"><div class="stat-value" style="font-size:18px;color:var(--accent-blue-light)">' + rate + '%</div><div class="stat-label">' + t('analytics.reply_rate') + '</div></div>'
         + '</div></div>';
     }).join('')
     + '</div></div>'

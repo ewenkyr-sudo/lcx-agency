@@ -60,7 +60,7 @@ async function renderRecruitment() {
   if (isOwner) {
     container.innerHTML = ''
       // KPIs
-      + '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'
+      + '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + (stats.total || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.total_leads') + '</div></div>'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#7c3aed">' + (bs.prospect_chaud || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.hot_prospects') + '</div></div>'
       + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#16a34a">' + (bs.en_discussion || 0) + '</div><div class="coaching-kpi-label">' + t('recruit.in_discussion') + '</div></div>'

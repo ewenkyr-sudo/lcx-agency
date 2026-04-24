@@ -53,7 +53,7 @@ async function loadFans() {
 function renderFanKPIs(stats) {
   var el = document.getElementById('fan-kpis');
   if (!el || !stats) return;
-  el.innerHTML = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:16px">'
+  el.innerHTML = '<div class="coaching-kpi-bar" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr));margin-bottom:16px">'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value">' + (stats.total || 0) + '</div><div class="coaching-kpi-label">' + t('fan.total_fans') + '</div></div>'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#3B82F6">' + (stats.whales || 0) + '</div><div class="coaching-kpi-label">🐋 Whales</div></div>'
     + '<div class="coaching-kpi"><div class="coaching-kpi-value" style="color:#F59E0B">' + (stats.vips || 0) + '</div><div class="coaching-kpi-label">⭐ VIP</div></div>'
