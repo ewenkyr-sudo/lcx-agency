@@ -151,13 +151,13 @@ function renderCoachingTabContent() {
       + '<div><h3 style="font-size:18px;font-weight:700;margin-bottom:4px">' + s.name + '</h3>'
       + '<span class="coaching-badge coaching-badge-' + prog + '" style="font-size:11px">' + prog.toUpperCase() + '</span></div>'
       + '<select onchange="updateStudentProgression(' + s.id + ',this.value)" style="background:var(--bg-base);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer">'
-      + STEPS.map(function(st) { return '<option value="' + st.key + '"' + (step === st.key ? ' selected' : '') + '>' + st.icon + ' ' + st.label + '</option>'; }).join('') + '</select></div>'
+      + STEPS.map(function(st) { return '<option value="' + st.key + '"' + (step === st.key ? ' selected' : '') + '>' + st.icon + ' ' + t(st.labelKey) + '</option>'; }).join('') + '</select></div>'
       // Stepper
       + '<div class="coaching-stepper">'
       + STEPS.map(function(st, i) {
           var cls = i < stepIdx ? 'done' : i === stepIdx ? 'current' : '';
           return (i > 0 ? '<div class="coaching-step-line' + (i <= stepIdx ? ' done' : '') + '"></div>' : '')
-            + '<div class="coaching-step ' + cls + '" onclick="updateStudentProgression(' + s.id + ',\'' + st.key + '\')">' + st.icon + ' ' + st.label + '</div>';
+            + '<div class="coaching-step ' + cls + '" onclick="updateStudentProgression(' + s.id + ',\'' + st.key + '\')">' + st.icon + ' ' + t(st.labelKey) + '</div>';
         }).join('') + '</div>'
       // KPIs
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin:16px 0">'
@@ -201,7 +201,7 @@ function renderCoachingTabContent() {
     var revs = (_coachingData.allRevenue || []).filter(function(r) { return r.student_user_id === _selectedStudentId; });
     var recruits = (_coachingData.recruits || []).filter(function(r) { return r.student_user_id === _selectedStudentId; });
     body.innerHTML = '<h4 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent-blue-light)">' + t('coaching.student_revenue') + '</h4>'
-      + '<table class="table mobile-cards"><thead><tr><th>' + t('coaching.model_col') + '</th><th>' + t('coaching.month_col') + '</th><th>Revenue</th><th>' + t('coaching.commission') + '</th></tr></thead><tbody>'
+      + '<table class="table mobile-cards"><thead><tr><th>' + t('coaching.model_col') + '</th><th>' + t('coaching.month_col') + '</th><th>' + t('coaching.revenue_col') + '</th><th>' + t('coaching.commission') + '</th></tr></thead><tbody>'
       + (revs.length > 0 ? revs.map(function(r) {
           var comm = (parseFloat(r.revenue) * parseFloat(r.commission_rate) / 100).toFixed(2);
           return '<tr><td>' + r.model_name + '</td><td>' + r.month + '</td><td style="color:var(--green)">$' + parseFloat(r.revenue).toFixed(2) + '</td><td style="color:var(--accent)">$' + comm + '</td></tr>';
@@ -211,7 +211,7 @@ function renderCoachingTabContent() {
       + '<table class="table mobile-cards"><thead><tr><th>Instagram</th><th>' + t('common.status') + '</th><th>' + t('common.notes') + '</th></tr></thead><tbody>'
       + (recruits.length > 0 ? recruits.map(function(r) {
           var st = RECRUIT_STATUSES[r.status] || RECRUIT_STATUSES['interested'];
-          return '<tr><td>' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</td><td><span style="background:' + st.bg + ';color:' + st.color + ';padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600">' + st.label + '</span></td><td style="color:var(--text-secondary);font-size:12px">' + (r.notes || '-') + '</td></tr>';
+          return '<tr><td>' + (r.ig_link ? '<a href="' + r.ig_link + '" target="_blank" style="color:var(--accent)">' + r.ig_name + '</a>' : r.ig_name) + '</td><td><span style="background:' + st.bg + ';color:' + st.color + ';padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600">' + t(st.labelKey) + '</span></td><td style="color:var(--text-secondary);font-size:12px">' + (r.notes || '-') + '</td></tr>';
         }).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--text-tertiary);padding:20px">' + t('coaching.no_recruit') + '</td></tr>')
       + '</tbody></table>';
   } else if (_coachingTab === 'messages') {
@@ -484,7 +484,7 @@ async function renderCoachingPlanning() {
           totalHours += eh - sh;
         }
         html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:6px;margin-bottom:4px">'
-          + '<div style="padding:4px 10px;border-radius:6px;background:' + st.bg + ';color:' + st.color + ';font-size:11px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : st.label) + '</div>'
+          + '<div style="padding:4px 10px;border-radius:6px;background:' + st.bg + ';color:' + st.color + ';font-size:11px;font-weight:700;white-space:nowrap">' + (s.shift_type === 'off' ? 'OFF' : t(st.labelKey)) + '</div>'
           + (timeStr ? '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap">' + timeStr + '</div>' : '')
           + (s.notes ? '<div style="font-size:11px;color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.notes + '</div>' : '<div style="flex:1"></div>')
           + '<button onclick="deletePlanShift(' + s.id + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:2px">✕</button>'
