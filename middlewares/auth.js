@@ -10,8 +10,7 @@ function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
 
-    // Requête simple d'abord (sans JOIN) — plus robuste si les colonnes Stripe n'existent pas encore
-    pool.query('SELECT read_only, expires_at, agency_id, role FROM users WHERE id = $1', [decoded.id]).then(async (result) => {
+    pool.query('SELECT read_only, expires_at, agency_id, current_agency_id, role FROM users WHERE id = $1', [decoded.id]).then(async (result) => {
       const user = result.rows[0];
       if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
       if (user.expires_at && new Date(user.expires_at) < new Date()) {
@@ -21,31 +20,59 @@ function authMiddleware(req, res, next) {
         return res.status(403).json({ error: 'Compte en lecture seule' });
       }
 
-      req.user.agency_id = user.agency_id || 1;
-      req.user.role = user.role;
+      // Resolve current agency context
+      const activeAgencyId = user.current_agency_id || user.agency_id || 1;
 
-      // Check subscription status — platform_admin bypasses, wrapped in try/catch
-      if (user.role !== 'platform_admin' && user.agency_id) {
+      // Look up role from agency_memberships for the active agency
+      let activeRole = user.role; // fallback to users.role
+      try {
+        const membershipResult = await pool.query(
+          'SELECT role FROM agency_memberships WHERE user_id = $1 AND agency_id = $2 AND is_active = true',
+          [decoded.id, activeAgencyId]
+        );
+        if (membershipResult.rows.length > 0) {
+          activeRole = membershipResult.rows[0].role;
+        }
+      } catch (e) {
+        // agency_memberships may not exist yet — fallback to users.role
+      }
+
+      // Set agency context on request
+      req.user.agency_id = activeAgencyId;
+      req.agencyId = activeAgencyId; // convenience alias
+      req.user.role = activeRole;
+      req.user.home_agency_id = user.agency_id; // original agency (never changes)
+
+      // Check subscription status — platform_admin bypasses
+      if (activeRole !== 'platform_admin' && activeAgencyId) {
         try {
-          const agencyResult = await pool.query('SELECT subscription_status, onboarding_completed FROM agencies WHERE id = $1', [user.agency_id]);
+          const agencyResult = await pool.query('SELECT subscription_status, onboarding_completed FROM agencies WHERE id = $1', [activeAgencyId]);
           const agency = agencyResult.rows[0];
-          if (agency && agency.subscription_status && agency.subscription_status !== 'active' && agency.subscription_status !== 'trialing') {
+
+          // Check agency_metadata for student_free billing (skip subscription check)
+          let isStudentFree = false;
+          try {
+            const metaResult = await pool.query('SELECT billing_status FROM agency_metadata WHERE agency_id = $1', [activeAgencyId]);
+            if (metaResult.rows.length > 0 && metaResult.rows[0].billing_status === 'student_free') {
+              isStudentFree = true;
+            }
+          } catch (e) { /* agency_metadata may not exist yet */ }
+
+          if (!isStudentFree && agency && agency.subscription_status && agency.subscription_status !== 'active' && agency.subscription_status !== 'trialing') {
             return res.status(403).json({ error: 'Votre abonnement est expiré. Renouvelez sur fuzionpilot.com' });
           }
-          // Attach onboarding status for downstream middleware
           req.user.onboarding_completed = agency ? agency.onboarding_completed : true;
         } catch (subErr) {
-          // Si les colonnes n'existent pas encore, on laisse passer
           req.user.onboarding_completed = true;
         }
       } else {
         req.user.onboarding_completed = true;
       }
 
-      // Onboarding gate: block non-whitelisted routes if onboarding not completed
+      // Onboarding gate
       if (req.user.onboarding_completed === false) {
         const p = req.path;
-        const onboardingWhitelist = ['/api/me', '/api/logout', '/api/agency/onboarding', '/api/agency/language'];
+        const onboardingWhitelist = ['/api/me', '/api/logout', '/api/agency/onboarding', '/api/agency/language', '/api/agency-context'];
         if (!onboardingWhitelist.some(w => p.startsWith(w))) {
           return res.status(403).json({ error: 'ONBOARDING_REQUIRED' });
         }
@@ -54,8 +81,8 @@ function authMiddleware(req, res, next) {
       next();
     }).catch((err) => {
       console.error('[AUTH] Erreur middleware:', err.message);
-      // En cas d'erreur DB, on laisse passer avec les infos du token
       req.user.agency_id = decoded.agency_id || 1;
+      req.agencyId = req.user.agency_id;
       req.user.role = decoded.role;
       next();
     });

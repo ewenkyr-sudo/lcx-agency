@@ -515,8 +515,65 @@ app.put('/api/me/email', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT u.id, u.username, u.display_name, u.role, u.avatar_url, u.agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed, a.language FROM users u LEFT JOIN agencies a ON u.agency_id = a.id WHERE u.id = $1', [req.user.id]);
-  res.json(rows[0]);
+  const activeAgencyId = req.user.agency_id;
+  const { rows } = await pool.query(
+    'SELECT u.id, u.username, u.display_name, u.avatar_url, u.agency_id, u.current_agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed, a.language FROM users u LEFT JOIN agencies a ON $2 = a.id WHERE u.id = $1',
+    [req.user.id, activeAgencyId]
+  );
+  const user = rows[0];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Get role from membership for active agency
+  user.role = req.user.role;
+  user.agency_id = activeAgencyId;
+
+  // Get all agencies this user belongs to
+  try {
+    const { rows: agencies } = await pool.query(
+      'SELECT am.agency_id, am.role, a.name as agency_name, a.primary_color, a.logo_url, am2.agency_type FROM agency_memberships am JOIN agencies a ON am.agency_id = a.id LEFT JOIN agency_metadata am2 ON am.agency_id = am2.agency_id WHERE am.user_id = $1 AND am.is_active = true ORDER BY am.joined_at',
+      [req.user.id]
+    );
+    user.agencies = agencies;
+  } catch(e) {
+    // agency_memberships may not exist yet — return single agency
+    user.agencies = [{ agency_id: user.agency_id, role: user.role, agency_name: user.agency_name, primary_color: user.agency_color, agency_type: 'paying' }];
+  }
+
+  res.json(user);
+});
+
+// ============ AGENCY CONTEXT SWITCH ============
+app.post('/api/agency-context/switch', authMiddleware, async (req, res) => {
+  const { agency_id } = req.body;
+  if (!agency_id) return res.status(400).json({ error: 'agency_id required' });
+
+  // Verify user has active membership in target agency
+  try {
+    const { rows } = await pool.query(
+      'SELECT role FROM agency_memberships WHERE user_id = $1 AND agency_id = $2 AND is_active = true',
+      [req.user.id, agency_id]
+    );
+    if (rows.length === 0) return res.status(403).json({ error: 'Not a member of this agency' });
+
+    // Update current_agency_id
+    await pool.query('UPDATE users SET current_agency_id = $1 WHERE id = $2', [agency_id, req.user.id]);
+
+    // Return new context
+    const { rows: agencyRows } = await pool.query('SELECT name, primary_color, logo_url, language FROM agencies WHERE id = $1', [agency_id]);
+    const agency = agencyRows[0] || {};
+
+    res.json({
+      ok: true,
+      agency_id: agency_id,
+      role: rows[0].role,
+      agency_name: agency.name,
+      agency_color: agency.primary_color,
+      language: agency.language
+    });
+  } catch(e) {
+    console.error('Agency switch error:', e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.patch('/api/agency/language', authMiddleware, async (req, res) => {
@@ -1489,7 +1546,9 @@ app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
   if (sets.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
   sets.push('updated_at = NOW()');
   params.push(ids);
-  await pool.query(`UPDATE outreach_leads SET ${sets.join(', ')} WHERE id = ANY($${pi})`, params);
+  pi++;
+  params.push(req.user.agency_id);
+  await pool.query(`UPDATE outreach_leads SET ${sets.join(', ')} WHERE id = ANY($${pi - 1}) AND agency_id = $${pi}`, params);
   broadcast('leads-bulk-updated', { ids, script_used, ig_account_used, by: req.user.id });
   res.json({ ok: true, updated: ids.length });
 });
@@ -1501,8 +1560,8 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
   await pool.query(`UPDATE outreach_leads SET status = COALESCE($1, status), notes = COALESCE($2, notes),
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
     ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
-    sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6`,
-    [status, notes, lead_type, script_used, ig_account_used, req.params.id]);
+    sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6 AND agency_id = $7`,
+    [status, notes, lead_type, script_used, ig_account_used, req.params.id, req.user.agency_id]);
   // Inclure le username dans le broadcast pour les notifications
   let username = '';
   if (status === 'talking-warm' || status === 'call-booked' || status === 'signed') {
@@ -1516,7 +1575,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
 // Delete lead
 app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  await pool.query('DELETE FROM outreach_leads WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM outreach_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
   broadcast('lead-deleted', { id: parseInt(req.params.id), by: req.user.id });
   res.json({ ok: true });
 });
