@@ -209,6 +209,8 @@
   "dash.good_morning": "Bonjour",
   "dash.good_afternoon": "Bon après-midi",
   "dash.good_evening": "Bonsoir",
+  "agency.switch_label": "Agences",
+  "agency.switching": "Changement d'agence...",
   "cmd.placeholder": "Rechercher une page, un modèle, une action...",
   "cmd.no_results": "Aucun résultat",
   "cmd.navigation": "Navigation",

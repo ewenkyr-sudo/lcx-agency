@@ -51,6 +51,9 @@
     </div>
   </div>
 
+  <!-- Agency Switcher (shown only if user has 2+ agencies) -->
+  <div id="agency-switcher" style="display:none;margin-bottom:16px;position:relative"></div>
+
   <div id="nav-principal" class="nav-section">
     <div class="nav-label" data-i18n="nav.principal">Overview</div>
     <div class="nav-item active" data-section="dashboard" onclick="switchSection(event)">
@@ -1267,6 +1270,8 @@ async function fetchCurrentUser() {
   var langSel = document.getElementById('setting-language');
   if (langSel) langSel.value = i18n.getLang();
   updateUserUI();
+  // Render agency switcher if user has multiple agencies
+  if (typeof renderAgencySwitcher === 'function') renderAgencySwitcher();
 }
 
 function updateUserUI() {
@@ -1869,6 +1874,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/finances.js"></script>
 <script src="/js/modules/misc.js"></script>
 <script src="/js/modules/command-palette.js"></script>
+<script src="/js/modules/agency-switcher.js"></script>
 <script src="/student.js"></script>
 <script src="/outreach-student.js"></script>
 <script>
