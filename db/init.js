@@ -982,4 +982,73 @@ async function migrateToMultiAgency() {
 }
 
 
-module.exports = { initDB, seedData, migrateToMultiAgency };
+// ========================================
+// MULTI-MEMBERSHIP MIGRATION (V2)
+// Allows users to belong to multiple agencies
+// ========================================
+async function migrateToMultiMembership() {
+  try {
+    // 1. Create agency_memberships table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS agency_memberships (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        agency_id INTEGER NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'student',
+        is_active BOOLEAN DEFAULT true,
+        joined_at TIMESTAMPTZ DEFAULT NOW(),
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        metadata JSONB DEFAULT '{}',
+        UNIQUE(user_id, agency_id)
+      )
+    `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_memberships_user ON agency_memberships(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_memberships_agency ON agency_memberships(agency_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_memberships_active ON agency_memberships(user_id, is_active) WHERE is_active = true');
+
+    // 2. Create agency_metadata table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS agency_metadata (
+        agency_id INTEGER PRIMARY KEY REFERENCES agencies(id) ON DELETE CASCADE,
+        agency_type TEXT NOT NULL DEFAULT 'paying',
+        linked_master_agency_id INTEGER REFERENCES agencies(id) ON DELETE SET NULL,
+        billing_status TEXT NOT NULL DEFAULT 'active',
+        created_for_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agency_meta_master ON agency_metadata(linked_master_agency_id) WHERE linked_master_agency_id IS NOT NULL');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_agency_meta_type ON agency_metadata(agency_type)');
+
+    // 3. Migrate existing users → agency_memberships (idempotent)
+    const { rowCount } = await pool.query(`
+      INSERT INTO agency_memberships (user_id, agency_id, role, is_active, joined_at)
+      SELECT id, agency_id, role, true, COALESCE(created_at, NOW())
+      FROM users
+      WHERE agency_id IS NOT NULL
+      ON CONFLICT (user_id, agency_id) DO NOTHING
+    `);
+    if (rowCount > 0) console.log('Migrated ' + rowCount + ' users to agency_memberships');
+
+    // 4. Backfill agency_metadata for existing agencies (idempotent)
+    await pool.query(`
+      INSERT INTO agency_metadata (agency_id, agency_type, billing_status)
+      SELECT id,
+        CASE WHEN stripe_subscription_id IS NOT NULL THEN 'paying' ELSE 'paying' END,
+        COALESCE(subscription_status, 'active')
+      FROM agencies
+      ON CONFLICT (agency_id) DO NOTHING
+    `);
+
+    // 5. Add current_agency_id to users (for fast context switching)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS current_agency_id INTEGER REFERENCES agencies(id)`);
+    // Default current_agency_id to agency_id for existing users
+    await pool.query(`UPDATE users SET current_agency_id = agency_id WHERE current_agency_id IS NULL AND agency_id IS NOT NULL`);
+
+    console.log('Multi-membership migration OK');
+  } catch(e) {
+    console.log('Multi-membership migration note:', e.message);
+  }
+}
+
+module.exports = { initDB, seedData, migrateToMultiAgency, migrateToMultiMembership };

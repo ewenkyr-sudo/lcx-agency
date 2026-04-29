@@ -246,7 +246,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const pool = require('./db/pool');
 
 // DB init, seed, migration → db/init.js
-const { initDB, seedData, migrateToMultiAgency } = require('./db/init');
+const { initDB, seedData, migrateToMultiAgency, migrateToMultiMembership } = require('./db/init');
 const { sensitiveRL, passwordRL, loginLimiter, forgotPasswordRL } = require('./middlewares/rateLimit');
 const { createNotification, notifyAdmins, setBroadcast: setNotifBroadcast } = require('./services/notifications');
 
@@ -4298,6 +4298,7 @@ async function start() {
   await initDB();
   await seedData();
   await migrateToMultiAgency();
+  await migrateToMultiMembership();
 
   // Pass broadcast to scraping module
   setBroadcast(broadcast);
