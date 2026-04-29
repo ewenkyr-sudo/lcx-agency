@@ -142,6 +142,7 @@ function switchSettingsTab(tabName) {
   if (tabName === 'mon-agence') loadAgencyInfo();
   if (tabName === 'notifications') loadWhatsAppSettings();
   if (tabName === 'securite') renderAccessControl();
+  if (tabName === 'student-agencies' && typeof loadStudentAgencies === 'function') loadStudentAgencies();
 }
 
 async function loadAgencyInfo() {

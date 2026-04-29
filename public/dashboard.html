@@ -666,6 +666,7 @@
           <button class="settings-tab" data-tab="securite" onclick="switchSettingsTab('securite')" data-i18n="settings.security">Sécurité</button>
           <button class="settings-tab" data-tab="export" onclick="switchSettingsTab('export')" data-i18n="settings.export_tab">Export & Données</button>
           <button class="settings-tab" data-tab="language" onclick="switchSettingsTab('language')" data-i18n="settings.language_tab">Langue / Language</button>
+          <button class="settings-tab" data-tab="student-agencies" onclick="switchSettingsTab('student-agencies')" id="tab-student-agencies" style="display:none" data-i18n="settings.student_agencies_tab">Agences élèves</button>
         </div>
       </div>
 
@@ -976,6 +977,17 @@
           </div>
         </div>
 
+        <!-- TAB: Student Agencies (super_admin only) -->
+        <div class="settings-pane" id="settings-pane-student-agencies">
+          <div class="panel" style="padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+              <h3 style="font-size:16px;font-weight:700" data-i18n="settings.student_agencies_title">Agences élèves</h3>
+              <button class="btn btn-primary" onclick="showCreateStudentAgencyModal()" data-i18n="settings.create_student_agency">+ Créer une agence élève</button>
+            </div>
+            <div id="student-agencies-list" style="color:var(--text-tertiary);font-size:13px" data-i18n="common.loading">Chargement...</div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1272,6 +1284,8 @@ async function fetchCurrentUser() {
   updateUserUI();
   // Render agency switcher if user has multiple agencies
   if (typeof renderAgencySwitcher === 'function') renderAgencySwitcher();
+  // Init student agencies tab (visible only for super_admin)
+  if (typeof initStudentAgenciesTab === 'function') initStudentAgenciesTab();
 }
 
 function updateUserUI() {
@@ -1875,6 +1889,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/misc.js"></script>
 <script src="/js/modules/command-palette.js"></script>
 <script src="/js/modules/agency-switcher.js"></script>
+<script src="/js/modules/student-agencies.js"></script>
 <script src="/student.js"></script>
 <script src="/outreach-student.js"></script>
 <script>
