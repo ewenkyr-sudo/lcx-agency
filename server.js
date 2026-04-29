@@ -4352,6 +4352,159 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// ============ STUDENT AGENCIES MANAGEMENT ============
+
+// List student agencies linked to current agency
+app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT a.id, a.name, a.created_at, am.agency_type, am.billing_status,
+        (SELECT json_agg(json_build_object('user_id', m.user_id, 'role', m.role, 'display_name', u.display_name))
+         FROM agency_memberships m JOIN users u ON m.user_id = u.id
+         WHERE m.agency_id = a.id AND m.is_active = true) as members
+      FROM agencies a
+      JOIN agency_metadata am ON a.id = am.agency_id
+      WHERE am.linked_master_agency_id = $1 AND am.agency_type = 'student_owned'
+      ORDER BY a.created_at DESC
+    `, [req.agencyId]);
+    res.json(rows);
+  } catch(e) {
+    console.error('List student agencies error:', e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Create a student agency
+app.post('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, res) => {
+  const { agency_name, student_user_ids, transfer_data } = req.body;
+  if (!agency_name || !student_user_ids || !Array.isArray(student_user_ids) || student_user_ids.length === 0) {
+    return res.status(400).json({ error: 'agency_name and student_user_ids required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Verify all students belong to current agency
+    const { rows: students } = await client.query(
+      'SELECT id, display_name FROM users WHERE id = ANY($1) AND agency_id = $2',
+      [student_user_ids, req.agencyId]
+    );
+    if (students.length !== student_user_ids.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Some students not found in your agency' });
+    }
+
+    // Create agency
+    const { rows: newAgency } = await client.query(
+      'INSERT INTO agencies (name, owner_id, subscription_status, onboarding_completed) VALUES ($1, $2, $3, true) RETURNING id',
+      [agency_name, student_user_ids[0], 'active']
+    );
+    const newAgencyId = newAgency[0].id;
+
+    // Create agency_metadata
+    await client.query(
+      'INSERT INTO agency_metadata (agency_id, agency_type, linked_master_agency_id, billing_status, created_for_user_id) VALUES ($1, $2, $3, $4, $5)',
+      [newAgencyId, 'student_owned', req.agencyId, 'student_free', student_user_ids[0]]
+    );
+
+    // Create memberships for each student (super_admin in new agency)
+    for (const studentId of student_user_ids) {
+      await client.query(
+        'INSERT INTO agency_memberships (user_id, agency_id, role, is_active, created_by_user_id) VALUES ($1, $2, $3, true, $4) ON CONFLICT (user_id, agency_id) DO NOTHING',
+        [studentId, newAgencyId, 'super_admin', req.user.id]
+      );
+    }
+
+    // Transfer data if requested
+    const transferred = { outreach: 0, student_leads: 0 };
+
+    if (transfer_data?.outreach) {
+      const { rowCount } = await client.query(
+        'UPDATE outreach_leads SET agency_id = $1 WHERE user_id = ANY($2) AND agency_id = $3',
+        [newAgencyId, student_user_ids, req.agencyId]
+      );
+      transferred.outreach = rowCount;
+    }
+
+    if (transfer_data?.student_leads) {
+      const { rowCount } = await client.query(
+        'UPDATE student_leads SET agency_id = $1 WHERE user_id = ANY($2) AND agency_id = $3',
+        [newAgencyId, student_user_ids, req.agencyId]
+      );
+      transferred.student_leads = rowCount;
+    }
+
+    if (transfer_data?.student_models) {
+      await client.query(
+        'UPDATE student_models SET agency_id = $1 WHERE user_id = ANY($2)',
+        [newAgencyId, student_user_ids]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      ok: true,
+      agency_id: newAgencyId,
+      agency_name: agency_name,
+      members: students.map(s => ({ user_id: s.id, display_name: s.display_name, role: 'super_admin' })),
+      transferred
+    });
+  } catch(e) {
+    await client.query('ROLLBACK');
+    console.error('Create student agency error:', e.message);
+    res.status(500).json({ error: 'Server error: ' + e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Add/remove member from student agency
+app.post('/api/admin/student-agencies/:agencyId/members', authMiddleware, adminOnly, async (req, res) => {
+  const targetAgencyId = parseInt(req.params.agencyId);
+  const { user_id, role } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+
+  try {
+    // Verify target agency is a student_owned linked to current
+    const { rows: meta } = await pool.query(
+      'SELECT 1 FROM agency_metadata WHERE agency_id = $1 AND linked_master_agency_id = $2 AND agency_type = $3',
+      [targetAgencyId, req.agencyId, 'student_owned']
+    );
+    if (meta.length === 0) return res.status(403).json({ error: 'Not a student agency of yours' });
+
+    await pool.query(
+      'INSERT INTO agency_memberships (user_id, agency_id, role, is_active, created_by_user_id) VALUES ($1, $2, $3, true, $4) ON CONFLICT (user_id, agency_id) DO UPDATE SET role = $3, is_active = true',
+      [user_id, targetAgencyId, role || 'super_admin', req.user.id]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/admin/student-agencies/:agencyId/members/:userId', authMiddleware, adminOnly, async (req, res) => {
+  const targetAgencyId = parseInt(req.params.agencyId);
+  const userId = parseInt(req.params.userId);
+
+  try {
+    const { rows: meta } = await pool.query(
+      'SELECT 1 FROM agency_metadata WHERE agency_id = $1 AND linked_master_agency_id = $2 AND agency_type = $3',
+      [targetAgencyId, req.agencyId, 'student_owned']
+    );
+    if (meta.length === 0) return res.status(403).json({ error: 'Not a student agency of yours' });
+
+    await pool.query(
+      'UPDATE agency_memberships SET is_active = false WHERE user_id = $1 AND agency_id = $2',
+      [userId, targetAgencyId]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ============ START ============
 async function start() {
   await initDB();
