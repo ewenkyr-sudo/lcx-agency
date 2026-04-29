@@ -508,14 +508,14 @@ app.get('/api/me/email', authMiddleware, async (req, res) => {
 app.put('/api/me/email', authMiddleware, async (req, res) => {
   const { email } = req.body;
   if (!isValidEmail(email)) return res.status(400).json({ error: 'Email invalide' });
-  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email.trim(), req.user.agency_id, req.user.id])).rows[0];
+  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email.trim(), req.agencyId, req.user.id])).rows[0];
   if (exists) return res.status(409).json({ error: 'Email déjà utilisé par un autre membre' });
   await pool.query('UPDATE users SET email = $1 WHERE id = $2', [email.trim(), req.user.id]);
   res.json({ ok: true });
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
-  const activeAgencyId = req.user.agency_id;
+  const activeAgencyId = req.agencyId;
   const { rows } = await pool.query(
     'SELECT u.id, u.username, u.display_name, u.avatar_url, u.agency_id, u.current_agency_id, a.name as agency_name, a.primary_color as agency_color, a.logo_url as agency_logo, a.onboarding_completed, a.language FROM users u LEFT JOIN agencies a ON $2 = a.id WHERE u.id = $1',
     [req.user.id, activeAgencyId]
@@ -580,7 +580,7 @@ app.patch('/api/agency/language', authMiddleware, async (req, res) => {
   const { language } = req.body;
   if (language !== 'fr' && language !== 'en') return res.status(400).json({ error: 'Language must be fr or en' });
   try {
-    await pool.query('UPDATE agencies SET language = $1 WHERE id = $2', [language, req.user.agency_id]);
+    await pool.query('UPDATE agencies SET language = $1 WHERE id = $2', [language, req.agencyId]);
     res.json({ ok: true });
   } catch(e) {
     res.status(500).json({ error: 'Server error' });
@@ -589,7 +589,7 @@ app.patch('/api/agency/language', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, email, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, email, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.agencyId]);
   res.json(rows);
 });
 
@@ -598,18 +598,18 @@ app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) 
   if (!username || !password || !display_name || !role) return res.status(400).json({ error: 'Champs requis manquants' });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role, agency_id) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, hash, display_name, role, req.user.agency_id]);
+    const { rows } = await pool.query('INSERT INTO users (username, password, display_name, role, agency_id) VALUES ($1, $2, $3, $4, $5) RETURNING id', [username, hash, display_name, role, req.agencyId]);
     const newId = rows[0].id;
     // Auto-créer l'entrée student si rôle élève
     if (role === 'student') {
-      await pool.query('INSERT INTO students (user_id, name, program, start_date, status, agency_id) VALUES ($1, $2, $3, $4, $5, $6)', [newId, display_name, 'starter', new Date().toISOString().split('T')[0], 'active', req.user.agency_id]);
+      await pool.query('INSERT INTO students (user_id, name, program, start_date, status, agency_id) VALUES ($1, $2, $3, $4, $5, $6)', [newId, display_name, 'starter', new Date().toISOString().split('T')[0], 'active', req.agencyId]);
     }
     // Auto-créer l'entrée team_member si rôle team
     if (['chatter', 'outreach', 'va'].includes(role)) {
-      await pool.query('INSERT INTO team_members (user_id, name, role, status, agency_id) VALUES ($1, $2, $3, $4, $5)', [newId, display_name, role, 'offline', req.user.agency_id]);
+      await pool.query('INSERT INTO team_members (user_id, name, role, status, agency_id) VALUES ($1, $2, $3, $4, $5)', [newId, display_name, role, 'offline', req.agencyId]);
     }
     // Send email to new team member if email-like username or if agency has email
-    const agencyInfo = (await pool.query('SELECT name FROM agencies WHERE id = $1', [req.user.agency_id])).rows[0];
+    const agencyInfo = (await pool.query('SELECT name FROM agencies WHERE id = $1', [req.agencyId])).rows[0];
     const agencyName = agencyInfo?.name || 'Votre agence';
     if (username.includes('@')) {
       sendEmail(username, `Votre accès Fuzion Pilot — ${agencyName}`, `
@@ -638,7 +638,7 @@ app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) 
       `);
     }
 
-    try { await notifyAdmins(req.user.agency_id, 'team_added', 'Nouveau membre', display_name + ' a rejoint en tant que ' + role, '/settings', null, req.user.id); } catch(e2) {}
+    try { await notifyAdmins(req.agencyId, 'team_added', 'Nouveau membre', display_name + ' a rejoint en tant que ' + role, '/settings', null, req.user.id); } catch(e2) {}
     res.json({ id: newId, username, display_name, role });
   } catch (e) {
     res.status(400).json({ error: 'Ce nom d\'utilisateur existe déjà' });
@@ -648,13 +648,13 @@ app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) 
 app.put('/api/users/:id/password', authMiddleware, adminOnly, passwordRL, async (req, res) => {
   const { password } = req.body;
   const hash = bcrypt.hashSync(password, 10);
-  await pool.query('UPDATE users SET password = $1 WHERE id = $2 AND agency_id = $3', [hash, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET password = $1 WHERE id = $2 AND agency_id = $3', [hash, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/users/:id', authMiddleware, adminOnly, sensitiveRL, async (req, res) => {
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas supprimer ton propre compte' });
-  await pool.query('DELETE FROM users WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM users WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -664,13 +664,13 @@ app.get('/api/students', authMiddleware, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM students WHERE user_id = $1', [req.user.id]);
     return res.json(rows);
   }
-  const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id WHERE (s.agency_id = $1 OR s.agency_id IS NULL) ORDER BY s.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT s.*, u.username FROM students s LEFT JOIN users u ON s.user_id = u.id WHERE (s.agency_id = $1 OR s.agency_id IS NULL) ORDER BY s.name', [req.agencyId]);
   res.json(rows);
 });
 
 app.post('/api/students', authMiddleware, adminOnly, async (req, res) => {
   const { name, program, start_date, contact, user_id } = req.body;
-  const { rows } = await pool.query('INSERT INTO students (user_id, name, program, start_date, contact, agency_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [user_id || null, name, program || 'starter', start_date, contact, req.user.agency_id]);
+  const { rows } = await pool.query('INSERT INTO students (user_id, name, program, start_date, contact, agency_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [user_id || null, name, program || 'starter', start_date, contact, req.agencyId]);
   res.json({ id: rows[0].id });
 });
 
@@ -680,12 +680,12 @@ app.put('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
     name = COALESCE($1, name), program = COALESCE($2, program), models_signed = COALESCE($3, models_signed),
     active_discussions = COALESCE($4, active_discussions), progression = COALESCE($5, progression),
     contact = COALESCE($6, contact), status = COALESCE($7, status), drive_folder = COALESCE($8, drive_folder) WHERE id = $9 AND agency_id = $10`,
-    [name, program, models_signed, active_discussions, progression, contact, status, drive_folder, req.params.id, req.user.agency_id]);
+    [name, program, models_signed, active_discussions, progression, contact, status, drive_folder, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/students/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM students WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM students WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -695,11 +695,11 @@ app.get('/api/team', authMiddleware, async (req, res) => {
   let query = `SELECT tm.*, u.avatar_url FROM team_members tm LEFT JOIN users u ON tm.user_id = u.id WHERE (tm.agency_id = $1 OR tm.agency_id IS NULL)`;
   if (role) {
     query += ` AND tm.role = $2 ORDER BY tm.name`;
-    const { rows } = await pool.query(query, [req.user.agency_id, role]);
+    const { rows } = await pool.query(query, [req.agencyId, role]);
     res.json(rows);
   } else {
     query += ` ORDER BY tm.name`;
-    const { rows } = await pool.query(query, [req.user.agency_id]);
+    const { rows } = await pool.query(query, [req.agencyId]);
     res.json(rows);
   }
 });
@@ -707,7 +707,7 @@ app.get('/api/team', authMiddleware, async (req, res) => {
 app.post('/api/team', authMiddleware, adminOnly, async (req, res) => {
   const { name, role, shift, models_assigned, platform, contact, user_id } = req.body;
   const { rows } = await pool.query('INSERT INTO team_members (user_id, name, role, shift, models_assigned, platform, contact, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-    [user_id || null, name, role, shift, JSON.stringify(models_assigned || []), platform, contact, req.user.agency_id]);
+    [user_id || null, name, role, shift, JSON.stringify(models_assigned || []), platform, contact, req.agencyId]);
   res.json({ id: rows[0].id });
 });
 
@@ -717,18 +717,18 @@ app.put('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
     name = COALESCE($1, name), role = COALESCE($2, role), shift = COALESCE($3, shift),
     models_assigned = COALESCE($4, models_assigned), platform = COALESCE($5, platform),
     contact = COALESCE($6, contact), status = COALESCE($7, status) WHERE id = $8 AND agency_id = $9`,
-    [name, role, shift, models_assigned ? JSON.stringify(models_assigned) : null, platform, contact, status, req.params.id, req.user.agency_id]);
+    [name, role, shift, models_assigned ? JSON.stringify(models_assigned) : null, platform, contact, status, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM team_members WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM team_members WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 // ============ MODELS CRUD ============
 app.get('/api/models', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM models WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT * FROM models WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY name', [req.agencyId]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
 });
 
@@ -747,7 +747,7 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
         revenue_goal, availability_hours, languages, target_markets,
         contract_link, gdpr_accepted, internal_notes, onboarding_completed)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46) RETURNING id`,
-      [b.name, JSON.stringify(b.platforms || []), b.status || 'onboarding', req.user.agency_id,
+      [b.name, JSON.stringify(b.platforms || []), b.status || 'onboarding', req.agencyId,
        b.stage_name || null, b.birth_date || null, b.nationality || null, b.city || null, b.country || null, b.photo_url || null,
        b.ig_handle || null, b.ig_followers || 0, b.tiktok_handle || null, b.tiktok_followers || 0, b.twitter_handle || null, b.snapchat_handle || null, b.other_socials || null,
        b.has_of_account || false, b.of_link || null, b.of_subscribers || 0, b.of_revenue_monthly || 0, b.of_launch_date || null,
@@ -763,7 +763,7 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM models WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM models WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -772,7 +772,7 @@ app.get('/api/accounts', authMiddleware, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT a.*, m.name as model_name FROM accounts a
     JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name, a.platform
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -783,7 +783,7 @@ app.post('/api/accounts', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM accounts WHERE id = $1 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $2)', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM accounts WHERE id = $1 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $2)', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -797,7 +797,7 @@ app.get('/api/stats', authMiddleware, async (req, res) => {
     JOIN models m ON a.model_id = m.id
     WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (m.agency_id = $2 OR m.agency_id IS NULL)
     ORDER BY ds.date DESC, m.name, a.platform
-  `, [days, req.user.agency_id]);
+  `, [days, req.agencyId]);
   res.json(rows);
 });
 
@@ -814,7 +814,7 @@ app.post('/api/stats', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/tasks', authMiddleware, async (req, res) => {
   let query, params = [];
   const filterUserId = req.query.student_user_id || req.query.user_id;
-  const aid = req.user.agency_id;
+  const aid = req.agencyId;
   const orderBy = `ORDER BY CASE t.priority WHEN 'urgent' THEN 0 ELSE 1 END, CASE t.status WHEN 'pending' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, t.deadline ASC NULLS LAST`;
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') {
     if (filterUserId) {
@@ -851,9 +851,9 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
   const assignTo = (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') ? (assigned_to_id || req.user.id) : req.user.id;
   const { rows } = await pool.query(
     'INSERT INTO tasks (title, description, created_by, assigned_to_id, priority, deadline, notes, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-    [title, description, req.user.id, assignTo, priority || 'normal', deadline, notes, req.user.agency_id]);
+    [title, description, req.user.id, assignTo, priority || 'normal', deadline, notes, req.agencyId]);
   broadcast('task-new', rows[0]);
-  if (assignTo && assignTo !== req.user.id) { try { await createNotification(assignTo, req.user.agency_id, 'task_assigned', 'Nouvelle tâche', title, '/tasks', { task_id: rows[0].id }); } catch(e) {} }
+  if (assignTo && assignTo !== req.user.id) { try { await createNotification(assignTo, req.agencyId, 'task_assigned', 'Nouvelle tâche', title, '/tasks', { task_id: rows[0].id }); } catch(e) {} }
   res.json(rows[0]);
 });
 
@@ -868,7 +868,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
     description = COALESCE($3, description), priority = COALESCE($4, priority),
     deadline = COALESCE($5, deadline), assigned_to_id = COALESCE($6, assigned_to_id),
     notes = COALESCE($7, notes) WHERE id = $8 AND agency_id = $9`,
-    [status, title, description, priority, deadline, assigned_to_id, notes, req.params.id, req.user.agency_id]);
+    [status, title, description, priority, deadline, assigned_to_id, notes, req.params.id, req.agencyId]);
   broadcast('task-updated', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
@@ -878,7 +878,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
     const check = await pool.query('SELECT id FROM tasks WHERE id = $1 AND created_by = $2', [req.params.id, req.user.id]);
     if (check.rows.length === 0) return res.status(403).json({ error: 'Accès refusé' });
   }
-  await pool.query('DELETE FROM tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   broadcast('task-deleted', { id: parseInt(req.params.id) });
   res.json({ ok: true });
 });
@@ -900,13 +900,13 @@ app.post('/api/calls', authMiddleware, adminOnly, async (req, res) => {
 });
 
 app.delete('/api/calls/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM calls WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM calls WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 // ============ DASHBOARD STATS ============
 app.get('/api/dashboard', authMiddleware, async (req, res) => {
-  const aid = req.user.agency_id;
+  const aid = req.agencyId;
   const totalFollowers = (await pool.query('SELECT COALESCE(SUM(a.current_followers), 0) as total FROM accounts a JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL)', [aid])).rows[0].total;
   const modelsCount = (await pool.query("SELECT COUNT(*) as count FROM models m WHERE m.status = 'active' AND (m.agency_id = $1 OR m.agency_id IS NULL)", [aid])).rows[0].count;
   const teamCount = (await pool.query('SELECT COUNT(*) as count FROM team_members WHERE (agency_id = $1 OR agency_id IS NULL)', [aid])).rows[0].count;
@@ -926,7 +926,7 @@ app.get('/api/dashboard', authMiddleware, async (req, res) => {
 
 // ============ ADMIN SETTINGS ============
 app.get('/api/settings', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT key, value FROM settings WHERE agency_id = $1 OR agency_id IS NULL', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT key, value FROM settings WHERE agency_id = $1 OR agency_id IS NULL', [req.agencyId]);
   const settings = {};
   rows.forEach(r => settings[r.key] = r.value);
   res.json(settings);
@@ -936,11 +936,11 @@ app.put('/api/settings', authMiddleware, adminOnly, async (req, res) => {
   const entries = Object.entries(req.body);
   for (const [key, value] of entries) {
     // Try to update existing setting for this agency first
-    const existing = await pool.query('SELECT key FROM settings WHERE key = $1 AND agency_id = $2', [key, req.user.agency_id]);
+    const existing = await pool.query('SELECT key FROM settings WHERE key = $1 AND agency_id = $2', [key, req.agencyId]);
     if (existing.rows.length > 0) {
-      await pool.query('UPDATE settings SET value = $1 WHERE key = $2 AND agency_id = $3', [String(value), key, req.user.agency_id]);
+      await pool.query('UPDATE settings SET value = $1 WHERE key = $2 AND agency_id = $3', [String(value), key, req.agencyId]);
     } else {
-      await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, String(value), req.user.agency_id]);
+      await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, String(value), req.agencyId]);
     }
   }
   res.json({ ok: true });
@@ -949,13 +949,13 @@ app.put('/api/settings', authMiddleware, adminOnly, async (req, res) => {
 app.put('/api/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
   const { role } = req.body;
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas changer ton propre rôle' });
-  await pool.query('UPDATE users SET role = $1 WHERE id = $2 AND agency_id = $3', [role, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET role = $1 WHERE id = $2 AND agency_id = $3', [role, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.put('/api/users/:id/display_name', authMiddleware, adminOnly, async (req, res) => {
   const { display_name } = req.body;
-  await pool.query('UPDATE users SET display_name = $1 WHERE id = $2 AND agency_id = $3', [display_name, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET display_name = $1 WHERE id = $2 AND agency_id = $3', [display_name, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -963,20 +963,20 @@ app.put('/api/users/:id/email', authMiddleware, adminOnly, async (req, res) => {
   const { email } = req.body;
   if (!isValidEmail(email)) return res.status(400).json({ error: 'Email invalide' });
   // Check uniqueness within agency
-  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email, req.user.agency_id, req.params.id])).rows[0];
+  const exists = (await pool.query('SELECT id FROM users WHERE email = $1 AND agency_id = $2 AND id != $3', [email, req.agencyId, req.params.id])).rows[0];
   if (exists) return res.status(409).json({ error: 'Email déjà utilisé par un autre membre' });
-  await pool.query('UPDATE users SET email = $1 WHERE id = $2 AND agency_id = $3', [email, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET email = $1 WHERE id = $2 AND agency_id = $3', [email, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.put('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
   const { avatar_url } = req.body;
-  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2 AND agency_id = $3', [avatar_url, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2 AND agency_id = $3', [avatar_url, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/users/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('UPDATE users SET avatar_url = NULL WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE users SET avatar_url = NULL WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -986,7 +986,7 @@ app.put('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
     name = COALESCE($1, name), platforms = COALESCE($2, platforms), status = COALESCE($3, status),
     drive_folder = COALESCE($4, drive_folder), drive_contract = COALESCE($5, drive_contract),
     lifecycle_status = COALESCE($7, lifecycle_status) WHERE id = $6 AND agency_id = $8`,
-    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id, lifecycle_status, req.user.agency_id]);
+    [name, platforms ? JSON.stringify(platforms) : null, status, drive_folder, drive_contract, req.params.id, lifecycle_status, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -1012,10 +1012,10 @@ app.put('/api/accounts/:id', authMiddleware, adminOnly, async (req, res) => {
   const { handle, current_followers } = req.body;
   if (current_followers !== undefined) {
     await pool.query(`UPDATE accounts SET previous_followers = current_followers, current_followers = $1, handle = COALESCE($2, handle) WHERE id = $3 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $4)`,
-      [current_followers, handle, req.params.id, req.user.agency_id]);
+      [current_followers, handle, req.params.id, req.agencyId]);
   } else {
     await pool.query(`UPDATE accounts SET handle = COALESCE($1, handle) WHERE id = $2 AND id IN (SELECT a.id FROM accounts a JOIN models m ON a.model_id = m.id WHERE m.agency_id = $3)`,
-      [handle, req.params.id, req.user.agency_id]);
+      [handle, req.params.id, req.agencyId]);
   }
   res.json({ ok: true });
 });
@@ -1137,13 +1137,13 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
   if (req.user.role === 'chatter') {
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [req.user.id, req.user.agency_id]);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [req.user.id, req.agencyId]);
     const total = parseInt(countRows[0].total);
-    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY date DESC, created_at DESC LIMIT $3 OFFSET $4', [req.user.id, req.user.agency_id, limit, offset]);
+    const { rows } = await pool.query('SELECT * FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL) ORDER BY date DESC, created_at DESC LIMIT $3 OFFSET $4', [req.user.id, req.agencyId, limit, offset]);
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id]);
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId]);
     const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
       SELECT cs.*, u.display_name as chatter_name
@@ -1152,7 +1152,7 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
       WHERE (cs.agency_id = $3 OR cs.agency_id IS NULL)
       ORDER BY cs.date DESC, cs.created_at DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset, req.user.agency_id]);
+    `, [limit, offset, req.agencyId]);
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   res.status(403).json({ error: 'Accès refusé' });
@@ -1166,7 +1166,7 @@ app.post('/api/shifts', authMiddleware, async (req, res) => {
   const shiftDate = date || new Date().toISOString().split('T')[0];
   const { rows } = await pool.query(
     'INSERT INTO chatter_shifts (user_id, date, model_name, ppv_total, tips_total, shift_notes, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [req.user.id, shiftDate, model_name, ppv_total || 0, tips_total || 0, shift_notes, req.user.agency_id]
+    [req.user.id, shiftDate, model_name, ppv_total || 0, tips_total || 0, shift_notes, req.agencyId]
   );
   broadcast('shift-added', rows[0]);
   // Check revenue objective alert
@@ -1220,7 +1220,7 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
     WHERE u.role = 'chatter' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     GROUP BY u.id, u.display_name
     ORDER BY total_revenue DESC
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -1229,7 +1229,7 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
 // Recurring tasks — list for current user (VA sees own, admin sees all)
 app.get('/api/recurring-tasks', authMiddleware, async (req, res) => {
   try {
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
     var isAdm = ['admin','super_admin','platform_admin'].includes(req.user.role);
     var where = isAdm ? '(rt.agency_id = $1 OR rt.agency_id IS NULL)' : '(rt.agency_id = $1 OR rt.agency_id IS NULL) AND (rt.assigned_to_id = $2 OR rt.assigned_to_id IS NULL AND rt.assigned_role = $3)';
     var params = isAdm ? [aid] : [aid, req.user.id, req.user.role];
@@ -1247,7 +1247,7 @@ app.post('/api/recurring-tasks', authMiddleware, adminOnly, async (req, res) => 
     var { title, description, frequency, assigned_to_id, assigned_role, day_of_week, day_of_month } = req.body;
     var result = await pool.query(
       'INSERT INTO recurring_tasks (agency_id, title, description, frequency, assigned_to_id, assigned_role, day_of_week, day_of_month) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-      [req.user.agency_id, title, description || null, frequency || 'daily', assigned_to_id || null, assigned_role || 'va', day_of_week || null, day_of_month || null]
+      [req.agencyId, title, description || null, frequency || 'daily', assigned_to_id || null, assigned_role || 'va', day_of_week || null, day_of_month || null]
     );
     res.json(result.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1255,7 +1255,7 @@ app.post('/api/recurring-tasks', authMiddleware, adminOnly, async (req, res) => 
 
 // Admin: delete recurring task
 app.delete('/api/recurring-tasks/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM recurring_tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM recurring_tasks WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -1276,7 +1276,7 @@ app.delete('/api/recurring-tasks/:id/complete', authMiddleware, async (req, res)
 // Content library — list with filters
 app.get('/api/content-library', authMiddleware, async (req, res) => {
   try {
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
     var where = '(cl.agency_id = $1 OR cl.agency_id IS NULL)';
     var params = [aid];
     var idx = 2;
@@ -1294,7 +1294,7 @@ app.post('/api/content-library', authMiddleware, async (req, res) => {
     if (!title || !external_url) return res.status(400).json({ error: 'Title and URL required' });
     var result = await pool.query(
       'INSERT INTO content_library (agency_id, model_id, added_by, title, external_url, content_type, platforms, status, caption, tags) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',
-      [req.user.agency_id, model_id || null, req.user.id, title, external_url, content_type || 'image', JSON.stringify(platforms || []), status || 'to_sort', caption || null, JSON.stringify(tags || [])]
+      [req.agencyId, model_id || null, req.user.id, title, external_url, content_type || 'image', JSON.stringify(platforms || []), status || 'to_sort', caption || null, JSON.stringify(tags || [])]
     );
     res.json(result.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1306,7 +1306,7 @@ app.put('/api/content-library/:id', authMiddleware, async (req, res) => {
     var { title, external_url, content_type, platforms, status, caption, tags } = req.body;
     await pool.query(
       'UPDATE content_library SET title=COALESCE($1,title), external_url=COALESCE($2,external_url), content_type=COALESCE($3,content_type), platforms=COALESCE($4,platforms), status=COALESCE($5,status), caption=COALESCE($6,caption), tags=COALESCE($7,tags), updated_at=NOW() WHERE id=$8 AND agency_id=$9',
-      [title, external_url, content_type, platforms ? JSON.stringify(platforms) : null, status, caption, tags ? JSON.stringify(tags) : null, req.params.id, req.user.agency_id]
+      [title, external_url, content_type, platforms ? JSON.stringify(platforms) : null, status, caption, tags ? JSON.stringify(tags) : null, req.params.id, req.agencyId]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1316,9 +1316,9 @@ app.put('/api/content-library/:id', authMiddleware, async (req, res) => {
 app.delete('/api/content-library/:id', authMiddleware, async (req, res) => {
   var isAdm = ['admin','super_admin','platform_admin'].includes(req.user.role);
   if (isAdm) {
-    await pool.query('DELETE FROM content_library WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+    await pool.query('DELETE FROM content_library WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   } else {
-    await pool.query("UPDATE content_library SET status = 'archived' WHERE id = $1 AND agency_id = $2", [req.params.id, req.user.agency_id]);
+    await pool.query("UPDATE content_library SET status = 'archived' WHERE id = $1 AND agency_id = $2", [req.params.id, req.agencyId]);
   }
   res.json({ ok: true });
 });
@@ -1327,7 +1327,7 @@ app.delete('/api/content-library/:id', authMiddleware, async (req, res) => {
 app.get('/api/va/compensation', authMiddleware, async (req, res) => {
   try {
     var uid = req.query.user_id || req.user.id;
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
     var config = await pool.query('SELECT * FROM va_compensation WHERE user_id = $1 AND agency_id = $2', [uid, aid]);
     var comp = config.rows[0] || { comp_type: 'hourly', hourly_rate: 0, fixed_monthly: 0, bonuses: [] };
     // Calculate hours worked this month from shift_clocks
@@ -1350,7 +1350,7 @@ app.put('/api/va/compensation/:userId', authMiddleware, adminOnly, async (req, r
       `INSERT INTO va_compensation (agency_id, user_id, comp_type, hourly_rate, fixed_monthly, bonuses, custom_description)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (user_id) DO UPDATE SET comp_type=EXCLUDED.comp_type, hourly_rate=EXCLUDED.hourly_rate, fixed_monthly=EXCLUDED.fixed_monthly, bonuses=EXCLUDED.bonuses, custom_description=EXCLUDED.custom_description, updated_at=NOW()`,
-      [req.user.agency_id, req.params.userId, comp_type || 'hourly', hourly_rate || 0, fixed_monthly || 0, JSON.stringify(bonuses || []), custom_description || null]
+      [req.agencyId, req.params.userId, comp_type || 'hourly', hourly_rate || 0, fixed_monthly || 0, JSON.stringify(bonuses || []), custom_description || null]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1360,7 +1360,7 @@ app.put('/api/va/compensation/:userId', authMiddleware, adminOnly, async (req, r
 app.get('/api/va/payments', authMiddleware, async (req, res) => {
   try {
     var uid = req.query.user_id || req.user.id;
-    var result = await pool.query('SELECT * FROM va_payments WHERE user_id = $1 AND agency_id = $2 ORDER BY month DESC', [uid, req.user.agency_id]);
+    var result = await pool.query('SELECT * FROM va_payments WHERE user_id = $1 AND agency_id = $2 ORDER BY month DESC', [uid, req.agencyId]);
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1371,7 +1371,7 @@ app.post('/api/va/payments', authMiddleware, adminOnly, async (req, res) => {
     var { user_id, month, amount, hours_worked, bonus_amount, status, notes } = req.body;
     var result = await pool.query(
       'INSERT INTO va_payments (agency_id, user_id, month, amount, hours_worked, bonus_amount, status, notes, paid_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-      [req.user.agency_id, user_id, month, amount || 0, hours_worked || 0, bonus_amount || 0, status || 'paid', notes || null, status === 'paid' ? new Date() : null]
+      [req.agencyId, user_id, month, amount || 0, hours_worked || 0, bonus_amount || 0, status || 'paid', notes || null, status === 'paid' ? new Date() : null]
     );
     res.json(result.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1400,7 +1400,7 @@ app.post('/api/chatter-shifts/start', authMiddleware, async (req, res) => {
   try {
     var { model_ids, planned_duration_hours } = req.body;
     var uid = req.user.id;
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
 
     // Check no active shift for this user
     var active = await pool.query("SELECT id FROM chatter_shifts WHERE user_id = $1 AND shift_status = 'active'", [uid]);
@@ -1457,7 +1457,7 @@ app.post('/api/chatter-shifts/:id/end', authMiddleware, async (req, res) => {
     var shift = result.rows[0];
     var duration = Math.round((now - new Date(shift.start_time)) / 60000);
     broadcast('shift-ended', { shift: shift, user_name: req.user.display_name, duration: duration });
-    logActivity(req.user.id, req.user.display_name, 'clock-out', null, null, 'Shift ended — ' + duration + 'min — $' + (parseFloat(shift.ppv_total) + parseFloat(shift.tips_total)).toFixed(2), req.user.agency_id);
+    logActivity(req.user.id, req.user.display_name, 'clock-out', null, null, 'Shift ended — ' + duration + 'min — $' + (parseFloat(shift.ppv_total) + parseFloat(shift.tips_total)).toFixed(2), req.agencyId);
     res.json({ shift: shift, duration: duration });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1470,7 +1470,7 @@ app.get('/api/chatter-shifts/active', authMiddleware, async (req, res) => {
        FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id
        WHERE cs.shift_status = 'active' AND (cs.agency_id = $1 OR cs.agency_id IS NULL)
        ORDER BY cs.start_time ASC`,
-      [req.user.agency_id]
+      [req.agencyId]
     );
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1488,7 +1488,7 @@ app.get('/api/chatter-shifts/mine/current', authMiddleware, async (req, res) => 
 app.get('/api/chatter-shifts/stats/:userId', authMiddleware, async (req, res) => {
   try {
     var uid = req.params.userId;
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
     var [total, monthly, recent] = await Promise.all([
       pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue, COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts, COALESCE(SUM(ppv_count), 0) as ppv_sent, COALESCE(SUM(ppv_sold), 0) as ppv_sold FROM chatter_shifts WHERE user_id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [uid, aid]),
       pool.query("SELECT TO_CHAR(date::date, 'YYYY-MM-DD') as day, SUM(ppv_total + tips_total) as revenue FROM chatter_shifts WHERE user_id = $1 AND date >= (CURRENT_DATE - INTERVAL '30 days')::date::text AND (agency_id = $2 OR agency_id IS NULL) GROUP BY day ORDER BY day", [uid, aid]),
@@ -1506,7 +1506,7 @@ app.get('/api/leads', authMiddleware, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const aid = req.user.agency_id;
+  const aid = req.agencyId;
   const { rows } = await pool.query(`
     SELECT ol.*, u.display_name as agent_name
     FROM outreach_leads ol
@@ -1523,11 +1523,11 @@ app.post('/api/leads', authMiddleware, async (req, res) => {
   const { username, ig_link, lead_type, script_used, ig_account_used, notes, status } = req.body;
   if (!username) return res.status(400).json({ error: 'Username requis' });
   const cleanUsername = username.replace(/^@/, '');
-  const exists = await pool.query("SELECT id, status FROM outreach_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND (agency_id = $2 OR agency_id IS NULL)", [cleanUsername, req.user.agency_id]);
+  const exists = await pool.query("SELECT id, status FROM outreach_leads WHERE LOWER(REPLACE(username, '@', '')) = LOWER($1) AND (agency_id = $2 OR agency_id IS NULL)", [cleanUsername, req.agencyId]);
   if (exists.rows.length > 0) return res.status(409).json({ error: `Ce lead existe déjà (statut : ${exists.rows[0].status})` });
   const { rows } = await pool.query(
     'INSERT INTO outreach_leads (user_id, username, ig_link, lead_type, script_used, ig_account_used, notes, status, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-    [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes, status || 'to-send', req.user.agency_id]
+    [req.user.id, username, ig_link, lead_type || 'model', script_used, ig_account_used, notes, status || 'to-send', req.agencyId]
   );
   broadcast('lead-added', { ...rows[0], by: req.user.id });
   res.json(rows[0]);
@@ -1547,7 +1547,7 @@ app.put('/api/leads/bulk-update', authMiddleware, async (req, res) => {
   sets.push('updated_at = NOW()');
   params.push(ids);
   pi++;
-  params.push(req.user.agency_id);
+  params.push(req.agencyId);
   await pool.query(`UPDATE outreach_leads SET ${sets.join(', ')} WHERE id = ANY($${pi - 1}) AND agency_id = $${pi}`, params);
   broadcast('leads-bulk-updated', { ids, script_used, ig_account_used, by: req.user.id });
   res.json({ ok: true, updated: ids.length });
@@ -1561,7 +1561,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
     lead_type = COALESCE($3, lead_type), script_used = COALESCE($4, script_used),
     ig_account_used = COALESCE($5, ig_account_used), updated_at = NOW(),
     sent_at = CASE WHEN $1 = 'sent' AND (sent_at IS NULL) THEN NOW() ELSE sent_at END WHERE id = $6 AND agency_id = $7`,
-    [status, notes, lead_type, script_used, ig_account_used, req.params.id, req.user.agency_id]);
+    [status, notes, lead_type, script_used, ig_account_used, req.params.id, req.agencyId]);
   // Inclure le username dans le broadcast pour les notifications
   let username = '';
   if (status === 'talking-warm' || status === 'call-booked' || status === 'signed') {
@@ -1575,7 +1575,7 @@ app.put('/api/leads/:id', authMiddleware, async (req, res) => {
 // Delete lead
 app.delete('/api/leads/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'outreach' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  await pool.query('DELETE FROM outreach_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM outreach_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   broadcast('lead-deleted', { id: parseInt(req.params.id), by: req.user.id });
   res.json({ ok: true });
 });
@@ -1622,7 +1622,7 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
     WHERE u.role = 'outreach' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     GROUP BY u.id, u.display_name
     ORDER BY u.display_name
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -1639,7 +1639,7 @@ app.get('/api/charts/followers', authMiddleware, async (req, res) => {
     WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (m.agency_id = $2 OR m.agency_id IS NULL)
     GROUP BY ds.date, m.name, a.platform
     ORDER BY ds.date ASC
-  `, [days, req.user.agency_id]);
+  `, [days, req.agencyId]);
   res.json(rows);
 });
 
@@ -1655,7 +1655,7 @@ app.get('/api/charts/revenue', authMiddleware, async (req, res) => {
     WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date
     ORDER BY cs.date ASC
-  `, [days, req.user.agency_id]);
+  `, [days, req.agencyId]);
   res.json(rows);
 });
 
@@ -1670,7 +1670,7 @@ app.get('/api/charts/revenue-by-chatter', authMiddleware, async (req, res) => {
     WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date, u.display_name
     ORDER BY cs.date ASC
-  `, [days, req.user.agency_id]);
+  `, [days, req.agencyId]);
   res.json(rows);
 });
 
@@ -1686,7 +1686,7 @@ app.get('/api/charts/leads', authMiddleware, async (req, res) => {
     WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' AND (agency_id = $2 OR agency_id IS NULL)
     GROUP BY created_at::date
     ORDER BY date ASC
-  `, [days, req.user.agency_id]);
+  `, [days, req.agencyId]);
   res.json(rows);
 });
 
@@ -1726,7 +1726,7 @@ app.post('/api/call-requests', authMiddleware, async (req, res) => {
   broadcast('call-request-new', rows[0]);
   await logActivity(req.user.id, req.user.display_name, 'call-request', 'call', rows[0].id, null);
   sendWhatsApp('📞 Demande de call de ' + req.user.display_name);
-  try { await notifyAdmins(req.user.agency_id, 'call_request', 'Nouvelle demande de call', (req.user.display_name || 'Un élève') + ' demande un call', '/coaching', null, req.user.id); } catch(e) {}
+  try { await notifyAdmins(req.agencyId, 'call_request', 'Nouvelle demande de call', (req.user.display_name || 'Un élève') + ' demande un call', '/coaching', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
@@ -2374,7 +2374,7 @@ app.get('/api/conversations', authMiddleware, async (req, res) => {
 // ============ RESOURCES ============
 app.get('/api/resources', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'student' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY category, created_at DESC', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT id, title, category, res_type, url, file_name, description, created_at FROM resources WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY category, created_at DESC', [req.agencyId]);
   res.json(rows);
 });
 
@@ -2384,12 +2384,12 @@ app.post('/api/resources', authMiddleware, adminOnly, async (req, res) => {
   let fileBuffer = null;
   if (file_data) fileBuffer = Buffer.from(file_data.split(',')[1] || file_data, 'base64');
   const { rows } = await pool.query('INSERT INTO resources (title, category, res_type, url, file_data, file_name, file_mime, description, agency_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, title, category, res_type, url, file_name, description',
-    [title, category || 'general', res_type || 'link', url, fileBuffer, file_name, file_mime, description, req.user.agency_id]);
+    [title, category || 'general', res_type || 'link', url, fileBuffer, file_name, file_mime, description, req.agencyId]);
   res.json(rows[0]);
 });
 
 app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT file_data, file_name, file_mime FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  const { rows } = await pool.query('SELECT file_data, file_name, file_mime FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   if (!rows[0] || !rows[0].file_data) return res.status(404).json({ error: 'Fichier introuvable' });
   res.set('Content-Type', rows[0].file_mime || 'application/octet-stream');
   res.set('Content-Disposition', 'attachment; filename="' + (rows[0].file_name || 'file') + '"');
@@ -2397,7 +2397,7 @@ app.get('/api/resources/:id/download', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/resources/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM resources WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -2486,7 +2486,7 @@ app.put('/api/objectives/:id', authMiddleware, async (req, res) => {
 });
 
 app.delete('/api/objectives/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM weekly_objectives WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM weekly_objectives WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -2520,7 +2520,7 @@ app.get('/api/online-users', authMiddleware, async (req, res) => {
     FROM active_sessions a JOIN users u ON a.user_id = u.id
     WHERE a.last_ping > NOW() - INTERVAL '5 minutes' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     ORDER BY u.display_name
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -2528,9 +2528,9 @@ app.get('/api/activity-log', authMiddleware, adminOnly, async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 25));
   const offset = (page - 1) * limit;
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id]);
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM activity_log WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId]);
   const total = parseInt(countRows[0].total);
-  const { rows } = await pool.query('SELECT * FROM activity_log WHERE (agency_id = $3 OR agency_id IS NULL) ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset, req.user.agency_id]);
+  const { rows } = await pool.query('SELECT * FROM activity_log WHERE (agency_id = $3 OR agency_id IS NULL) ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset, req.agencyId]);
   res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
@@ -2539,11 +2539,11 @@ app.post('/api/admin/save-notif-settings', authMiddleware, adminOnly, async (req
   const keys = ['notif_daily_report', 'notif_weekly_report', 'notif_alert_lead_signed', 'notif_alert_lead_warm', 'notif_alert_revenue_objective', 'notif_alert_inactive_chatter', 'notif_daily_hour', 'whatsapp_extra_recipients'];
   for (const key of keys) {
     if (req.body[key] !== undefined) {
-      const existing = await pool.query('SELECT id FROM settings WHERE key = $1 AND agency_id = $2', [key, req.user.agency_id]);
+      const existing = await pool.query('SELECT id FROM settings WHERE key = $1 AND agency_id = $2', [key, req.agencyId]);
       if (existing.rows.length > 0) {
-        await pool.query('UPDATE settings SET value = $1 WHERE key = $2 AND agency_id = $3', [String(req.body[key]), key, req.user.agency_id]);
+        await pool.query('UPDATE settings SET value = $1 WHERE key = $2 AND agency_id = $3', [String(req.body[key]), key, req.agencyId]);
       } else {
-        await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, String(req.body[key]), req.user.agency_id]);
+        await pool.query('INSERT INTO settings (key, value, agency_id) VALUES ($1, $2, $3)', [key, String(req.body[key]), req.agencyId]);
       }
     }
   }
@@ -2611,13 +2611,13 @@ app.get('/api/shift-clock/status', authMiddleware, async (req, res) => {
 
 // ============ MODEL REVENUE OBJECTIVES ============
 app.get('/api/model-revenue-objectives', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE (mro.agency_id = $1 OR mro.agency_id IS NULL) ORDER BY mro.month DESC, m.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE (mro.agency_id = $1 OR mro.agency_id IS NULL) ORDER BY mro.month DESC, m.name', [req.agencyId]);
   res.json(rows);
 });
 
 app.post('/api/model-revenue-objectives', authMiddleware, adminOnly, async (req, res) => {
   const { model_id, month, target } = req.body;
-  const { rows } = await pool.query('INSERT INTO model_revenue_objectives (model_id, month, target, agency_id) VALUES ($1,$2,$3,$4) ON CONFLICT (model_id, month) DO UPDATE SET target = EXCLUDED.target RETURNING *', [model_id, month, target || 0, req.user.agency_id]);
+  const { rows } = await pool.query('INSERT INTO model_revenue_objectives (model_id, month, target, agency_id) VALUES ($1,$2,$3,$4) ON CONFLICT (model_id, month) DO UPDATE SET target = EXCLUDED.target RETURNING *', [model_id, month, target || 0, req.agencyId]);
   res.json(rows[0]);
 });
 
@@ -2735,25 +2735,25 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
 
 // ============ PAYMENTS ============
 app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE (p.agency_id = $1 OR p.agency_id IS NULL) ORDER BY p.month DESC, m.name', [req.user.agency_id]);
+  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE (p.agency_id = $1 OR p.agency_id IS NULL) ORDER BY p.month DESC, m.name', [req.agencyId]);
   res.json(rows);
 });
 
 app.post('/api/payments', authMiddleware, adminOnly, async (req, res) => {
   const { model_id, month, amount, status, notes } = req.body;
-  const { rows } = await pool.query('INSERT INTO payments (model_id, month, amount, status, notes, agency_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [model_id, month, amount || 0, status || 'pending', notes, req.user.agency_id]);
-  try { await notifyAdmins(req.user.agency_id, 'payment_added', 'Nouveau paiement', '$' + (amount || 0) + ' — ' + month, '/finance', null, req.user.id); } catch(e) {}
+  const { rows } = await pool.query('INSERT INTO payments (model_id, month, amount, status, notes, agency_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [model_id, month, amount || 0, status || 'pending', notes, req.agencyId]);
+  try { await notifyAdmins(req.agencyId, 'payment_added', 'Nouveau paiement', '$' + (amount || 0) + ' — ' + month, '/finance', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
 app.put('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
   const { amount, status, notes } = req.body;
-  await pool.query('UPDATE payments SET amount = COALESCE($1, amount), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4 AND agency_id = $5', [amount, status, notes, req.params.id, req.user.agency_id]);
+  await pool.query('UPDATE payments SET amount = COALESCE($1, amount), status = COALESCE($2, status), notes = COALESCE($3, notes) WHERE id = $4 AND agency_id = $5', [amount, status, notes, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM payments WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM payments WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -2762,7 +2762,7 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 // Finance summary — KPIs for current month vs previous
 app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const now = new Date();
     const curMonth = now.toISOString().slice(0, 7);
     const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -2799,7 +2799,7 @@ app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
 // Finance monthly — 12 months revenue stacked by model
 app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const result = await pool.query(`
       SELECT TO_CHAR(date::date, 'YYYY-MM') as month, model_name,
         SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
@@ -2815,7 +2815,7 @@ app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
 // Finance breakdown — by model and by source for current month
 app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const month = req.query.month || new Date().toISOString().slice(0, 7);
     const monthStart = month + '-01';
     const nextMonth = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(5,7)), 1).toISOString().slice(0,10);
@@ -2835,7 +2835,7 @@ app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) =>
 // Finance due — models with pending payments this month
 app.get('/api/finance/due', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const month = req.query.month || new Date().toISOString().slice(0, 7);
 
     const result = await pool.query(`
@@ -2851,7 +2851,7 @@ app.get('/api/finance/due', authMiddleware, adminOnly, async (req, res) => {
 // Finance commissions — agency earnings recap
 app.get('/api/finance/commissions', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const curMonth = new Date().toISOString().slice(0, 7);
     const yearStart = new Date().getFullYear() + '-01-01';
 
@@ -2877,7 +2877,7 @@ app.get('/api/finance/commissions', authMiddleware, adminOnly, async (req, res) 
 // Export payments CSV
 app.get('/api/export/payments', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const result = await pool.query(`
       SELECT m.name as model, p.month, p.amount, p.commission_rate, p.commission_amount, p.net_amount, p.status, p.notes, p.payment_date, p.created_at
       FROM payments p JOIN models m ON p.model_id = m.id
@@ -2900,7 +2900,7 @@ app.get('/api/export/payments', authMiddleware, adminOnly, async (req, res) => {
 // Performance KPIs — revenue, PPV conversion, fan metrics
 app.get('/api/performance/kpis', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const days = parseInt(req.query.days) || 30;
     const curStart = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
     const prevStart = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
@@ -2936,7 +2936,7 @@ app.get('/api/performance/kpis', authMiddleware, adminOnly, async (req, res) => 
 // Top performers — models, chatters, whales
 app.get('/api/performance/top', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const days = parseInt(req.query.days) || 30;
     const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
 
@@ -2957,7 +2957,7 @@ app.get('/api/performance/top', authMiddleware, adminOnly, async (req, res) => {
 // Heatmap — revenue by day of week × hour
 app.get('/api/performance/heatmap', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const days = parseInt(req.query.days) || 30;
     // Use created_at for hourly resolution since date is just a date string
     const result = await pool.query(`
@@ -2975,7 +2975,7 @@ app.get('/api/performance/heatmap', authMiddleware, adminOnly, async (req, res) 
 // Model comparison table
 app.get('/api/performance/models', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const aid = req.user.agency_id;
+    const aid = req.agencyId;
     const days = parseInt(req.query.days) || 30;
     const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
     const prevFilter = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
@@ -3008,7 +3008,7 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
 
     if (isOwner) {
       // Admin: query outreach_leads table (their own outreach page)
-      const aid = req.user.agency_id;
+      const aid = req.agencyId;
       const { rows: daily } = await pool.query(`
         SELECT ol.created_at::date as day, COUNT(*) as leads,
           COUNT(*) FILTER (WHERE ol.status != 'to-send') as dms
@@ -3048,7 +3048,7 @@ app.get('/api/analytics/daily', authMiddleware, async (req, res) => {
 
     // Students: query student_leads table (their own outreach)
     var sIds = await getSharedOutreachIds(req.user.id);
-    var sParams = [req.user.agency_id, sIds];
+    var sParams = [req.agencyId, sIds];
     var sFilter = 'u.agency_id = $1 AND sl.user_id = ANY($2)';
 
     var sDaily = (await pool.query(`
@@ -3097,7 +3097,7 @@ app.get('/api/analytics/reply-rate-weekly', authMiddleware, adminOnly, async (re
     FROM student_leads sl JOIN users u ON sl.user_id = u.id
     WHERE u.agency_id = $1 AND sl.created_at > NOW() - INTERVAL '12 weeks'
     GROUP BY week ORDER BY week
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -3111,7 +3111,7 @@ app.get('/api/analytics/assistant-ranking', authMiddleware, adminOnly, async (re
     FROM student_leads sl JOIN users u ON sl.added_by = u.id
     WHERE u.role = 'outreach' AND u.agency_id = $1
     GROUP BY u.id, u.display_name ORDER BY signed DESC, replies DESC
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -3121,7 +3121,7 @@ app.get('/api/analytics/hourly', authMiddleware, adminOnly, async (req, res) => 
     FROM student_leads sl JOIN users u ON sl.user_id = u.id
     WHERE sl.sent_at IS NOT NULL AND sl.sent_at > NOW() - INTERVAL '30 days' AND u.agency_id = $1
     GROUP BY hour ORDER BY hour
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -3135,7 +3135,7 @@ app.get('/api/analytics/fr-vs-us', authMiddleware, adminOnly, async (req, res) =
     FROM student_leads sl JOIN users u ON sl.user_id = u.id
     WHERE u.agency_id = $1
     GROUP BY sl.market
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   res.json(rows);
 });
 
@@ -3149,7 +3149,7 @@ app.get('/api/export/leads', authMiddleware, adminOnly, async (req, res) => {
     LEFT JOIN users ab ON sl.added_by = ab.id
     WHERE u.agency_id = $1
     ORDER BY sl.created_at DESC
-  `, [req.user.agency_id]);
+  `, [req.agencyId]);
   let csv = 'Username,Lien IG,Type,Statut,Script,Compte,Notes,Marché,Date,Envoyé,Élève,Ajouté par\n';
   rows.forEach(r => {
     csv += [r.username, r.ig_link||'', r.lead_type||'', r.status, r.script_used||'', r.ig_account_used||'',
@@ -3214,7 +3214,7 @@ app.get('/api/admin/db-check', authMiddleware, adminOnly, async (req, res) => {
       } catch(e) { checks[t] = { error: e.message }; }
     }
     const { rows: agencyList } = await pool.query('SELECT id, name, active FROM agencies ORDER BY id');
-    res.json({ tables: checks, agencies: agencyList, your_agency_id: req.user.agency_id });
+    res.json({ tables: checks, agencies: agencyList, your_agency_id: req.agencyId });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3260,7 +3260,7 @@ app.get('/api/planning-shifts', authMiddleware, async (req, res) => {
     params.push(user_id);
     query += ` AND ps.user_id = $${params.length}`;
   }
-  params.push(req.user.agency_id);
+  params.push(req.agencyId);
   query += ` AND (ps.agency_id = $${params.length} OR ps.agency_id IS NULL)`;
   if (start) { params.push(start); query += ` AND ps.shift_date >= $${params.length}`; }
   if (end) { params.push(end); query += ` AND ps.shift_date <= $${params.length}`; }
@@ -3279,7 +3279,7 @@ app.post('/api/planning-shifts', authMiddleware, async (req, res) => {
 
   const { rows } = await pool.query(
     'INSERT INTO planning_shifts (user_id, shift_date, shift_type, start_time, end_time, model_ids, notes, entry_type, priority, description, agency_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
-    [ownerId, shift_date, shift_type || 'custom', start_time, end_time, JSON.stringify(model_ids || []), notes, entry_type || 'shift', priority || 'normal', description, req.user.agency_id]
+    [ownerId, shift_date, shift_type || 'custom', start_time, end_time, JSON.stringify(model_ids || []), notes, entry_type || 'shift', priority || 'normal', description, req.agencyId]
   );
   broadcast('planning-updated', {});
   res.json(rows[0]);
@@ -3296,7 +3296,7 @@ app.put('/api/planning-shifts/:id', authMiddleware, async (req, res) => {
     end_time = COALESCE($3, end_time), model_ids = COALESCE($4, model_ids),
     notes = COALESCE($5, notes), entry_type = COALESCE($7, entry_type),
     priority = COALESCE($8, priority), description = COALESCE($9, description) WHERE id = $6 AND agency_id = $10`,
-    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id, entry_type, priority, description, req.user.agency_id]);
+    [shift_type, start_time, end_time, model_ids ? JSON.stringify(model_ids) : null, notes, req.params.id, entry_type, priority, description, req.agencyId]);
   broadcast('planning-updated', {});
   res.json({ ok: true });
 });
@@ -3316,7 +3316,7 @@ app.get('/api/leave-requests', authMiddleware, async (req, res) => {
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
       FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE (lr.agency_id = $1 OR lr.agency_id IS NULL) ORDER BY lr.created_at DESC`;
-    params = [req.user.agency_id];
+    params = [req.agencyId];
   } else {
     query = `SELECT lr.*, u.display_name as user_name, u.role as user_role
       FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.user_id = $1 ORDER BY lr.created_at DESC`;
@@ -3331,20 +3331,20 @@ app.post('/api/leave-requests', authMiddleware, async (req, res) => {
   if (!start_date || !end_date) return res.status(400).json({ error: 'Dates requises' });
   const { rows } = await pool.query(
     'INSERT INTO leave_requests (user_id, start_date, end_date, reason, agency_id) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-    [req.user.id, start_date, end_date, reason, req.user.agency_id]
+    [req.user.id, start_date, end_date, reason, req.agencyId]
   );
   // WhatsApp notification
   sendWhatsApp('🏖️ Demande de congé de ' + req.user.display_name + ' du ' + start_date + ' au ' + end_date);
   await logActivity(req.user.id, req.user.display_name, 'leave-request', 'leave', rows[0].id, start_date + ' → ' + end_date);
   broadcast('leave-request-new', rows[0]);
-  try { await notifyAdmins(req.user.agency_id, 'leave_request', 'Demande de congé', (req.user.display_name || 'Un membre') + ' demande un congé du ' + start_date + ' au ' + end_date, '/planning', null, req.user.id); } catch(e) {}
+  try { await notifyAdmins(req.agencyId, 'leave_request', 'Demande de congé', (req.user.display_name || 'Un membre') + ' demande un congé du ' + start_date + ' au ' + end_date, '/planning', null, req.user.id); } catch(e) {}
   res.json(rows[0]);
 });
 
 app.put('/api/leave-requests/:id', authMiddleware, adminOnly, async (req, res) => {
   const { status, admin_notes } = req.body;
   await pool.query('UPDATE leave_requests SET status = COALESCE($1, status), admin_notes = COALESCE($2, admin_notes) WHERE id = $3 AND agency_id = $4',
-    [status, admin_notes, req.params.id, req.user.agency_id]);
+    [status, admin_notes, req.params.id, req.agencyId]);
   const lr = (await pool.query('SELECT lr.*, u.display_name as user_name FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE lr.id = $1', [req.params.id])).rows[0];
   if (lr) {
     broadcast('leave-request-updated', { id: parseInt(req.params.id), status });
@@ -3413,14 +3413,14 @@ app.get('/api/planning-stats', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ AGENCY SETTINGS ============
 app.get('/api/agency', authMiddleware, async (req, res) => {
-  if (!req.user.agency_id) return res.status(400).json({ error: 'Pas d\'agence associée' });
-  const { rows } = await pool.query('SELECT * FROM agencies WHERE id = $1', [req.user.agency_id]);
+  if (!req.agencyId) return res.status(400).json({ error: 'Pas d\'agence associée' });
+  const { rows } = await pool.query('SELECT * FROM agencies WHERE id = $1', [req.agencyId]);
   if (rows.length === 0) return res.status(404).json({ error: 'Agence introuvable' });
   const agency = rows[0];
   // Get counts
-  const users = (await pool.query('SELECT COUNT(*) as count FROM users WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
-  const models = (await pool.query('SELECT COUNT(*) as count FROM models WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
-  const leads = (await pool.query('SELECT COUNT(*) as count FROM outreach_leads WHERE (agency_id = $1 OR agency_id IS NULL)', [req.user.agency_id])).rows[0].count;
+  const users = (await pool.query('SELECT COUNT(*) as count FROM users WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId])).rows[0].count;
+  const models = (await pool.query('SELECT COUNT(*) as count FROM models WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId])).rows[0].count;
+  const leads = (await pool.query('SELECT COUNT(*) as count FROM outreach_leads WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId])).rows[0].count;
   res.json({ ...agency, user_count: parseInt(users), model_count: parseInt(models), lead_count: parseInt(leads) });
 });
 
@@ -3430,7 +3430,7 @@ app.put('/api/agency', authMiddleware, async (req, res) => {
   }
   const { name, logo_url, primary_color } = req.body;
   await pool.query('UPDATE agencies SET name = COALESCE($1, name), logo_url = COALESCE($2, logo_url), primary_color = COALESCE($3, primary_color) WHERE id = $4',
-    [name, logo_url, primary_color, req.user.agency_id]);
+    [name, logo_url, primary_color, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -3439,10 +3439,10 @@ app.put('/api/agency', authMiddleware, async (req, res) => {
 // Settings
 app.get('/api/recruitment/settings', authMiddleware, async (req, res) => {
   try {
-    let { rows } = await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id]);
+    let { rows } = await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.agencyId]);
     if (rows.length === 0) {
-      await pool.query('INSERT INTO recruitment_settings (agency_id) VALUES ($1) ON CONFLICT (agency_id) DO NOTHING', [req.user.agency_id]);
-      rows = (await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id])).rows;
+      await pool.query('INSERT INTO recruitment_settings (agency_id) VALUES ($1) ON CONFLICT (agency_id) DO NOTHING', [req.agencyId]);
+      rows = (await pool.query('SELECT * FROM recruitment_settings WHERE agency_id = $1', [req.agencyId])).rows;
     }
     res.json(rows[0] || { enabled: false, coaching_price: 1500 });
   } catch(e) { res.json({ enabled: false, coaching_price: 1500 }); }
@@ -3454,7 +3454,7 @@ app.patch('/api/recruitment/settings', authMiddleware, adminOnly, async (req, re
     await pool.query(
       `INSERT INTO recruitment_settings (agency_id, enabled, coaching_price) VALUES ($1, $2, $3)
        ON CONFLICT (agency_id) DO UPDATE SET enabled = COALESCE($2, recruitment_settings.enabled), coaching_price = COALESCE($3, recruitment_settings.coaching_price), updated_at = NOW()`,
-      [req.user.agency_id, enabled, coaching_price]
+      [req.agencyId, enabled, coaching_price]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: 'Server error' }); }
@@ -3469,7 +3469,7 @@ app.get('/api/recruitment/recruiters', authMiddleware, async (req, res) => {
         (SELECT COUNT(*) FROM recruitment_leads WHERE recruiter_id = r.id AND status = 'paye') as paid_count
       FROM recruiters r JOIN users u ON r.user_id = u.id
       WHERE r.agency_id = $1 ORDER BY r.created_at DESC
-    `, [req.user.agency_id]);
+    `, [req.agencyId]);
     res.json(rows);
   } catch(e) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -3480,7 +3480,7 @@ app.post('/api/recruitment/recruiters', authMiddleware, adminOnly, async (req, r
   try {
     const { rows } = await pool.query(
       'INSERT INTO recruiters (agency_id, user_id, commission_percentage) VALUES ($1, $2, $3) RETURNING *',
-      [req.user.agency_id, user_id, commission_percentage || 10]
+      [req.agencyId, user_id, commission_percentage || 10]
     );
     res.json(rows[0]);
   } catch(e) { res.status(500).json({ error: 'Server error' }); }
@@ -3491,14 +3491,14 @@ app.patch('/api/recruitment/recruiters/:id', authMiddleware, adminOnly, async (r
   try {
     await pool.query(
       'UPDATE recruiters SET commission_percentage = COALESCE($1, commission_percentage), is_active = COALESCE($2, is_active), updated_at = NOW() WHERE id = $3 AND agency_id = $4',
-      [commission_percentage, is_active, req.params.id, req.user.agency_id]
+      [commission_percentage, is_active, req.params.id, req.agencyId]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: 'Server error' }); }
 });
 
 app.delete('/api/recruitment/recruiters/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM recruiters WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM recruiters WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -3511,11 +3511,11 @@ app.get('/api/recruitment/leads', authMiddleware, async (req, res) => {
       JOIN recruiters r ON rl.recruiter_id = r.id
       JOIN users u ON r.user_id = u.id
       WHERE rl.agency_id = $1`;
-    const params = [req.user.agency_id];
+    const params = [req.agencyId];
     if (!isOwner) {
       // Get paired user IDs then find all their recruiter IDs
       const sharedIds = await getSharedOutreachIds(req.user.id);
-      const recruiterRows = (await pool.query('SELECT id FROM recruiters WHERE user_id = ANY($1) AND agency_id = $2', [sharedIds, req.user.agency_id])).rows;
+      const recruiterRows = (await pool.query('SELECT id FROM recruiters WHERE user_id = ANY($1) AND agency_id = $2', [sharedIds, req.agencyId])).rows;
       if (recruiterRows.length === 0) return res.json([]);
       const recruiterIds = recruiterRows.map(r => r.id);
       params.push(recruiterIds);
@@ -3536,21 +3536,21 @@ app.post('/api/recruitment/leads', authMiddleware, async (req, res) => {
     let recruiterId = null;
     if (req.body.recruiter_id) {
       // Verify the recruiter belongs to this agency
-      const check = (await pool.query('SELECT id FROM recruiters WHERE id = $1 AND agency_id = $2', [req.body.recruiter_id, req.user.agency_id])).rows[0];
+      const check = (await pool.query('SELECT id FROM recruiters WHERE id = $1 AND agency_id = $2', [req.body.recruiter_id, req.agencyId])).rows[0];
       if (check) recruiterId = check.id;
     }
     if (!recruiterId) {
-      const ownRecruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.user.agency_id])).rows[0];
+      const ownRecruiter = (await pool.query('SELECT id FROM recruiters WHERE user_id = $1 AND agency_id = $2 AND is_active = true', [req.user.id, req.agencyId])).rows[0];
       recruiterId = ownRecruiter?.id;
     }
     if (!recruiterId && isOwner) {
-      const first = (await pool.query('SELECT id FROM recruiters WHERE agency_id = $1 AND is_active = true ORDER BY id LIMIT 1', [req.user.agency_id])).rows[0];
+      const first = (await pool.query('SELECT id FROM recruiters WHERE agency_id = $1 AND is_active = true ORDER BY id LIMIT 1', [req.agencyId])).rows[0];
       recruiterId = first?.id;
     }
     if (!recruiterId) return res.status(403).json({ error: isOwner ? 'Ajoutez d\'abord un recruteur' : 'Not a recruiter' });
     const { rows } = await pool.query(
       'INSERT INTO recruitment_leads (agency_id, recruiter_id, prospect_name, prospect_pseudo, platform, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.agency_id, recruiterId, prospect_name || '', prospect_pseudo, platform || 'instagram', notes || '']
+      [req.agencyId, recruiterId, prospect_name || '', prospect_pseudo, platform || 'instagram', notes || '']
     );
     res.json(rows[0]);
   } catch(e) { res.status(500).json({ error: 'Server error' }); }
@@ -3561,7 +3561,7 @@ app.patch('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
   const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
   try {
     // Verify ownership
-    const lead = (await pool.query('SELECT rl.*, r.user_id as recruiter_user_id FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.id = $1 AND rl.agency_id = $2', [req.params.id, req.user.agency_id])).rows[0];
+    const lead = (await pool.query('SELECT rl.*, r.user_id as recruiter_user_id FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.id = $1 AND rl.agency_id = $2', [req.params.id, req.agencyId])).rows[0];
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (!isOwner && lead.recruiter_user_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
     // Recruiters cannot set call_owner
@@ -3581,9 +3581,9 @@ app.patch('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
 app.delete('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
   const isOwner = req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin';
   if (isOwner) {
-    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   } else {
-    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2 AND recruiter_id IN (SELECT id FROM recruiters WHERE user_id = $3)', [req.params.id, req.user.agency_id, req.user.id]);
+    await pool.query('DELETE FROM recruitment_leads WHERE id = $1 AND agency_id = $2 AND recruiter_id IN (SELECT id FROM recruiters WHERE user_id = $3)', [req.params.id, req.agencyId, req.user.id]);
   }
   res.json({ ok: true });
 });
@@ -3591,11 +3591,11 @@ app.delete('/api/recruitment/leads/:id', authMiddleware, async (req, res) => {
 // Stats
 app.get('/api/recruitment/stats', authMiddleware, async (req, res) => {
   try {
-    const settings = (await pool.query('SELECT coaching_price FROM recruitment_settings WHERE agency_id = $1', [req.user.agency_id])).rows[0];
+    const settings = (await pool.query('SELECT coaching_price FROM recruitment_settings WHERE agency_id = $1', [req.agencyId])).rows[0];
     const price = parseFloat(settings?.coaching_price || 1500);
     const { rows } = await pool.query(`
       SELECT status, COUNT(*) as count FROM recruitment_leads WHERE agency_id = $1 GROUP BY status
-    `, [req.user.agency_id]);
+    `, [req.agencyId]);
     const byStatus = {};
     let total = 0;
     rows.forEach(r => { byStatus[r.status] = parseInt(r.count); total += parseInt(r.count); });
@@ -3606,9 +3606,9 @@ app.get('/api/recruitment/stats', authMiddleware, async (req, res) => {
       SELECT SUM(r.commission_percentage) as total_comm_pct, COUNT(*) as paid_count
       FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id
       WHERE rl.agency_id = $1 AND rl.status = 'paye'
-    `, [req.user.agency_id]);
+    `, [req.agencyId]);
     const commissions = commResult.rows[0]?.paid_count > 0
-      ? (await pool.query(`SELECT SUM(r.commission_percentage * $2 / 100) as total FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.agency_id = $1 AND rl.status = 'paye'`, [req.user.agency_id, price])).rows[0]?.total || 0
+      ? (await pool.query(`SELECT SUM(r.commission_percentage * $2 / 100) as total FROM recruitment_leads rl JOIN recruiters r ON rl.recruiter_id = r.id WHERE rl.agency_id = $1 AND rl.status = 'paye'`, [req.agencyId, price])).rows[0]?.total || 0
       : 0;
     res.json({ total, byStatus, paid, revenue, commissions: parseFloat(commissions), coaching_price: price });
   } catch(e) { res.json({ total: 0, byStatus: {}, paid: 0, revenue: 0, commissions: 0, coaching_price: 1500 }); }
@@ -3623,7 +3623,7 @@ app.get('/api/agency/onboarding-status', authMiddleware, async (req, res) => {
         legal_name, address_street, address_city, address_zip, address_country, vat_number,
         default_work_start, default_work_end, work_days, language, email_notifications_enabled,
         logo_url, primary_color
-      FROM agencies WHERE id = $1`, [req.user.agency_id]
+      FROM agencies WHERE id = $1`, [req.agencyId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Agence introuvable' });
     res.json(rows[0]);
@@ -3653,7 +3653,7 @@ app.put('/api/agency/onboarding/draft', authMiddleware, async (req, res) => {
     }
   }
   if (updates.length === 0) return res.json({ ok: true });
-  values.push(req.user.agency_id);
+  values.push(req.agencyId);
   try {
     await pool.query(`UPDATE agencies SET ${updates.join(', ')} WHERE id = $${idx}`, values);
     res.json({ ok: true });
@@ -3670,7 +3670,7 @@ app.post('/api/agency/onboarding/complete', authMiddleware, async (req, res) => 
   // Validate required fields
   const required = ['name', 'country', 'timezone', 'currency', 'service_type',
     'models_count', 'chatters_count', 'target_markets', 'contact_email'];
-  const agency = (await pool.query('SELECT * FROM agencies WHERE id = $1', [req.user.agency_id])).rows[0];
+  const agency = (await pool.query('SELECT * FROM agencies WHERE id = $1', [req.agencyId])).rows[0];
   if (!agency) return res.status(404).json({ error: 'Agence introuvable' });
 
   const missing = required.filter(f => !agency[f] && !req.body[f]);
@@ -3694,21 +3694,21 @@ app.post('/api/agency/onboarding/complete', authMiddleware, async (req, res) => 
       idx++;
     }
   }
-  values.push(req.user.agency_id);
+  values.push(req.agencyId);
 
   try {
     await pool.query(`UPDATE agencies SET ${updates.join(', ')} WHERE id = $${idx}`, values);
 
     // Update settings table too (agency_name sync)
     if (req.body.name) {
-      await pool.query("UPDATE settings SET value = $1 WHERE key = 'agency_name' AND agency_id = $2", [req.body.name, req.user.agency_id]);
+      await pool.query("UPDATE settings SET value = $1 WHERE key = 'agency_name' AND agency_id = $2", [req.body.name, req.agencyId]);
     }
 
     // Log activity
     try {
       await pool.query(
         "INSERT INTO activity_log (user_id, agency_id, action, details) VALUES ($1, $2, 'onboarding_completed', $3)",
-        [req.user.id, req.user.agency_id, JSON.stringify({ completed_by: req.user.display_name || req.user.username })]
+        [req.user.id, req.agencyId, JSON.stringify({ completed_by: req.user.display_name || req.user.username })]
       );
     } catch(e) { /* activity_log may not exist */ }
 
@@ -3904,7 +3904,7 @@ app.post('/api/model-schedule', authMiddleware, adminOnly, async (req, res) => {
   if (!model_id || !day_date || !title) return res.status(400).json({ error: 'Champs requis manquants' });
   const { rows } = await pool.query(
     'INSERT INTO model_schedule (agency_id, model_id, day_date, time_slot, title, category, color, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-    [req.user.agency_id, model_id, day_date, time_slot||null, title, category||'task', color||'#22D3EE', notes, req.user.id]);
+    [req.agencyId, model_id, day_date, time_slot||null, title, category||'task', color||'#22D3EE', notes, req.user.id]);
   res.json(rows[0]);
 });
 
@@ -3930,7 +3930,7 @@ app.post('/api/model-tracklinks', authMiddleware, adminOnly, async (req, res) =>
   const { model_id, platform, account_name, link } = req.body;
   if (!model_id || !platform) return res.status(400).json({ error: 'Plateforme requise' });
   const { rows } = await pool.query('INSERT INTO model_tracklinks (model_id, agency_id, platform, account_name, link) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-    [model_id, req.user.agency_id, platform, account_name, link]);
+    [model_id, req.agencyId, platform, account_name, link]);
   res.json(rows[0]);
 });
 
@@ -3950,7 +3950,7 @@ app.delete('/api/model-tracklinks/:id', authMiddleware, adminOnly, async (req, r
 app.get('/api/agency-accounts', authMiddleware, async (req, res) => {
   var { category } = req.query;
   var query = 'SELECT aa.*, u.display_name as assigned_name FROM agency_accounts aa LEFT JOIN users u ON aa.assigned_to_id = u.id WHERE aa.agency_id = $1';
-  var params = [req.user.agency_id];
+  var params = [req.agencyId];
   if (category) { params.push(category); query += ' AND aa.category = $' + params.length; }
   query += ' ORDER BY aa.category, aa.handle';
   var { rows } = await pool.query(query, params);
@@ -3963,7 +3963,7 @@ app.post('/api/agency-accounts', authMiddleware, adminOnly, async (req, res) => 
   var cleanHandle = handle.trim().replace(/^@/, '');
   var { rows } = await pool.query(
     'INSERT INTO agency_accounts (agency_id, handle, platform, category, assigned_to_id, purpose) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-    [req.user.agency_id, '@' + cleanHandle, platform || 'instagram', category || 'agency', assigned_to_id || null, purpose || null]);
+    [req.agencyId, '@' + cleanHandle, platform || 'instagram', category || 'agency', assigned_to_id || null, purpose || null]);
   // Scrape followers + avatar immediately in background
   (async function() {
     try {
@@ -3997,12 +3997,12 @@ app.post('/api/agency-accounts', authMiddleware, adminOnly, async (req, res) => 
 app.put('/api/agency-accounts/:id', authMiddleware, adminOnly, async (req, res) => {
   var { handle, platform, category, assigned_to_id, purpose, status } = req.body;
   await pool.query('UPDATE agency_accounts SET handle=COALESCE($1,handle), platform=COALESCE($2,platform), category=COALESCE($3,category), assigned_to_id=$4, purpose=COALESCE($5,purpose), status=COALESCE($6,status) WHERE id=$7 AND agency_id=$8',
-    [handle, platform, category, assigned_to_id||null, purpose, status, req.params.id, req.user.agency_id]);
+    [handle, platform, category, assigned_to_id||null, purpose, status, req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
 app.delete('/api/agency-accounts/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM agency_accounts WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM agency_accounts WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -4064,7 +4064,7 @@ app.get('/api/fans', authMiddleware, async (req, res) => {
     var { model_id, platform, tag, is_important, search, segment, sort, limit, offset } = req.query;
     var lim = Math.min(parseInt(limit) || 50, 200);
     var off = parseInt(offset) || 0;
-    var params = [req.user.agency_id];
+    var params = [req.agencyId];
     var where = 'f.agency_id = $1';
     if (model_id) { params.push(model_id); where += ' AND f.model_id = $' + params.length; }
     if (platform) { params.push(platform); where += ' AND f.platform = $' + params.length; }
@@ -4092,7 +4092,7 @@ app.get('/api/fans', authMiddleware, async (req, res) => {
       'SELECT f.*, m.name as model_name FROM fans f JOIN models m ON f.model_id = m.id WHERE ' + where + ' ORDER BY ' + orderBy + ' LIMIT $' + (params.length - 1) + ' OFFSET $' + params.length, params);
 
     // Stats
-    var statsParams = [req.user.agency_id];
+    var statsParams = [req.agencyId];
     var statsWhere = 'agency_id = $1';
     if (model_id) { statsParams.push(model_id); statsWhere += ' AND model_id = $' + statsParams.length; }
     var statsResult = await pool.query('SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE total_spent >= ' + FAN_WHALE_THRESHOLD + ') as whales, COUNT(*) FILTER (WHERE total_spent >= ' + FAN_VIP_THRESHOLD + ') as vips, COUNT(*) FILTER (WHERE first_seen_at > NOW() - INTERVAL \'' + FAN_NEW_DAYS + ' days\') as new_fans, COUNT(*) FILTER (WHERE last_interaction_at < NOW() - INTERVAL \'' + FAN_SILENT_DAYS + ' days\') as silent, COUNT(*) FILTER (WHERE subscription_expires_at IS NOT NULL AND subscription_expires_at < NOW() + INTERVAL \'' + FAN_AT_RISK_DAYS + ' days\' AND subscription_expires_at > NOW()) as at_risk FROM fans WHERE ' + statsWhere, statsParams);
@@ -4103,7 +4103,7 @@ app.get('/api/fans', authMiddleware, async (req, res) => {
 
 app.get('/api/fans/:id', authMiddleware, async (req, res) => {
   try {
-    var fan = (await pool.query('SELECT f.*, m.name as model_name FROM fans f JOIN models m ON f.model_id = m.id WHERE f.id = $1 AND f.agency_id = $2', [req.params.id, req.user.agency_id])).rows[0];
+    var fan = (await pool.query('SELECT f.*, m.name as model_name FROM fans f JOIN models m ON f.model_id = m.id WHERE f.id = $1 AND f.agency_id = $2', [req.params.id, req.agencyId])).rows[0];
     if (!fan) return res.status(404).json({ error: 'Fan non trouvé' });
     var interactions = (await pool.query('SELECT fi.*, u.display_name as user_name FROM fan_interactions fi LEFT JOIN users u ON fi.user_id = u.id WHERE fi.fan_id = $1 ORDER BY fi.created_at DESC LIMIT 50', [fan.id])).rows;
     res.json({ fan, interactions });
@@ -4116,7 +4116,7 @@ app.post('/api/fans', authMiddleware, async (req, res) => {
   try {
     var { rows } = await pool.query(
       'INSERT INTO fans (agency_id, model_id, platform, username, display_name, total_spent, tags, notes, is_important, imported_from, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
-      [req.user.agency_id, model_id, platform || 'onlyfans', username.trim(), display_name || null, total_spent || 0, JSON.stringify(tags || []), notes || null, is_important || false, 'manual', req.user.id]);
+      [req.agencyId, model_id, platform || 'onlyfans', username.trim(), display_name || null, total_spent || 0, JSON.stringify(tags || []), notes || null, is_important || false, 'manual', req.user.id]);
     res.json(rows[0]);
   } catch(e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Ce fan existe déjà pour ce modèle' });
@@ -4129,13 +4129,13 @@ app.put('/api/fans/:id', authMiddleware, async (req, res) => {
   try {
     await pool.query(
       'UPDATE fans SET display_name=COALESCE($1,display_name), total_spent=COALESCE($2,total_spent), tags=COALESCE($3,tags), notes=COALESCE($4,notes), is_important=COALESCE($5,is_important), subscription_status=COALESCE($6,subscription_status), subscription_expires_at=$7, updated_at=NOW() WHERE id=$8 AND agency_id=$9',
-      [display_name, total_spent, tags ? JSON.stringify(tags) : null, notes, is_important, subscription_status, subscription_expires_at || null, req.params.id, req.user.agency_id]);
+      [display_name, total_spent, tags ? JSON.stringify(tags) : null, notes, is_important, subscription_status, subscription_expires_at || null, req.params.id, req.agencyId]);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.delete('/api/fans/:id', authMiddleware, async (req, res) => {
-  await pool.query('DELETE FROM fans WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM fans WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
@@ -4204,7 +4204,7 @@ app.post('/api/fans/import-csv', authMiddleware, adminOnly, async (req, res) => 
              custom_fields = fans.custom_fields || EXCLUDED.custom_fields,
              updated_at = NOW()
            RETURNING (xmax = 0) as is_new`,
-          [req.user.agency_id, model_id, platform || 'onlyfans', username, getCol('display_name'), totalSpent, subStatus, JSON.stringify(custom), 'csv_custom', req.user.id]);
+          [req.agencyId, model_id, platform || 'onlyfans', username, getCol('display_name'), totalSpent, subStatus, JSON.stringify(custom), 'csv_custom', req.user.id]);
 
         if (result.rows[0].is_new) imported++; else updated++;
       } catch(lineErr) {
@@ -4231,7 +4231,7 @@ function parseCSVLine(line) {
 
 app.get('/api/fans/stats/:modelId', authMiddleware, async (req, res) => {
   try {
-    var aid = req.user.agency_id;
+    var aid = req.agencyId;
     var mid = req.params.modelId;
     var stats = (await pool.query(`SELECT
       COUNT(*) as total,
@@ -4257,7 +4257,7 @@ app.get('/api/content-posts', authMiddleware, async (req, res) => {
       LEFT JOIN users u ON cp.assigned_to_id = u.id
       LEFT JOIN users c ON cp.created_by = c.id
       WHERE cp.agency_id = $1`;
-    const params = [req.user.agency_id];
+    const params = [req.agencyId];
     if (start_date) { params.push(start_date); query += ' AND cp.scheduled_at >= $' + params.length; }
     if (end_date) { params.push(end_date); query += ' AND cp.scheduled_at <= $' + params.length; }
     if (model_id) { params.push(model_id); query += ' AND cp.model_id = $' + params.length; }
@@ -4278,11 +4278,11 @@ app.post('/api/content-posts', authMiddleware, adminOnly, async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO content_posts (agency_id, model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [req.user.agency_id, model_id, scheduled_at, platform || 'instagram', content_type || 'post_instagram', caption, media_link, status || 'draft', assigned_to_id, notes, req.user.id]
+      [req.agencyId, model_id, scheduled_at, platform || 'instagram', content_type || 'post_instagram', caption, media_link, status || 'draft', assigned_to_id, notes, req.user.id]
     );
     // Notify assigned user
     if (assigned_to_id && assigned_to_id !== req.user.id) {
-      try { await createNotification(assigned_to_id, req.user.agency_id, 'task_assigned', 'Nouveau post assigné', (caption || 'Post ' + (platform || '')).substring(0, 80), '/models', { content_post_id: rows[0].id }); } catch(e2) {}
+      try { await createNotification(assigned_to_id, req.agencyId, 'task_assigned', 'Nouveau post assigné', (caption || 'Post ' + (platform || '')).substring(0, 80), '/models', { content_post_id: rows[0].id }); } catch(e2) {}
     }
     res.json(rows[0]);
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
@@ -4296,14 +4296,14 @@ app.put('/api/content-posts/:id', authMiddleware, adminOnly, async (req, res) =>
        content_type=COALESCE($4,content_type), caption=COALESCE($5,caption), media_link=COALESCE($6,media_link),
        status=COALESCE($7,status), assigned_to_id=$8, notes=COALESCE($9,notes), updated_at=NOW()
        WHERE id=$10 AND agency_id=$11`,
-      [model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id || null, notes, req.params.id, req.user.agency_id]
+      [model_id, scheduled_at, platform, content_type, caption, media_link, status, assigned_to_id || null, notes, req.params.id, req.agencyId]
     );
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.delete('/api/content-posts/:id', authMiddleware, adminOnly, async (req, res) => {
-  await pool.query('DELETE FROM content_posts WHERE id = $1 AND agency_id = $2', [req.params.id, req.user.agency_id]);
+  await pool.query('DELETE FROM content_posts WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
 });
 
