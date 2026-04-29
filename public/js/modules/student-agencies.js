@@ -51,16 +51,11 @@ async function loadStudentAgencies() {
 }
 
 function showCreateStudentAgencyModal() {
-  var students = (typeof allStudents !== 'undefined' ? allStudents : []);
-  if (students.length === 0) {
-    // Try to fetch students
-    fetch('/api/students', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
-      allStudents = data || [];
-      _showCreateModal(allStudents);
-    });
-  } else {
-    _showCreateModal(students);
-  }
+  // Fetch only users with role='student' in current agency
+  fetch('/api/users', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(users) {
+    var students = (users || []).filter(function(u) { return u.role === 'student'; });
+    _showCreateModal(students.map(function(u) { return { user_id: u.id, display_name: u.display_name, name: u.display_name }; }));
+  }).catch(function() { _showCreateModal([]); });
 }
 
 function _showCreateModal(students) {
