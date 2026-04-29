@@ -4436,9 +4436,9 @@ app.post('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, r
     }
 
     if (transfer_data?.student_models) {
-      await client.query(
-        'UPDATE student_models SET agency_id = $1 WHERE user_id = ANY($2)',
-        [newAgencyId, student_user_ids]
+      // student_models has no agency_id column — they follow the user
+      // No transfer needed, models are linked via user_id
+      console.log('student_models: skipped (linked by user_id, no agency_id column'
       );
     }
 
