@@ -222,6 +222,7 @@
   "settings.name_required": "Le nom est requis",
   "settings.select_at_least_one": "Sélectionnez au moins un élève",
   "settings.agency_created": "Agence créée",
+  "settings.create": "Créer",
   "settings.created": "Créée le",
   "cmd.placeholder": "Rechercher une page, un modèle, une action...",
   "cmd.no_results": "Aucun résultat",

@@ -4427,20 +4427,8 @@ app.post('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, r
       transferred.outreach = rowCount;
     }
 
-    if (transfer_data?.student_leads) {
-      const { rowCount } = await client.query(
-        'UPDATE student_leads SET agency_id = $1 WHERE user_id = ANY($2) AND agency_id = $3',
-        [newAgencyId, student_user_ids, req.agencyId]
-      );
-      transferred.student_leads = rowCount;
-    }
-
-    if (transfer_data?.student_models) {
-      // student_models has no agency_id column — they follow the user
-      // No transfer needed, models are linked via user_id
-      console.log('student_models: skipped (linked by user_id, no agency_id column'
-      );
-    }
+    // student_leads and student_models have no agency_id column
+    // They are linked via user_id — no transfer needed
 
     await client.query('COMMIT');
 

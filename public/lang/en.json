@@ -222,6 +222,7 @@
   "settings.name_required": "Name is required",
   "settings.select_at_least_one": "Select at least one student",
   "settings.agency_created": "Agency created",
+  "settings.create": "Create",
   "settings.created": "Created on",
   "cmd.placeholder": "Search for a page, model, or action...",
   "cmd.no_results": "No results found",
