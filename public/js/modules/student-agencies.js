@@ -43,7 +43,10 @@ async function loadStudentAgencies() {
         + '<span style="color:var(--accent-green)">' + a.billing_status + '</span></div></div>'
         + '<span class="badge badge-blue" style="font-size:9px">' + a.agency_type + '</span></div>'
         + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + (members || '<span style="color:var(--text-muted);font-size:12px">Aucun membre</span>') + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:4px">'
         + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="transferDataToStudentAgency(' + a.id + ',\'' + a.name.replace(/'/g, "\\'") + '\')">' + (t('settings.transfer_now') || 'Transférer les données') + '</button>'
+        + (!(a.members && a.members.length > 0) ? '<button class="btn btn-primary" style="font-size:11px;padding:6px 14px" onclick="linkOrphanAgency(' + a.id + ')">' + (t('settings.link_students') || 'Rattacher des élèves') + '</button>' : '')
+        + '</div>'
         + '</div>';
     }).join('') + '</div>';
   } catch(e) {
@@ -124,6 +127,46 @@ async function createStudentAgency() {
   } catch(e) {
     showToast('Erreur réseau', 'error');
   }
+}
+
+function linkOrphanAgency(agencyId) {
+  // Fetch students and show a quick modal to select who to add
+  fetch('/api/users', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(users) {
+    var students = (users || []).filter(function(u) { return u.role === 'student'; });
+    var html = '<div class="modal-overlay show" id="link-modal" onclick="if(event.target===this)this.remove()">'
+      + '<div class="modal" style="width:400px"><div class="modal-header"><div class="modal-title">Rattacher des élèves</div>'
+      + '<button class="modal-close" onclick="document.getElementById(\'link-modal\').remove()">✕</button></div>'
+      + '<div class="modal-body"><div style="display:grid;gap:6px">'
+      + students.map(function(s) {
+        return '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-base);border-radius:var(--radius-md);cursor:pointer;font-size:13px">'
+          + '<input type="checkbox" value="' + s.id + '" class="link-student-cb" style="accent-color:var(--accent-blue);width:16px;height:16px">'
+          + '<span style="font-weight:600">' + s.display_name + '</span></label>';
+      }).join('')
+      + '</div></div><div class="modal-footer">'
+      + '<button class="btn btn-secondary" onclick="document.getElementById(\'link-modal\').remove()">Annuler</button>'
+      + '<button class="btn btn-primary" onclick="doLinkAgency(' + agencyId + ')">Rattacher</button>'
+      + '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  });
+}
+
+async function doLinkAgency(agencyId) {
+  var ids = [];
+  document.querySelectorAll('.link-student-cb:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); });
+  if (ids.length === 0) { showToast('Sélectionnez au moins un élève', 'error'); return; }
+  try {
+    var res = await fetch('/api/admin/student-agencies/link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ agency_id: agencyId, student_user_ids: ids })
+    });
+    var data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast('Élèves rattachés à ' + data.agency_name, 'success');
+    document.getElementById('link-modal').remove();
+    loadStudentAgencies();
+  } catch(e) { showToast('Erreur réseau', 'error'); }
 }
 
 async function transferDataToStudentAgency(agencyId, agencyName) {

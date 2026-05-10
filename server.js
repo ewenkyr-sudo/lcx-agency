@@ -4354,6 +4354,41 @@ app.get('*', (req, res) => {
 
 // ============ STUDENT AGENCIES MANAGEMENT ============
 
+// Link an existing orphan agency as student_owned
+app.post('/api/admin/student-agencies/link', authMiddleware, adminOnly, async (req, res) => {
+  const { agency_id, student_user_ids } = req.body;
+  if (!agency_id) return res.status(400).json({ error: 'agency_id required' });
+  try {
+    // Verify agency exists and is not current
+    const { rows: ag } = await pool.query('SELECT id, name FROM agencies WHERE id = $1', [agency_id]);
+    if (ag.length === 0) return res.status(404).json({ error: 'Agency not found' });
+    if (agency_id === req.agencyId) return res.status(400).json({ error: 'Cannot link to self' });
+
+    // Create or update agency_metadata
+    await pool.query(
+      `INSERT INTO agency_metadata (agency_id, agency_type, linked_master_agency_id, billing_status, created_for_user_id)
+       VALUES ($1, 'student_owned', $2, 'student_free', $3)
+       ON CONFLICT (agency_id) DO UPDATE SET agency_type = 'student_owned', linked_master_agency_id = $2, billing_status = 'student_free'`,
+      [agency_id, req.agencyId, (student_user_ids && student_user_ids[0]) || null]
+    );
+
+    // Create memberships for students if provided
+    if (student_user_ids && Array.isArray(student_user_ids)) {
+      for (const uid of student_user_ids) {
+        await pool.query(
+          'INSERT INTO agency_memberships (user_id, agency_id, role, is_active, created_by_user_id) VALUES ($1, $2, $3, true, $4) ON CONFLICT (user_id, agency_id) DO UPDATE SET is_active = true, role = $3',
+          [uid, agency_id, 'super_admin', req.user.id]
+        );
+      }
+    }
+
+    res.json({ ok: true, agency_name: ag[0].name });
+  } catch(e) {
+    console.error('Link agency error:', e.message);
+    res.status(500).json({ error: 'Server error: ' + e.message });
+  }
+});
+
 // List student agencies linked to current agency
 app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, res) => {
   try {
@@ -4370,6 +4405,7 @@ app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, re
          OR (a.id IN (SELECT DISTINCT amb.agency_id FROM agency_memberships amb
              JOIN agency_memberships amb2 ON amb.user_id = amb2.user_id
              WHERE amb2.agency_id = $1 AND amb.agency_id != $1))
+         OR (a.id != $1 AND a.id NOT IN (SELECT agency_id FROM agency_metadata) AND a.active = true)
       ORDER BY a.created_at DESC
     `, [req.agencyId]);
     res.json(rows);
