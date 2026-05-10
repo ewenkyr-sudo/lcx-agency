@@ -16,7 +16,12 @@ async function loadStudentAgencies() {
 
   try {
     var res = await fetch('/api/admin/student-agencies', { credentials: 'include' });
-    if (!res.ok) { container.innerHTML = '<div style="color:var(--text-tertiary);text-align:center;padding:20px">' + t('settings.no_student_agencies') + '</div>'; return; }
+    if (!res.ok) {
+      var errData = {};
+      try { errData = await res.json(); } catch(e2) {}
+      container.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:20px">Erreur ' + res.status + ': ' + (errData.error || 'Serveur indisponible') + '</div>';
+      return;
+    }
     var agencies = await res.json();
 
     if (agencies.length === 0) {

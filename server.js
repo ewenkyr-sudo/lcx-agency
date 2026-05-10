@@ -4392,22 +4392,33 @@ app.post('/api/admin/student-agencies/link', authMiddleware, adminOnly, async (r
 // List student agencies linked to current agency
 app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT a.id, a.name, a.created_at,
-        COALESCE(am.agency_type, 'unknown') as agency_type,
-        COALESCE(am.billing_status, 'unknown') as billing_status,
-        (SELECT json_agg(json_build_object('user_id', m.user_id, 'role', m.role, 'display_name', u.display_name))
-         FROM agency_memberships m JOIN users u ON m.user_id = u.id
-         WHERE m.agency_id = a.id AND m.is_active = true) as members
-      FROM agencies a
-      LEFT JOIN agency_metadata am ON a.id = am.agency_id
-      WHERE a.id != $1
-      ORDER BY a.created_at DESC
-    `, [req.agencyId]);
-    res.json(rows);
+    // Try full query with metadata + memberships
+    try {
+      const { rows } = await pool.query(`
+        SELECT a.id, a.name, a.created_at,
+          COALESCE(am.agency_type, 'unknown') as agency_type,
+          COALESCE(am.billing_status, 'unknown') as billing_status,
+          (SELECT json_agg(json_build_object('user_id', m.user_id, 'role', m.role, 'display_name', u.display_name))
+           FROM agency_memberships m JOIN users u ON m.user_id = u.id
+           WHERE m.agency_id = a.id AND m.is_active = true) as members
+        FROM agencies a
+        LEFT JOIN agency_metadata am ON a.id = am.agency_id
+        WHERE a.id != $1
+        ORDER BY a.created_at DESC
+      `, [req.agencyId]);
+      return res.json(rows);
+    } catch(e1) {
+      // Fallback: simple query without metadata/memberships tables
+      console.log('Student agencies fallback query (tables may not exist):', e1.message);
+      const { rows } = await pool.query(
+        "SELECT id, name, created_at, 'unknown' as agency_type, 'unknown' as billing_status, NULL as members FROM agencies WHERE id != $1 ORDER BY created_at DESC",
+        [req.agencyId]
+      );
+      return res.json(rows);
+    }
   } catch(e) {
     console.error('List student agencies error:', e.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error: ' + e.message });
   }
 });
 
