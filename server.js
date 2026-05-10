@@ -4547,20 +4547,25 @@ app.delete('/api/admin/student-agencies/:agencyId/members/:userId', authMiddlewa
 app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, adminOnly, async (req, res) => {
   const targetAgencyId = parseInt(req.params.agencyId);
   try {
-    // Verify ownership
-    const { rows: meta } = await pool.query(
-      'SELECT 1 FROM agency_metadata WHERE agency_id = $1 AND linked_master_agency_id = $2 AND agency_type = $3',
-      [targetAgencyId, req.agencyId, 'student_owned']
-    );
-    if (meta.length === 0) return res.status(403).json({ error: 'Not a student agency of yours' });
+    // Verify agency exists
+    const { rows: ag } = await pool.query('SELECT id FROM agencies WHERE id = $1', [targetAgencyId]);
+    if (ag.length === 0) return res.status(404).json({ error: 'Agency not found' });
 
-    // Get member user_ids
-    const { rows: members } = await pool.query(
-      'SELECT user_id FROM agency_memberships WHERE agency_id = $1 AND is_active = true',
-      [targetAgencyId]
-    );
-    const userIds = members.map(m => m.user_id);
-    if (userIds.length === 0) return res.status(400).json({ error: 'No members in this agency' });
+    // Get member user_ids from memberships, or from request body
+    let userIds = [];
+    try {
+      const { rows: members } = await pool.query(
+        'SELECT user_id FROM agency_memberships WHERE agency_id = $1 AND is_active = true',
+        [targetAgencyId]
+      );
+      userIds = members.map(m => m.user_id);
+    } catch(e) { /* memberships table may not exist */ }
+
+    // Fallback: if no members found, use student_user_ids from body
+    if (userIds.length === 0 && req.body.student_user_ids) {
+      userIds = req.body.student_user_ids;
+    }
+    if (userIds.length === 0) return res.status(400).json({ error: 'No members — pass student_user_ids in body' });
 
     const transferred = {};
 

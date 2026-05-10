@@ -176,11 +176,19 @@ async function doLinkAgency(agencyId) {
 
 async function transferDataToStudentAgency(agencyId, agencyName) {
   if (!confirm((t('settings.confirm_transfer') || 'Transférer toutes les données des élèves vers') + ' ' + agencyName + ' ?')) return;
+  // Get all student user_ids as fallback
+  var studentIds = [];
+  try {
+    var usersRes = await fetch('/api/users', { credentials: 'include' });
+    var users = await usersRes.json();
+    studentIds = (users || []).filter(function(u) { return u.role === 'student'; }).map(function(u) { return u.id; });
+  } catch(e) {}
   try {
     var res = await fetch('/api/admin/student-agencies/' + agencyId + '/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
+      credentials: 'include',
+      body: JSON.stringify({ student_user_ids: studentIds })
     });
     var data = await res.json();
     if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
