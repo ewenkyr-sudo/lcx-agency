@@ -51,6 +51,7 @@ async function loadStudentAgencies() {
         + '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
         + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="transferDataToStudentAgency(' + a.id + ',\'' + a.name.replace(/'/g, "\\'") + '\')">' + (t('settings.transfer_now') || 'Transférer les données') + '</button>'
         + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="forceSwitchAgency(' + a.id + ')">' + (t('settings.force_switch') || 'Activer pour les membres') + '</button>'
+        + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px;color:var(--accent-yellow)" onclick="repairStudentAgency(' + a.id + ',\'' + a.name.replace(/'/g, "\\'") + '\')">Réparer</button>'
         + (!(a.members && a.members.length > 0) ? '<button class="btn btn-primary" style="font-size:11px;padding:6px 14px" onclick="linkOrphanAgency(' + a.id + ')">' + (t('settings.link_students') || 'Rattacher des élèves') + '</button>' : '')
         + '</div>'
         + '</div>';
@@ -172,6 +173,20 @@ async function doLinkAgency(agencyId) {
     showToast('Élèves rattachés à ' + data.agency_name, 'success');
     document.getElementById('link-modal').remove();
     loadStudentAgencies();
+  } catch(e) { showToast('Erreur réseau', 'error'); }
+}
+
+async function repairStudentAgency(agencyId, name) {
+  if (!confirm('Réparer ' + name + ' ? Les leads qui ne sont pas aux membres seront remis dans LCX.')) return;
+  try {
+    var res = await fetch('/api/admin/student-agencies/' + agencyId + '/repair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    var data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast('Réparé : ' + (data.repaired.student_leads_moved_back || 0) + ' leads remis dans LCX. ' + data.remaining_leads + ' leads restent dans ' + name, 'success');
   } catch(e) { showToast('Erreur réseau', 'error'); }
 }
 

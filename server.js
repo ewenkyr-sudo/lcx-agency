@@ -4426,6 +4426,56 @@ app.post('/api/admin/student-agencies/:agencyId/force-switch', authMiddleware, a
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Repair: move back leads that don't belong to agency members
+app.post('/api/admin/student-agencies/:agencyId/repair', authMiddleware, adminOnly, async (req, res) => {
+  const targetAgencyId = parseInt(req.params.agencyId);
+  const masterAgencyId = req.agencyId; // LCX
+  try {
+    // Get actual members of this agency
+    const { rows: members } = await pool.query(
+      'SELECT user_id FROM agency_memberships WHERE agency_id = $1 AND is_active = true',
+      [targetAgencyId]
+    );
+    const memberIds = members.map(m => m.user_id);
+    if (memberIds.length === 0) return res.status(400).json({ error: 'No members found' });
+
+    const repaired = {};
+
+    // Move back student_leads that are in this agency but DON'T belong to members
+    try {
+      const { rowCount } = await pool.query(
+        'UPDATE student_leads SET agency_id = $1 WHERE agency_id = $2 AND user_id != ALL($3)',
+        [masterAgencyId, targetAgencyId, memberIds]
+      );
+      repaired.student_leads_moved_back = rowCount;
+    } catch(e) { repaired.student_leads = 'error: ' + e.message; }
+
+    // Move back outreach_leads that don't belong to members
+    try {
+      const { rowCount } = await pool.query(
+        'UPDATE outreach_leads SET agency_id = $1 WHERE agency_id = $2 AND user_id != ALL($3)',
+        [masterAgencyId, targetAgencyId, memberIds]
+      );
+      repaired.outreach_leads_moved_back = rowCount;
+    } catch(e) { repaired.outreach_leads = 'error: ' + e.message; }
+
+    // Count remaining leads for members
+    const { rows: remaining } = await pool.query(
+      'SELECT COUNT(*) as count FROM student_leads WHERE agency_id = $1 AND user_id = ANY($2)',
+      [targetAgencyId, memberIds]
+    );
+
+    res.json({
+      ok: true,
+      member_ids: memberIds,
+      repaired,
+      remaining_leads: parseInt(remaining[0].count)
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Debug: check memberships for an agency
 app.get('/api/admin/student-agencies/:agencyId/debug', authMiddleware, adminOnly, async (req, res) => {
   const targetId = parseInt(req.params.agencyId);
