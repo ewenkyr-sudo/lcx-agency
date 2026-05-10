@@ -4394,18 +4394,14 @@ app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, re
   try {
     const { rows } = await pool.query(`
       SELECT a.id, a.name, a.created_at,
-        COALESCE(am.agency_type, 'student_owned') as agency_type,
-        COALESCE(am.billing_status, 'student_free') as billing_status,
+        COALESCE(am.agency_type, 'unknown') as agency_type,
+        COALESCE(am.billing_status, 'unknown') as billing_status,
         (SELECT json_agg(json_build_object('user_id', m.user_id, 'role', m.role, 'display_name', u.display_name))
          FROM agency_memberships m JOIN users u ON m.user_id = u.id
          WHERE m.agency_id = a.id AND m.is_active = true) as members
       FROM agencies a
       LEFT JOIN agency_metadata am ON a.id = am.agency_id
-      WHERE (am.linked_master_agency_id = $1 AND am.agency_type = 'student_owned')
-         OR (a.id IN (SELECT DISTINCT amb.agency_id FROM agency_memberships amb
-             JOIN agency_memberships amb2 ON amb.user_id = amb2.user_id
-             WHERE amb2.agency_id = $1 AND amb.agency_id != $1))
-         OR (a.id != $1 AND a.id NOT IN (SELECT agency_id FROM agency_metadata) AND a.active = true)
+      WHERE a.id != $1
       ORDER BY a.created_at DESC
     `, [req.agencyId]);
     res.json(rows);
