@@ -4384,6 +4384,28 @@ app.post('/api/admin/student-agencies/link', authMiddleware, adminOnly, async (r
   }
 });
 
+// Debug: check memberships for an agency
+app.get('/api/admin/student-agencies/:agencyId/debug', authMiddleware, adminOnly, async (req, res) => {
+  const targetId = parseInt(req.params.agencyId);
+  try {
+    const agency = await pool.query('SELECT id, name, owner_id FROM agencies WHERE id = $1', [targetId]);
+    let memberships = [];
+    try { memberships = (await pool.query('SELECT * FROM agency_memberships WHERE agency_id = $1', [targetId])).rows; } catch(e) {}
+    let metadata = null;
+    try { metadata = (await pool.query('SELECT * FROM agency_metadata WHERE agency_id = $1', [targetId])).rows[0]; } catch(e) {}
+    const leads = await pool.query('SELECT COUNT(*) as count FROM outreach_leads WHERE agency_id = $1', [targetId]);
+    let studentLeads = { rows: [{ count: 0 }] };
+    try { studentLeads = await pool.query('SELECT COUNT(*) as count FROM student_leads WHERE agency_id = $1', [targetId]); } catch(e) {}
+    res.json({
+      agency: agency.rows[0],
+      memberships,
+      metadata,
+      outreach_leads_count: parseInt(leads.rows[0].count),
+      student_leads_count: parseInt(studentLeads.rows[0].count)
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // List student agencies linked to current agency
 app.get('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, res) => {
   try {
