@@ -464,7 +464,7 @@ async function initDB() {
   `);
 
   // Add agency_id columns individually (each in its own try/catch so one failure doesn't block others)
-  const agencyTables = ['users', 'models', 'team_members', 'students', 'tasks', 'outreach_leads', 'chatter_shifts', 'settings', 'resources', 'planning_shifts', 'leave_requests', 'model_revenue_objectives', 'payments', 'weekly_objectives', 'activity_log'];
+  const agencyTables = ['users', 'models', 'team_members', 'students', 'tasks', 'outreach_leads', 'chatter_shifts', 'settings', 'resources', 'planning_shifts', 'leave_requests', 'model_revenue_objectives', 'payments', 'weekly_objectives', 'activity_log', 'student_leads', 'student_recruits'];
   for (const table of agencyTables) {
     try {
       await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS agency_id INTEGER`);

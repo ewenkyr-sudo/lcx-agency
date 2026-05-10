@@ -223,6 +223,8 @@
   "settings.select_at_least_one": "Select at least one student",
   "settings.agency_created": "Agency created",
   "settings.create": "Create",
+  "settings.transfer_now": "Transfer data",
+  "settings.confirm_transfer": "Transfer all student data to",
   "settings.created": "Created on",
   "cmd.placeholder": "Search for a page, model, or action...",
   "cmd.no_results": "No results found",

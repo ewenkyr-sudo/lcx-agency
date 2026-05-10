@@ -4427,8 +4427,15 @@ app.post('/api/admin/student-agencies', authMiddleware, adminOnly, async (req, r
       transferred.outreach = rowCount;
     }
 
-    // student_leads and student_models have no agency_id column
-    // They are linked via user_id — no transfer needed
+    if (transfer_data?.student_leads) {
+      try {
+        const { rowCount } = await client.query(
+          'UPDATE student_leads SET agency_id = $1 WHERE user_id = ANY($2) AND (agency_id = $3 OR agency_id IS NULL)',
+          [newAgencyId, student_user_ids, req.agencyId]
+        );
+        transferred.student_leads = rowCount;
+      } catch(e) { console.log('student_leads transfer skipped:', e.message); }
+    }
 
     await client.query('COMMIT');
 
@@ -4490,6 +4497,59 @@ app.delete('/api/admin/student-agencies/:agencyId/members/:userId', authMiddlewa
     res.json({ ok: true });
   } catch(e) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Transfer data to an existing student agency
+app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, adminOnly, async (req, res) => {
+  const targetAgencyId = parseInt(req.params.agencyId);
+  try {
+    // Verify ownership
+    const { rows: meta } = await pool.query(
+      'SELECT 1 FROM agency_metadata WHERE agency_id = $1 AND linked_master_agency_id = $2 AND agency_type = $3',
+      [targetAgencyId, req.agencyId, 'student_owned']
+    );
+    if (meta.length === 0) return res.status(403).json({ error: 'Not a student agency of yours' });
+
+    // Get member user_ids
+    const { rows: members } = await pool.query(
+      'SELECT user_id FROM agency_memberships WHERE agency_id = $1 AND is_active = true',
+      [targetAgencyId]
+    );
+    const userIds = members.map(m => m.user_id);
+    if (userIds.length === 0) return res.status(400).json({ error: 'No members in this agency' });
+
+    const transferred = {};
+
+    // Transfer outreach_leads
+    const { rowCount: outreach } = await pool.query(
+      'UPDATE outreach_leads SET agency_id = $1 WHERE user_id = ANY($2) AND (agency_id = $3 OR agency_id IS NULL)',
+      [targetAgencyId, userIds, req.agencyId]
+    );
+    transferred.outreach_leads = outreach;
+
+    // Transfer student_leads
+    try {
+      const { rowCount: sLeads } = await pool.query(
+        'UPDATE student_leads SET agency_id = $1 WHERE user_id = ANY($2) AND (agency_id = $3 OR agency_id IS NULL)',
+        [targetAgencyId, userIds, req.agencyId]
+      );
+      transferred.student_leads = sLeads;
+    } catch(e) { transferred.student_leads = 'skipped'; }
+
+    // Transfer student_recruits
+    try {
+      const { rowCount: recruits } = await pool.query(
+        'UPDATE student_recruits SET agency_id = $1 WHERE user_id = ANY($2) AND (agency_id = $3 OR agency_id IS NULL)',
+        [targetAgencyId, userIds, req.agencyId]
+      );
+      transferred.student_recruits = recruits;
+    } catch(e) { transferred.student_recruits = 'skipped'; }
+
+    res.json({ ok: true, transferred, user_ids: userIds });
+  } catch(e) {
+    console.error('Transfer error:', e.message);
+    res.status(500).json({ error: 'Server error: ' + e.message });
   }
 });
 

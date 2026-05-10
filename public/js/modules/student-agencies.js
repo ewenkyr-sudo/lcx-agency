@@ -42,7 +42,8 @@ async function loadStudentAgencies() {
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + (t('settings.created') || 'Créée le') + ' ' + date + ' · '
         + '<span style="color:var(--accent-green)">' + a.billing_status + '</span></div></div>'
         + '<span class="badge badge-blue" style="font-size:9px">' + a.agency_type + '</span></div>'
-        + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (members || '<span style="color:var(--text-muted);font-size:12px">Aucun membre</span>') + '</div>'
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + (members || '<span style="color:var(--text-muted);font-size:12px">Aucun membre</span>') + '</div>'
+        + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="transferDataToStudentAgency(' + a.id + ',\'' + a.name.replace(/'/g, "\\'") + '\')">' + (t('settings.transfer_now') || 'Transférer les données') + '</button>'
         + '</div>';
     }).join('') + '</div>';
   } catch(e) {
@@ -120,6 +121,23 @@ async function createStudentAgency() {
     showToast((t('settings.agency_created') || 'Agence créée !') + ' — ' + name, 'success');
     document.getElementById('create-student-agency-modal').remove();
     loadStudentAgencies();
+  } catch(e) {
+    showToast('Erreur réseau', 'error');
+  }
+}
+
+async function transferDataToStudentAgency(agencyId, agencyName) {
+  if (!confirm((t('settings.confirm_transfer') || 'Transférer toutes les données des élèves vers') + ' ' + agencyName + ' ?')) return;
+  try {
+    var res = await fetch('/api/admin/student-agencies/' + agencyId + '/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    var data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    var msg = 'Transféré : ' + (data.transferred.outreach_leads || 0) + ' outreach, ' + (data.transferred.student_leads || 0) + ' leads, ' + (data.transferred.student_recruits || 0) + ' recrues';
+    showToast(msg, 'success');
   } catch(e) {
     showToast('Erreur réseau', 'error');
   }

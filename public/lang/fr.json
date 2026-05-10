@@ -223,6 +223,8 @@
   "settings.select_at_least_one": "Sélectionnez au moins un élève",
   "settings.agency_created": "Agence créée",
   "settings.create": "Créer",
+  "settings.transfer_now": "Transférer les données",
+  "settings.confirm_transfer": "Transférer toutes les données des élèves vers",
   "settings.created": "Créée le",
   "cmd.placeholder": "Rechercher une page, un modèle, une action...",
   "cmd.no_results": "Aucun résultat",
