@@ -4384,6 +4384,27 @@ app.post('/api/admin/student-agencies/link', authMiddleware, adminOnly, async (r
   }
 });
 
+// Force switch users to a specific agency (admin tool)
+app.post('/api/admin/student-agencies/:agencyId/force-switch', authMiddleware, adminOnly, async (req, res) => {
+  const targetId = parseInt(req.params.agencyId);
+  try {
+    // Get members of this agency
+    const { rows: members } = await pool.query(
+      'SELECT user_id FROM agency_memberships WHERE agency_id = $1 AND is_active = true AND role != $2',
+      [targetId, 'model']
+    );
+    const userIds = members.map(m => m.user_id);
+    if (userIds.length === 0) return res.json({ ok: true, switched: 0 });
+
+    // Set their current_agency_id only (keep agency_id = LCX for coaching)
+    const { rowCount } = await pool.query(
+      'UPDATE users SET current_agency_id = $1 WHERE id = ANY($2)',
+      [targetId, userIds]
+    );
+    res.json({ ok: true, switched: rowCount, user_ids: userIds });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Debug: check memberships for an agency
 app.get('/api/admin/student-agencies/:agencyId/debug', authMiddleware, adminOnly, async (req, res) => {
   const targetId = parseInt(req.params.agencyId);

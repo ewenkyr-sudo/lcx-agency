@@ -48,8 +48,9 @@ async function loadStudentAgencies() {
         + '<span style="color:var(--accent-green)">' + a.billing_status + '</span></div></div>'
         + '<span class="badge badge-blue" style="font-size:9px">' + a.agency_type + '</span></div>'
         + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + (members || '<span style="color:var(--text-muted);font-size:12px">Aucun membre</span>') + '</div>'
-        + '<div style="display:flex;gap:6px;margin-top:4px">'
+        + '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'
         + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="transferDataToStudentAgency(' + a.id + ',\'' + a.name.replace(/'/g, "\\'") + '\')">' + (t('settings.transfer_now') || 'Transférer les données') + '</button>'
+        + '<button class="btn btn-secondary" style="font-size:11px;padding:6px 14px" onclick="forceSwitchAgency(' + a.id + ')">' + (t('settings.force_switch') || 'Activer pour les membres') + '</button>'
         + (!(a.members && a.members.length > 0) ? '<button class="btn btn-primary" style="font-size:11px;padding:6px 14px" onclick="linkOrphanAgency(' + a.id + ')">' + (t('settings.link_students') || 'Rattacher des élèves') + '</button>' : '')
         + '</div>'
         + '</div>';
@@ -171,6 +172,20 @@ async function doLinkAgency(agencyId) {
     showToast('Élèves rattachés à ' + data.agency_name, 'success');
     document.getElementById('link-modal').remove();
     loadStudentAgencies();
+  } catch(e) { showToast('Erreur réseau', 'error'); }
+}
+
+async function forceSwitchAgency(agencyId) {
+  if (!confirm('Basculer tous les membres de cette agence ? Ils verront les données de cette agence à la prochaine connexion.')) return;
+  try {
+    var res = await fetch('/api/admin/student-agencies/' + agencyId + '/force-switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    });
+    var data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast(data.switched + ' membre(s) basculé(s)', 'success');
   } catch(e) { showToast('Erreur réseau', 'error'); }
 }
 
