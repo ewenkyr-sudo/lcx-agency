@@ -1748,7 +1748,8 @@ app.delete('/api/call-requests/:id', authMiddleware, async (req, res) => {
 
 // ============ STUDENT RECRUITS (modèles recrutées) ============
 app.get('/api/student-recruits', authMiddleware, async (req, res) => {
-  if (req.user.role === 'student') {
+  var _asR = await isActingAsStudent(req);
+  if (_asR) {
     const sharedIds = await getSharedOutreachIds(req.user.id);
     const { rows } = await pool.query('SELECT * FROM student_recruits WHERE user_id = ANY($1) ORDER BY created_at DESC', [sharedIds]);
     return res.json(rows);
@@ -1953,6 +1954,18 @@ app.get('/api/student-leads/coaching-overview', authMiddleware, adminOnly, async
   res.json(results);
 });
 
+// Helper: check if user acts as student in a student_owned agency
+async function isActingAsStudent(req) {
+  if (req.user.role === 'student') return true;
+  if (req.user.role === 'super_admin' || req.user.role === 'admin') {
+    try {
+      const r = await pool.query('SELECT agency_type FROM agency_metadata WHERE agency_id = $1', [req.agencyId]);
+      return r.rows[0]?.agency_type === 'student_owned';
+    } catch(e) { return false; }
+  }
+  return false;
+}
+
 // ============ STUDENT OUTREACH PAIRS ============
 // Helper: get all user IDs sharing outreach with this student
 async function getSharedOutreachIds(studentUserId) {
@@ -2090,7 +2103,12 @@ app.get('/api/student-leads', authMiddleware, async (req, res) => {
   const market = req.query.market || 'fr';
   const marketFilter = " AND COALESCE(sl.market, 'fr') = '" + (market === 'us' ? 'us' : 'fr') + "'";
 
-  if (req.user.role === 'student') {
+  // In student_owned agencies, super_admin acts as student for their own data
+  var isStudentOwned = false;
+  try { var metaCheck = await pool.query('SELECT agency_type FROM agency_metadata WHERE agency_id = $1', [req.agencyId]); isStudentOwned = metaCheck.rows[0]?.agency_type === 'student_owned'; } catch(e) {}
+  var actAsStudent = req.user.role === 'student' || (isStudentOwned && (req.user.role === 'super_admin' || req.user.role === 'admin'));
+
+  if (actAsStudent && !studentUserId) {
     const sharedIds = await getSharedOutreachIds(req.user.id);
     const { rows } = await pool.query('SELECT sl.*, ab.display_name as added_by_name, lm.display_name as modified_by_name FROM student_leads sl LEFT JOIN users ab ON sl.added_by = ab.id LEFT JOIN users lm ON sl.last_modified_by = lm.id WHERE sl.user_id = ANY($1)' + marketFilter + ' ORDER BY sl.created_at DESC', [sharedIds]);
     return res.json(rows);
@@ -2122,7 +2140,8 @@ app.post('/api/student-leads', authMiddleware, async (req, res) => {
 
   // Déterminer le propriétaire du lead
   let ownerId;
-  if (req.user.role === 'student') {
+  var _actStudent = await isActingAsStudent(req);
+  if (_actStudent && !student_user_id) {
     ownerId = req.user.id;
   } else if (req.user.role === 'outreach' && student_user_id) {
     if (leadMarket === 'us') return res.status(403).json({ error: 'Outreach US réservé aux élèves' });
@@ -2195,7 +2214,8 @@ app.delete('/api/student-leads/all', authMiddleware, async (req, res) => {
   const market = req.query.market || 'fr';
   const mf = market === 'us' ? 'us' : 'fr';
   let uid;
-  if (req.user.role === 'student') uid = req.user.id;
+  var _as = await isActingAsStudent(req);
+  if (_as) uid = req.user.id;
   else if ((req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin') && req.query.student_user_id) uid = req.query.student_user_id;
   else return res.status(400).json({ error: 'Accès refusé' });
   const sharedIds = await getSharedOutreachIds(uid);
@@ -2215,7 +2235,8 @@ app.delete('/api/student-leads/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/student-leads/stats', authMiddleware, async (req, res) => {
   let uid = req.query.student_user_id || req.query.user_id;
-  if (req.user.role === 'student') uid = req.user.id;
+  var _asS = await isActingAsStudent(req);
+  if (_asS && !uid) uid = req.user.id;
   if (uid && req.user.role === 'outreach') {
     const allowed = await canAccessStudentOutreach(req.user.id, req.user.role, uid);
     if (!allowed) return res.status(403).json({ error: 'Accès refusé' });
