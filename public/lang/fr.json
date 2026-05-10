@@ -225,6 +225,7 @@
   "settings.create": "Créer",
   "settings.transfer_now": "Transférer les données",
   "settings.confirm_transfer": "Transférer toutes les données des élèves vers",
+  "settings.force_switch": "Activer pour les membres",
   "settings.created": "Créée le",
   "cmd.placeholder": "Rechercher une page, un modèle, une action...",
   "cmd.no_results": "Aucun résultat",

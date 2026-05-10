@@ -225,6 +225,7 @@
   "settings.create": "Create",
   "settings.transfer_now": "Transfer data",
   "settings.confirm_transfer": "Transfer all student data to",
+  "settings.force_switch": "Activate for members",
   "settings.created": "Created on",
   "cmd.placeholder": "Search for a page, model, or action...",
   "cmd.no_results": "No results found",
