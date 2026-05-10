@@ -4346,11 +4346,6 @@ app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ============ CATCH-ALL (must be last route) ============
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
 
 // ============ STUDENT AGENCIES MANAGEMENT ============
 
@@ -4601,6 +4596,11 @@ app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, admin
   }
 });
 
+// ============ CATCH-ALL (must be last route) ============
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
 // ============ START ============
 async function start() {
   await initDB();
