@@ -71,7 +71,8 @@ function renderMOStep() {
       { key: 'of', label: '💎 OnlyFans', icon: '💎', color: '#0080FF' },
       { key: 'fansly', label: '🌸 Fansly', icon: '🌸', color: '#E040FB' },
       { key: 'fanvue', label: '💚 Fanvue', icon: '💚', color: '#10B981' },
-      { key: 'mym', label: '🔥 MYM', icon: '🔥', color: '#F97316' }
+      { key: 'mym', label: '🔥 MYM', icon: '🔥', color: '#F97316' },
+      { key: 'reveal', label: '👀 Reveal', icon: '👀', color: '#E11D48' }
     ];
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Plateformes adultes</h3>'
       + '<p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Sur quelles plateformes la créatrice est-elle active ?</p>'
@@ -87,7 +88,9 @@ function renderMOStep() {
           + moField(t('mo.link'), 'url', 'mo-' + p.key + '-link', 'https://...')
           + moField(t('mo.subscribers'), 'number', 'mo-' + p.key + '-subs', '0')
           + moField(t('mo.monthly_revenue'), 'number', 'mo-' + p.key + '-rev', '0')
-          + '</div></div></div>';
+          + '</div>'
+          + (p.key === 'reveal' ? moField('Page de la modèle sur dashboard.reveal.me (pour l\'auto-post)', 'url', 'mo-reveal-dashboard', 'https://dashboard.reveal.me/models/...') : '')
+          + '</div></div>';
       }).join('');
     // Restore values
     setTimeout(function() {
@@ -97,6 +100,7 @@ function renderMOStep() {
         s('mo-' + p.key + '-subs', moData[p.key + '_subscribers'] || moData[p.key === 'of' ? 'of_subscribers' : p.key + '_subscribers']);
         s('mo-' + p.key + '-rev', moData[p.key + '_revenue_monthly'] || moData[p.key === 'of' ? 'of_revenue_monthly' : p.key + '_revenue_monthly']);
       });
+      var rd = document.getElementById('mo-reveal-dashboard'); if (rd && moData.reveal_dashboard_url) rd.value = moData.reveal_dashboard_url;
     }, 20);
   } else if (moStep === 4) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Contenu</h3>'
@@ -167,8 +171,8 @@ function saveMOStep() {
     if (moData.twitter_handle) plats.push('twitter');
     moData.platforms = plats;
   } else if (moStep === 3) {
-    var platKeys = ['of', 'fansly', 'fanvue', 'mym'];
-    var platNames = { of: 'onlyfans', fansly: 'fansly', fanvue: 'fanvue', mym: 'mym' };
+    var platKeys = ['of', 'fansly', 'fanvue', 'mym', 'reveal'];
+    var platNames = { of: 'onlyfans', fansly: 'fansly', fanvue: 'fanvue', mym: 'mym', reveal: 'reveal' };
     platKeys.forEach(function(k) {
       var cb = document.getElementById('mo-has-' + k);
       moData['has_' + k + '_account'] = cb ? cb.checked : false;
@@ -176,7 +180,8 @@ function saveMOStep() {
         moData[k + '_link'] = g('mo-' + k + '-link');
         moData[k + '_subscribers'] = gn('mo-' + k + '-subs');
         moData[k + '_revenue_monthly'] = parseFloat(g('mo-' + k + '-rev')) || 0;
-        if (moData[k + '_link'] && !(moData.platforms || []).includes(platNames[k])) {
+        if (k === 'reveal') moData.reveal_dashboard_url = g('mo-reveal-dashboard');
+        if ((moData[k + '_link'] || (k === 'reveal' && moData.reveal_dashboard_url)) && !(moData.platforms || []).includes(platNames[k])) {
           moData.platforms = (moData.platforms || []).concat([platNames[k]]);
         }
       }

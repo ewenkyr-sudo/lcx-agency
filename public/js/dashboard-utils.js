@@ -167,8 +167,8 @@ function extractUsernameFromUrl(url) {
 // Account avatar helper
 function accountAvatarHTML(accountId, handle, platform, size) {
   size = size || 36;
-  var platColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#0080FF', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316' };
-  var platIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
+  var platColors = { instagram: '#E4405F', tiktok: '#00f2ea', onlyfans: '#0080FF', fansly: '#E040FB', fanvue: '#10B981', mym: '#F97316', reveal: '#E11D48' };
+  var platIcons = { instagram: '📸', tiktok: '🎵', onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥', reveal: '👀' };
   var color = platColors[platform] || '#3B82F6';
   var initial = (handle || '?').replace(/^@/, '').charAt(0).toUpperCase();
   var avatarUrl = (platform === 'instagram' || platform === 'tiktok') ? 'https://unavatar.io/' + platform + '/' + (handle||'').replace(/^@/,'') : '/api/accounts/' + accountId + '/avatar';
