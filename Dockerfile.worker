@@ -1,0 +1,9 @@
+# Worker auto-post Reveal (Render > Background Worker > Docker)
+# L'image Playwright contient déjà Chromium et ses dépendances système.
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm install --no-save playwright@1.63.0
+COPY . .
+ENV NODE_ENV=production
+CMD ["node", "worker/index.js"]

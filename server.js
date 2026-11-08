@@ -4715,6 +4715,9 @@ app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, admin
   }
 });
 
+// ============ AUTO-POST REVEAL ============
+app.use('/api/autopost', require('./routes/autopost'));
+
 // ============ CATCH-ALL (must be last route) ============
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route not found' });
@@ -4726,6 +4729,9 @@ async function start() {
   await seedData();
   await migrateToMultiAgency();
   await migrateToMultiMembership();
+  await require('./db/autopost-schema').initAutopostDB();
+  // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
+  if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();
 
   // Pass broadcast to scraping module
   setBroadcast(broadcast);

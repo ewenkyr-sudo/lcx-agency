@@ -1,0 +1,188 @@
+// Pilotage de dashboard.reveal.me avec Playwright (parcours relevés sur l'interface réelle, nov. 2026).
+// Si Reveal change son interface, c'est ce fichier qu'il faut adapter.
+const BASE = process.env.REVEAL_BASE || 'https://dashboard.reveal.me';
+
+const AUDIENCE_LABEL = { subscribers: 'Abonnés uniquement', public: 'Feed public', video: 'Feed vidéo' };
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const human = (min = 900, max = 2600) => sleep(min + Math.random() * (max - min));
+
+class SessionExpired extends Error {}
+
+// Élément visible (bouton, option ou texte), en priorité dans la fenêtre du dessus
+async function visible(page, text, { exact = false, timeout = 30000 } = {}) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    for (const loc of [page.getByRole('button', { name: text, exact }), page.getByRole('radio', { name: text, exact }), page.getByText(text, { exact })]) {
+      const n = await loc.count();
+      for (let i = n - 1; i >= 0; i--) {
+        const el = loc.nth(i);
+        try { if (await el.isVisible() && await el.isEnabled()) return el; } catch (e) { /* élément détaché */ }
+      }
+    }
+    await sleep(400);
+  }
+  throw new Error(`Élément introuvable à l'écran : « ${text} »`);
+}
+
+async function isShown(page, text) {
+  const loc = page.getByText(text, { exact: true });
+  const n = await loc.count();
+  for (let i = 0; i < n; i++) if (await loc.nth(i).isVisible().catch(() => false)) return true;
+  return false;
+}
+
+async function waitGone(page, text, timeout = 120000) {
+  const end = Date.now() + timeout;
+  while (await isShown(page, text)) {
+    if (Date.now() > end) throw new Error(`« ${text} » toujours affiché après ${Math.round(timeout / 1000)} s`);
+    await sleep(800);
+  }
+}
+
+// Ouvre une page modèle et vérifie qu'on est bien connecté
+async function openModelPage(page, revealId, sub) {
+  await page.goto(`${BASE}/models/${revealId}/${sub}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  try {
+    await visible(page, 'Publications', { exact: true, timeout: 25000 });
+  } catch (e) {
+    const url = page.url();
+    if (/login|connexion|sign-?in/i.test(url) || await isShown(page, 'Se connecter') || await isShown(page, 'Connexion')) {
+      throw new SessionExpired('Session Reveal expirée : reconnecte le compte agence dans le CRM');
+    }
+    throw new Error("La page modèle Reveal ne s'affiche pas (identifiant Reveal faux ou site en panne ?)");
+  }
+  await human(1500, 3000);
+}
+
+async function typeHuman(locator, text) {
+  await locator.click();
+  await locator.fill('');
+  for (const ch of text) await locator.pressSequentially(ch, { delay: 30 + Math.random() * 90 });
+}
+
+// Import d'un fichier dans la fenêtre "Ajouter des médias" (commune aux posts et stories)
+async function importMedia(page, filePath) {
+  await page.getByText('Ajouter des médias', { exact: true }).last().waitFor({ timeout: 20000 });
+  await page.locator('[role=dialog] input[type=file]').last().setInputFiles(filePath);
+  await human(1200, 2200);
+  await (await visible(page, 'Importer', { exact: true })).click();
+  await waitGone(page, 'Ajouter des médias', 10 * 60000); // grosses vidéos : jusqu'à 10 min
+  await human(2500, 4000);
+}
+
+// ---------- POST et REEL ----------
+async function publishPost(page, { revealId, filePath, caption, audience, dryRun }) {
+  await openModelPage(page, revealId, 'publications');
+  await (await visible(page, 'Publiez pour être mis en avant')).click();
+  await visible(page, 'Nouveau post', { exact: true });
+  await human();
+  await (await visible(page, AUDIENCE_LABEL[audience] || AUDIENCE_LABEL.subscribers)).click();
+  await human();
+  if (caption) await typeHuman(page.locator('[role=dialog] textarea[name=message]').last(), caption);
+  await human();
+  await (await visible(page, "Importer depuis l'ordinateur")).click();
+  await importMedia(page, filePath);
+  const btn = await visible(page, 'Poster', { exact: true });
+  if (dryRun) return { dryRun: true };
+  await btn.click();
+  await waitGone(page, 'Nouveau post', 120000);
+  return { ok: true };
+}
+
+// ---------- STORY ----------
+async function publishStory(page, { revealId, filePath, caption, audience, dryRun }) {
+  await openModelPage(page, revealId, 'stories');
+  await (await visible(page, 'Nouvelle story')).click();
+  await visible(page, 'Créer une nouvelle story', { exact: true });
+  await human();
+  await (await visible(page, 'Upload', { exact: true })).click();
+  await importMedia(page, filePath);
+  if (caption) await typeHuman(page.locator('[role=dialog] textarea[name=content]').last(), caption.slice(0, 280));
+  // 1er interrupteur = "Story publique"
+  const sw = page.locator('[role=dialog] [role=switch]').first();
+  const wantPublic = audience !== 'subscribers';
+  if (((await sw.getAttribute('aria-checked')) === 'true') !== wantPublic) { await sw.click(); await human(); }
+  const btn = await visible(page, 'Publier la story', { exact: true });
+  if (dryRun) return { dryRun: true };
+  await btn.click();
+  await waitGone(page, 'Créer une nouvelle story', 120000);
+  return { ok: true };
+}
+
+// ---------- lecture des posts (j'aime) ----------
+// Le dashboard charge les posts depuis l'API Reveal (…/models/<id>/posts). On écoute cette réponse.
+const LIKE_KEYS = ['likesCount', 'likes_count', 'likeCount', 'nbLikes', 'totalLikes', 'likes', 'reactionsCount'];
+const DATE_KEYS = ['publishedAt', 'published_at', 'publicationDate', 'scheduledAt', 'scheduled_at', 'createdAt', 'created_at', 'date'];
+
+function findPostArray(json) {
+  if (Array.isArray(json)) return json;
+  if (json && typeof json === 'object') {
+    for (const k of ['data', 'items', 'posts', 'results', 'content', 'rows']) {
+      if (Array.isArray(json[k])) return json[k];
+      if (json[k] && typeof json[k] === 'object') { const a = findPostArray(json[k]); if (a.length) return a; }
+    }
+  }
+  return [];
+}
+function pick(o, keys) {
+  for (const k of keys) {
+    if (o[k] == null) continue;
+    if (Array.isArray(o[k])) return o[k].length;
+    if (typeof o[k] === 'object' && o[k].count != null) return o[k].count;
+    return o[k];
+  }
+  for (const v of Object.values(o)) if (v && typeof v === 'object' && !Array.isArray(v)) { const r = pick(v, keys); if (r != null) return r; }
+  return null;
+}
+function parsePosts(json) {
+  return findPostArray(json).filter(p => p && typeof p === 'object' && (p.id || p.uuid)).map(p => {
+    const likes = Number(pick(p, LIKE_KEYS));
+    const d = pick(p, DATE_KEYS);
+    return { id: String(p.id || p.uuid), likes: Number.isFinite(likes) ? likes : null, date: d ? new Date(d) : null, raw: p };
+  });
+}
+
+async function collectPosts(page, revealId) {
+  const found = [];
+  const re = new RegExp(`/models/${revealId}/posts(\\?|$)`);
+  const onResp = async resp => {
+    try {
+      if (!re.test(resp.url()) || resp.request().method() !== 'GET') return;
+      const ct = resp.headers()['content-type'] || '';
+      if (!ct.includes('json')) return;
+      found.push(...parsePosts(await resp.json()));
+    } catch (e) { /* réponse illisible */ }
+  };
+  page.on('response', onResp);
+  try {
+    await openModelPage(page, revealId, 'publications');
+    await sleep(4000);
+    // fait défiler pour charger plus de posts
+    for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 4000); await sleep(1500); }
+  } finally { page.off('response', onResp); }
+  const byId = new Map();
+  for (const p of found) byId.set(p.id, p);
+  return [...byId.values()];
+}
+
+// ---------- stats du jour (page Statistiques, vue "Jour") ----------
+function parseEuro(s) { return s == null ? null : Number(String(s).replace(/\s| /g, '').replace(',', '.').replace('€', '')); }
+async function collectDailyStats(page, revealId) {
+  await openModelPage(page, revealId, '');
+  try { await (await visible(page, 'Jour', { exact: true, timeout: 10000 })).click(); await sleep(3000); } catch (e) { /* vue par défaut */ }
+  const text = await page.evaluate(() => document.body.innerText);
+  const grab = label => { const m = new RegExp(label + '\\s*\\n+\\s*([\\d\\s\\u202f.,]+)').exec(text); return m ? m[1].trim() : null; };
+  return {
+    revenue: parseEuro(grab('Revenu modèle')),
+    new_subs: grab('Nouveaux abonnés') ? parseInt(grab('Nouveaux abonnés').replace(/\D/g, ''), 10) : null,
+    sales: grab('Ventes') ? parseInt(grab('Ventes').replace(/\D/g, ''), 10) : null,
+  };
+}
+
+async function checkSession(page) {
+  await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  try { await visible(page, 'Dashboard', { exact: true, timeout: 25000 }); return true; } catch (e) { return false; }
+}
+
+module.exports = { BASE, publishPost, publishStory, collectPosts, collectDailyStats, checkSession, parsePosts, SessionExpired };
