@@ -20,3 +20,41 @@ services:
         fromDatabase:
           name: lcx-agency-db
           property: connectionString
+      - key: AUTOPOST_S3_ENDPOINT
+        sync: false
+      - key: AUTOPOST_S3_BUCKET
+        sync: false
+      - key: AUTOPOST_S3_KEY
+        sync: false
+      - key: AUTOPOST_S3_SECRET
+        sync: false
+
+  # Auto-post Reveal : publie posts / reels / stories et collecte les stats
+  # (plan payant obligatoire : Chromium a besoin d'au moins 1 Go de RAM)
+  - type: worker
+    name: lcx-autopost-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile.worker
+    plan: standard
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lcx-agency-db
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: lcx-agency-dashboard
+          envVarKey: JWT_SECRET
+      - key: AUTOPOST_S3_ENDPOINT
+        sync: false
+      - key: AUTOPOST_S3_BUCKET
+        sync: false
+      - key: AUTOPOST_S3_KEY
+        sync: false
+      - key: AUTOPOST_S3_SECRET
+        sync: false
+      - key: AUTOPOST_PROXY
+        sync: false

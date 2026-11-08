@@ -3,3 +3,4 @@ agency.db
 .env
 .DS_Store
 .claude/
+data/
