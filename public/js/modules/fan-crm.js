@@ -67,7 +67,7 @@ function renderFanList(fans) {
   var el = document.getElementById('fan-list');
   if (!el) return;
   if (fans.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:40px">' + t('fan.no_fans') + '</div>'; return; }
-  var platIcons = { onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
+  var platIcons = { onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥', reveal: '👀' };
   el.innerHTML = '<table class="table mobile-cards"><thead><tr><th>Fan</th><th>' + t('fan.spent_col') + '</th><th>' + t('fan.tags_col') + '</th><th>' + t('fan.last_interaction_col') + '</th><th>' + t('fan.sub_col') + '</th><th></th></tr></thead><tbody>'
     + fans.map(function(f) {
       var seg = getFanSegment(f);
@@ -109,7 +109,7 @@ async function openFanDetail(fanId) {
   var f = data.fan, ints = data.interactions || [];
   var seg = getFanSegment(f);
   var tags = []; try { tags = typeof f.tags === 'string' ? JSON.parse(f.tags) : (f.tags || []); } catch(e) {}
-  var platIcons = { onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥' };
+  var platIcons = { onlyfans: '💎', fansly: '🌸', fanvue: '💚', mym: '🔥', reveal: '👀' };
 
   var html = '<div class="modal-overlay show" id="fan-detail-modal" onclick="if(event.target===this)this.remove()">'
     + '<div class="modal" style="width:600px;max-height:90vh;overflow-y:auto">'
@@ -216,7 +216,7 @@ function openAddFanModal() {
     + '<div class="modal-body">'
     + '<div class="grid-2col" style="gap:10px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="af-model" class="form-input">' + modelOpts + '</select></div>'
-    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="af-platform" class="form-input"><option value="onlyfans">💎 OnlyFans</option><option value="fansly">🌸 Fansly</option><option value="fanvue">💚 Fanvue</option><option value="mym">🔥 MYM</option></select></div></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="af-platform" class="form-input"><option value="onlyfans">💎 OnlyFans</option><option value="fansly">🌸 Fansly</option><option value="fanvue">💚 Fanvue</option><option value="mym">🔥 MYM</option><option value="reveal">👀 Reveal</option></select></div></div>'
     + '<div class="form-group"><label class="form-label">Username *</label><input id="af-username" class="form-input" placeholder="@username"></div>'
     + '<div class="form-group"><label class="form-label">' + t('fan.display_name_label') + '</label><input id="af-display" class="form-input" placeholder="Optionnel"></div>'
     + '<div class="form-group"><label class="form-label">' + t('fan.total_spent_label') + '</label><input type="number" id="af-spent" class="form-input" value="0" step="0.01"></div>'
@@ -247,7 +247,7 @@ function openImportCSVModal() {
     + '<div class="modal-body" id="csv-body">'
     + '<div class="grid-2col" style="gap:10px;margin-bottom:16px">'
     + '<div class="form-group"><label class="form-label">' + t('cp.form_model') + '</label><select id="csv-model" class="form-input">' + modelOpts + '</select></div>'
-    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="csv-platform" class="form-input"><option value="onlyfans">OnlyFans</option><option value="fansly">Fansly</option><option value="fanvue">Fanvue</option><option value="mym">MYM</option></select></div></div>'
+    + '<div class="form-group"><label class="form-label">' + t('cp.form_platform') + '</label><select id="csv-platform" class="form-input"><option value="onlyfans">OnlyFans</option><option value="fansly">Fansly</option><option value="fanvue">Fanvue</option><option value="mym">MYM</option><option value="reveal">Reveal</option></select></div></div>'
     + '<div class="form-group"><label class="form-label">' + t('student.file_label') + '</label>'
     + '<input type="file" id="csv-file" accept=".csv,.txt" class="form-input" onchange="previewCSV()">'
     + '</div>'

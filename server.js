@@ -743,10 +743,11 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
         has_fansly_account, fansly_link, fansly_subscribers, fansly_revenue_monthly,
         has_fanvue_account, fanvue_link, fanvue_subscribers, fanvue_revenue_monthly,
         has_mym_account, mym_link, mym_subscribers, mym_revenue_monthly,
+        has_reveal_account, reveal_link, reveal_subscribers, reveal_revenue_monthly,
         content_types, post_frequency, has_photographer, content_stock,
         revenue_goal, availability_hours, languages, target_markets,
         contract_link, gdpr_accepted, internal_notes, onboarding_completed)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46) RETURNING id`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50) RETURNING id`,
       [b.name, JSON.stringify(b.platforms || []), b.status || 'onboarding', req.agencyId,
        b.stage_name || null, b.birth_date || null, b.nationality || null, b.city || null, b.country || null, b.photo_url || null,
        b.ig_handle || null, b.ig_followers || 0, b.tiktok_handle || null, b.tiktok_followers || 0, b.twitter_handle || null, b.snapchat_handle || null, b.other_socials || null,
@@ -754,10 +755,19 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
        b.has_fansly_account || false, b.fansly_link || null, b.fansly_subscribers || 0, b.fansly_revenue_monthly || 0,
        b.has_fanvue_account || false, b.fanvue_link || null, b.fanvue_subscribers || 0, b.fanvue_revenue_monthly || 0,
        b.has_mym_account || false, b.mym_link || null, b.mym_subscribers || 0, b.mym_revenue_monthly || 0,
+       b.has_reveal_account || false, b.reveal_link || null, b.reveal_subscribers || 0, b.reveal_revenue_monthly || 0,
        JSON.stringify(b.content_types || []), b.post_frequency || null, b.has_photographer || false, b.content_stock || 0,
        b.revenue_goal || 0, b.availability_hours || 0, JSON.stringify(b.languages || []), JSON.stringify(b.target_markets || []),
        b.contract_link || null, b.gdpr_accepted || false, b.internal_notes || null, true]
     );
+    // Reveal : si la page dashboard de la modèle est donnée, on prépare l'auto-post (désactivé par défaut)
+    const revealId = String(b.reveal_dashboard_url || '').match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (b.has_reveal_account && revealId) {
+      await pool.query(
+        `INSERT INTO autopost_settings (model_id, agency_id, reveal_model_id) VALUES ($1, $2, $3)
+         ON CONFLICT (model_id) DO UPDATE SET reveal_model_id = $3`, [rows[0].id, req.agencyId, revealId[0]]
+      ).catch(e => console.log('[AUTOPOST] lien Reveal non enregistré :', e.message));
+    }
     res.json({ id: rows[0].id });
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
