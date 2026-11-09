@@ -9,21 +9,29 @@ const human = (min = 900, max = 2600) => sleep(min + Math.random() * (max - min)
 
 class SessionExpired extends Error {}
 
-// Élément visible (bouton, option ou texte), en priorité dans la fenêtre du dessus
-async function visible(page, text, { exact = false, timeout = 30000 } = {}) {
-  const end = Date.now() + timeout;
-  while (Date.now() < end) {
-    for (const loc of [page.getByRole('button', { name: text, exact }), page.getByRole('radio', { name: text, exact }), page.getByText(text, { exact })]) {
-      const n = await loc.count();
-      for (let i = n - 1; i >= 0; i--) {
-        const el = loc.nth(i);
-        try { if (await el.isVisible() && await el.isEnabled()) return el; } catch (e) { /* élément détaché */ }
-      }
+// Cherche une fois un bouton / option / texte visible, en priorité dans la fenêtre du dessus
+async function findOnce(page, text, exact) {
+  for (const loc of [page.getByRole('button', { name: text, exact }), page.getByRole('radio', { name: text, exact }), page.getByText(text, { exact })]) {
+    const n = await loc.count();
+    for (let i = n - 1; i >= 0; i--) {
+      const el = loc.nth(i);
+      try { if (await el.isVisible() && await el.isEnabled()) return el; } catch (e) { /* élément détaché */ }
     }
-    await sleep(400);
   }
-  throw new Error(`Élément introuvable à l'écran : « ${text} »`);
+  return null;
 }
+
+// Premier élément visible parmi un ou plusieurs libellés possibles
+async function visibleAny(page, texts, { exact = false, timeout = 30000 } = {}) {
+  const end = Date.now() + timeout;
+  do {
+    for (const t of texts) { const el = await findOnce(page, t, exact); if (el) return el; }
+    await sleep(400);
+  } while (Date.now() < end);
+  throw new Error(`Élément introuvable à l'écran : « ${texts.join(' » ou « ')} »`);
+}
+
+async function visible(page, text, opts) { return visibleAny(page, [text], opts); }
 
 async function isShown(page, text) {
   const loc = page.getByText(text, { exact: true });
@@ -66,7 +74,8 @@ async function importMedia(page, filePath) {
   await page.getByText('Ajouter des médias', { exact: true }).last().waitFor({ timeout: 20000 });
   await page.locator('[role=dialog] input[type=file]').last().setInputFiles(filePath);
   await human(1200, 2200);
-  await (await visible(page, 'Importer', { exact: true })).click();
+  // le bouton s'appelle « Importer » quand la fenêtre est vide, puis « Ajouter » une fois le fichier choisi
+  await (await visibleAny(page, ['Ajouter', 'Importer'], { exact: true })).click();
   await waitGone(page, 'Ajouter des médias', 10 * 60000); // grosses vidéos : jusqu'à 10 min
   await human(2500, 4000);
 }
