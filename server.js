@@ -728,7 +728,10 @@ app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ MODELS CRUD ============
 app.get('/api/models', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM models WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY name', [req.agencyId]);
+  const { rows } = await pool.query(
+    `SELECT m.*, s.reveal_model_id AS autopost_reveal_id FROM models m
+     LEFT JOIN autopost_settings s ON s.model_id = m.id
+     WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name`, [req.agencyId]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
 });
 
@@ -770,6 +773,47 @@ app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
     }
     res.json({ id: rows[0].id });
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// Modification complète d'une modèle (assistant en mode « Modifier »)
+app.put('/api/models/:id/full', authMiddleware, adminOnly, async (req, res) => {
+  const b = req.body;
+  if (!b.name) return res.status(400).json({ error: 'Nom requis' });
+  try {
+    const r = await pool.query(
+      `UPDATE models SET name=$1, platforms=$2, stage_name=$3, birth_date=$4, nationality=$5, city=$6, country=$7, photo_url=$8,
+        ig_handle=$9, ig_followers=$10, tiktok_handle=$11, tiktok_followers=$12, twitter_handle=$13, snapchat_handle=$14, other_socials=$15,
+        has_of_account=$16, of_link=$17, of_subscribers=$18, of_revenue_monthly=$19,
+        has_fansly_account=$20, fansly_link=$21, fansly_subscribers=$22, fansly_revenue_monthly=$23,
+        has_fanvue_account=$24, fanvue_link=$25, fanvue_subscribers=$26, fanvue_revenue_monthly=$27,
+        has_mym_account=$28, mym_link=$29, mym_subscribers=$30, mym_revenue_monthly=$31,
+        has_reveal_account=$32, reveal_link=$33, reveal_subscribers=$34, reveal_revenue_monthly=$35,
+        content_types=$36, post_frequency=$37, has_photographer=$38, content_stock=$39,
+        revenue_goal=$40, availability_hours=$41, languages=$42, target_markets=$43,
+        contract_link=$44, gdpr_accepted=$45, internal_notes=$46
+       WHERE id=$47 AND agency_id=$48`,
+      [b.name, JSON.stringify(b.platforms || []), b.stage_name || null, b.birth_date || null, b.nationality || null, b.city || null, b.country || null, b.photo_url || null,
+       b.ig_handle || null, b.ig_followers || 0, b.tiktok_handle || null, b.tiktok_followers || 0, b.twitter_handle || null, b.snapchat_handle || null, b.other_socials || null,
+       !!b.has_of_account, b.of_link || null, b.of_subscribers || 0, b.of_revenue_monthly || 0,
+       !!b.has_fansly_account, b.fansly_link || null, b.fansly_subscribers || 0, b.fansly_revenue_monthly || 0,
+       !!b.has_fanvue_account, b.fanvue_link || null, b.fanvue_subscribers || 0, b.fanvue_revenue_monthly || 0,
+       !!b.has_mym_account, b.mym_link || null, b.mym_subscribers || 0, b.mym_revenue_monthly || 0,
+       !!b.has_reveal_account, b.reveal_link || null, b.reveal_subscribers || 0, b.reveal_revenue_monthly || 0,
+       JSON.stringify(b.content_types || []), b.post_frequency || null, !!b.has_photographer, b.content_stock || 0,
+       b.revenue_goal || 0, b.availability_hours || 0, JSON.stringify(b.languages || []), JSON.stringify(b.target_markets || []),
+       b.contract_link || null, !!b.gdpr_accepted, b.internal_notes || null,
+       req.params.id, req.agencyId]
+    );
+    if (!r.rowCount) return res.status(404).json({ error: 'Modèle introuvable' });
+    const revealId = String(b.reveal_dashboard_url || '').match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (b.has_reveal_account && revealId) {
+      await pool.query(
+        `INSERT INTO autopost_settings (model_id, agency_id, reveal_model_id) VALUES ($1, $2, $3)
+         ON CONFLICT (model_id) DO UPDATE SET reveal_model_id = $3`, [req.params.id, req.agencyId, revealId[0]]
+      ).catch(e => console.log('[AUTOPOST] lien Reveal non enregistré :', e.message));
+    }
+    res.json({ ok: true });
+  } catch (e) { console.error('[MODELS] update', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {

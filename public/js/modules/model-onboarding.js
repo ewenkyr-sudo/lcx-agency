@@ -3,13 +3,38 @@
 
 var moStep = 1;
 var moTotalSteps = 6;
+var moEditId = null;      // id de la modèle en cours de modification (null = création)
+var moEditOrig = null;    // plateformes d'origine (pour ne pas perdre celles que l'assistant ne gère pas)
+var MO_MANAGED_PLATFORMS = ['instagram', 'tiktok', 'twitter', 'onlyfans', 'fansly', 'fanvue', 'mym', 'reveal'];
 
-function openModelOnboarding() {
+// Ouvre l'assistant pré-rempli pour modifier une modèle existante
+function openModelEdit(id) {
+  var m = (allModels || []).find(function(x) { return x.id === id; });
+  if (!m) return;
+  var arr = function(v) { if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]'); } catch (e) { return []; } };
+  var data = {};
+  Object.keys(m).forEach(function(k) { if (m[k] !== null && m[k] !== undefined) data[k] = m[k]; });
+  data.platforms = arr(m.platforms);
+  data.content_types = arr(m.content_types); data.languages = arr(m.languages); data.target_markets = arr(m.target_markets);
+  if (data.birth_date) data.birth_date = String(data.birth_date).slice(0, 10);
+  ['revenue_goal', 'of_revenue_monthly', 'fansly_revenue_monthly', 'fanvue_revenue_monthly', 'mym_revenue_monthly', 'reveal_revenue_monthly'].forEach(function(k) { if (data[k] != null) data[k] = parseFloat(data[k]) || 0; });
+  // une plateforme listée sur la carte = case cochée, même si elle a été ajoutée sans l'assistant
+  var keyOf = { onlyfans: 'of', fansly: 'fansly', fanvue: 'fanvue', mym: 'mym', reveal: 'reveal' };
+  data.platforms.forEach(function(pl) { if (keyOf[pl]) data['has_' + keyOf[pl] + '_account'] = true; });
+  if (m.autopost_reveal_id) data.reveal_dashboard_url = 'https://dashboard.reveal.me/models/' + m.autopost_reveal_id;
+  moEditId = id;
+  moEditOrig = data.platforms.slice();
+  moData = data;
+  openModelOnboarding(true);
+}
+
+function openModelOnboarding(keepData) {
   moStep = 1;
+  if (!keepData) { moEditId = null; moEditOrig = null; moData = {}; }
   var overlay = document.getElementById('modal-add-model');
   overlay.innerHTML = '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto">'
     + '<div class="modal-header">'
-    + '<div class="modal-title">Nouvelle créatrice — Étape <span id="mo-step-num">1</span>/6</div>'
+    + '<div class="modal-title">' + (moEditId ? 'Modifier ' + String(moData.name || '').replace(/</g, '&lt;') : 'Nouvelle créatrice') + ' — Étape <span id="mo-step-num">1</span>/6</div>'
     + '<button class="modal-close" onclick="closeModal(\'add-model\')">✕</button>'
     + '</div>'
     + '<div style="padding:0 24px"><div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden"><div id="mo-progress" style="height:100%;width:16.6%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:2px;transition:width 0.3s"></div></div></div>'
@@ -36,7 +61,7 @@ function renderMOStep() {
   document.getElementById('mo-step-num').textContent = moStep;
   document.getElementById('mo-progress').style.width = (moStep / moTotalSteps * 100) + '%';
   document.getElementById('mo-back').style.display = moStep > 1 ? '' : 'none';
-  document.getElementById('mo-next').textContent = moStep === moTotalSteps ? t('mo.add_creator_btn') : t('common.continue');
+  document.getElementById('mo-next').textContent = moStep === moTotalSteps ? (moEditId ? 'Enregistrer' : t('mo.add_creator_btn')) : t('common.continue');
 
   if (moStep === 1) {
     body.innerHTML = '<h3 style="font-size:16px;font-weight:700;color:var(--accent-blue-light);margin-bottom:4px">Identité</h3>'
@@ -169,6 +194,8 @@ function saveMOStep() {
     if (moData.ig_handle) plats.push('instagram');
     if (moData.tiktok_handle) plats.push('tiktok');
     if (moData.twitter_handle) plats.push('twitter');
+    // en modification : on garde les plateformes que l'assistant ne gère pas (ex : telegram)
+    if (moEditOrig) moEditOrig.forEach(function(pl) { if (MO_MANAGED_PLATFORMS.indexOf(pl) < 0 && plats.indexOf(pl) < 0) plats.push(pl); });
     moData.platforms = plats;
   } else if (moStep === 3) {
     var platKeys = ['of', 'fansly', 'fanvue', 'mym', 'reveal'];
@@ -176,12 +203,13 @@ function saveMOStep() {
     platKeys.forEach(function(k) {
       var cb = document.getElementById('mo-has-' + k);
       moData['has_' + k + '_account'] = cb ? cb.checked : false;
+      if (!moData['has_' + k + '_account']) moData.platforms = (moData.platforms || []).filter(function(pl) { return pl !== platNames[k]; });
       if (moData['has_' + k + '_account']) {
         moData[k + '_link'] = g('mo-' + k + '-link');
         moData[k + '_subscribers'] = gn('mo-' + k + '-subs');
         moData[k + '_revenue_monthly'] = parseFloat(g('mo-' + k + '-rev')) || 0;
         if (k === 'reveal') moData.reveal_dashboard_url = g('mo-reveal-dashboard');
-        if ((moData[k + '_link'] || (k === 'reveal' && moData.reveal_dashboard_url)) && !(moData.platforms || []).includes(platNames[k])) {
+        if (!(moData.platforms || []).includes(platNames[k])) {
           moData.platforms = (moData.platforms || []).concat([platNames[k]]);
         }
       }
@@ -249,26 +277,26 @@ function moTogglePlatform(key) {
 
 async function submitModelOnboarding() {
   var btn = document.getElementById('mo-next');
-  btn.disabled = true; btn.textContent = t('mo.creating');
+  btn.disabled = true; btn.textContent = moEditId ? 'Enregistrement…' : t('mo.creating');
   try {
-    var res = await fetch('/api/models', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var res = await fetch(moEditId ? '/api/models/' + moEditId + '/full' : '/api/models', {
+      method: moEditId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify(moData)
     });
     if (res.ok) {
-      showToast(t('mo.creator_added'), 'success');
+      showToast(moEditId ? 'Modèle mise à jour' : t('mo.creator_added'), 'success');
       closeModal('add-model');
-      moData = {};
+      moData = {}; moEditId = null; moEditOrig = null;
       allModels = await fetch('/api/models', { credentials: 'include' }).then(function(r) { return r.json(); });
       renderModels();
     } else {
       var err = await res.json().catch(function() { return {}; });
       showToast(err.error || 'Erreur', 'error');
-      btn.disabled = false; btn.textContent = t('mo.add_creator_btn');
+      btn.disabled = false; btn.textContent = moEditId ? 'Enregistrer' : t('mo.add_creator_btn');
     }
   } catch(e) {
     showToast(t('toast.error_network'), 'error');
-    btn.disabled = false; btn.textContent = t('mo.add_creator_btn');
+    btn.disabled = false; btn.textContent = moEditId ? 'Enregistrer' : t('mo.add_creator_btn');
   }
 }
 
