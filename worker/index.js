@@ -29,7 +29,7 @@ function browserType() {
   return chromium;
 }
 
-const state = { lastPlan: 0, lastStatsDay: null, lastReportWeek: null, lastStockAlertDay: {}, busy: false };
+const state = { lastPlan: 0, lastStatsDay: null, lastReportWeek: null, lastStockAlertDay: {}, busy: false, stopping: false };
 
 function log(...a) { console.log(`[${new Date().toISOString()}]`, ...a); }
 
@@ -55,7 +55,8 @@ async function withBrowser(agencyId, fn) {
   const sess = sessionLib.decrypt(rows[0].session_enc);
   const origin = new URL(reveal.BASE).origin;
   const pw = sessionLib.toPlaywright(sess, origin);
-  const launch = { headless: process.env.AUTOPOST_HEADLESS !== 'false', args: ['--disable-blink-features=AutomationControlled'] };
+  // handleSIGTERM: false -> à l'arrêt du bot, le navigateur reste ouvert le temps de finir la publication en cours
+  const launch = { headless: process.env.AUTOPOST_HEADLESS !== 'false', args: ['--disable-blink-features=AutomationControlled'], handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false };
   if (process.env.AUTOPOST_PROXY) launch.proxy = { server: process.env.AUTOPOST_PROXY };
   if (process.env.AUTOPOST_CHROMIUM_PATH) launch.executablePath = process.env.AUTOPOST_CHROMIUM_PATH;
   const browser = await browserType().launch(launch);
@@ -292,10 +293,12 @@ async function stockAlerts() {
 
 // ---------- boucle principale ----------
 async function tick() {
-  if (state.busy) return;
+  if (state.busy || state.stopping) return;
   state.busy = true;
   try {
     await heartbeat('idle', { pid: process.pid });
+    // un créneau bloqué en « en cours » (bot coupé en pleine publication) repasse en attente
+    await pool.query(`UPDATE autopost_jobs SET status = 'pending', scheduled_at = NOW() WHERE status = 'running' AND started_at < NOW() - INTERVAL '20 minutes'`);
     if (Date.now() - state.lastPlan > 10 * 60000) {
       const n = await planner.planAll();
       if (n) log(`🗓  ${n} créneaux planifiés`);
@@ -304,6 +307,7 @@ async function tick() {
     await checkPendingSessions();
     // publie tout ce qui est dû
     for (let i = 0; i < 10; i++) {
+      if (state.stopping) break; // arrêt demandé (mise à jour) : on ne prend plus rien
       const c = await claimJob();
       if (!c) break;
       if (c.noStock) {
@@ -346,6 +350,13 @@ async function init() {
 
 async function main() {
   await init();
+  // Lors d'une mise à jour, Render envoie SIGTERM à l'ancien bot : il finit sa publication en cours
+  // puis s'arrête, sans prendre de nouveau créneau (sinon il serait coupé en plein milieu).
+  process.on('SIGTERM', () => {
+    state.stopping = true;
+    log('Arrêt demandé : je termine la publication en cours et je m\'arrête');
+    const wait = setInterval(() => { if (!state.busy) { clearInterval(wait); process.exit(0); } }, 500);
+  });
   await tick();
   setInterval(tick, TICK_MS);
 }
