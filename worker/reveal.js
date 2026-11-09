@@ -148,7 +148,8 @@ function parsePosts(json) {
   return findPostArray(json).filter(p => p && typeof p === 'object' && (p.id || p.uuid)).map(p => {
     const likes = Number(pick(p, LIKE_KEYS));
     const d = pick(p, DATE_KEYS);
-    return { id: String(p.id || p.uuid), likes: Number.isFinite(likes) ? likes : null, date: d ? new Date(d) : null, raw: p };
+    const mediaNames = Array.isArray(p.medias) ? p.medias.map(m => m && m.name).filter(Boolean) : [];
+    return { id: String(p.id || p.uuid), likes: Number.isFinite(likes) ? likes : null, date: d ? new Date(d) : null, mediaNames, archived: !!p.isArchived, raw: p };
   });
 }
 
@@ -175,6 +176,35 @@ async function collectPosts(page, revealId) {
   return [...byId.values()];
 }
 
+// ---------- archivage d'anciens posts (rotation) ----------
+// Même action que le menu ⋯ > « Archiver » du dashboard : PATCH <api>/posts/<id>/archive avec le jeton de la session.
+// Le jeton et l'adresse de l'API sont repris d'une requête que le dashboard fait lui-même.
+async function archivePosts(page, revealId, postIds) {
+  let auth = null, apiBase = null;
+  const re = new RegExp(`^(.*)/models/${revealId}/posts`);
+  const onReq = req => {
+    const m = re.exec(req.url());
+    const a = req.headers()['authorization'];
+    if (m && a && !auth) { auth = a; apiBase = m[1]; }
+  };
+  page.on('request', onReq);
+  try {
+    await openModelPage(page, revealId, 'publications');
+    const end = Date.now() + 15000;
+    while (!auth && Date.now() < end) await sleep(300);
+  } finally { page.off('request', onReq); }
+  if (!auth) throw new Error("Impossible de récupérer l'accès à l'API Reveal pour archiver");
+  const results = [];
+  for (const id of postIds) {
+    await human(800, 1800);
+    const r = await page.request.patch(`${apiBase}/posts/${encodeURIComponent(id)}/archive`, { headers: { Authorization: auth, Accept: 'application/json' } });
+    let likes = null;
+    try { const j = await r.json(); likes = Number(pick(j, LIKE_KEYS)); if (!Number.isFinite(likes)) likes = null; } catch (e) { /* corps vide */ }
+    results.push({ id, ok: r.ok(), status: r.status(), likes });
+  }
+  return results;
+}
+
 // ---------- stats du jour (page Statistiques, vue "Jour") ----------
 function parseEuro(s) { return s == null ? null : Number(String(s).replace(/\s| /g, '').replace(',', '.').replace('€', '')); }
 async function collectDailyStats(page, revealId) {
@@ -194,4 +224,4 @@ async function checkSession(page) {
   try { await visible(page, 'Dashboard', { exact: true, timeout: 25000 }); return true; } catch (e) { return false; }
 }
 
-module.exports = { BASE, publishPost, publishStory, collectPosts, collectDailyStats, checkSession, parsePosts, SessionExpired };
+module.exports = { BASE, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired };

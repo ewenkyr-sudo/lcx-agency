@@ -79,6 +79,8 @@ async function initAutopostDB() {
       done_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE autopost_jobs ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+    ALTER TABLE autopost_settings ADD COLUMN IF NOT EXISTS rotation_archive_old BOOLEAN DEFAULT true;
     CREATE INDEX IF NOT EXISTS idx_ap_jobs_due ON autopost_jobs(status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_ap_jobs_model ON autopost_jobs(model_id, scheduled_at);
 
