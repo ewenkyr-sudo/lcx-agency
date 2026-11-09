@@ -61,7 +61,10 @@ function renderModels() {
                 <div class="model-stat-value">${allAccounts.filter(a => a.model_id === m.id).reduce((s, a) => s + a.current_followers, 0)}</div>
               </div>
             </div>
-            <button class="btn btn-primary" onclick="event.stopPropagation();openModelCockpit(${m.id})" style="width:100%;margin-top:12px;justify-content:center;font-size:12px">${t('models.view_cockpit')}</button>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-primary" onclick="event.stopPropagation();openModelCockpit(${m.id})" style="flex:1;justify-content:center;font-size:12px">${t('models.view_cockpit')}</button>
+              ${isAdmin() ? `<button class="btn btn-secondary" onclick="event.stopPropagation();openModelEdit(${m.id})" style="justify-content:center;font-size:12px">Modifier</button>` : ''}
+            </div>
             ${isAdmin() ? `
             <!-- Drive & Contrat -->
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;gap:8px">
