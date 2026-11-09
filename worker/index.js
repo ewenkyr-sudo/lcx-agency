@@ -137,6 +137,7 @@ async function runJob({ job, media, settings }) {
   log(`▶ ${modelName} | ${job.kind} | média #${media.id} ${media.filename || ''}${job.is_rotation ? ' (rotation)' : ''}`);
   await heartbeat('publishing', { job: job.id, model: modelName, kind: job.kind });
   const started = new Date();
+  let archived = 0;
   try {
     await storage.getToFile(media.storage_key, file);
     let postId = null;
@@ -155,16 +156,35 @@ async function runJob({ job, media, settings }) {
         // retrouve l'identifiant Reveal du post qu'on vient de créer (pour suivre ses j'aime)
         try {
           const posts = await reveal.collectPosts(p, settings.reveal_model_id);
+          // le média envoyé garde le nom du fichier (job<id>.ext) : c'est le repère le plus sûr
+          const byName = posts.find(x => x.mediaNames.includes(path.basename(file)));
           const recent = posts.filter(x => x.date && x.date >= new Date(started.getTime() - 120000)).sort((a, b) => b.date - a.date);
-          postId = (recent[0] || null)?.id || null;
+          postId = (byName || recent[0] || null)?.id || null;
           if (!posts.length) await apLog(job.agency_id, job.model_id, 'warn', "Aucun post lu depuis l'API Reveal (parseur à ajuster ?)");
         } catch (e) { /* pas bloquant */ }
+        // repost : on archive l'ancienne publication du même contenu (elle reste restaurable dans Reveal)
+        if (job.is_rotation && settings.rotation_archive_old !== false) {
+          try {
+            const { rows: old } = await pool.query(
+              `SELECT id, reveal_post_id FROM autopost_jobs WHERE media_id = $1 AND id <> $2 AND status = 'done'
+               AND kind IN ('post','reel') AND reveal_post_id IS NOT NULL AND archived_at IS NULL`, [media.id, job.id]);
+            if (old.length) {
+              const res = await reveal.archivePosts(p, settings.reveal_model_id, old.map(o => o.reveal_post_id));
+              for (const r of res) {
+                const o = old.find(x => x.reveal_post_id === r.id);
+                if (r.ok) await pool.query(`UPDATE autopost_jobs SET archived_at = NOW(), likes = COALESCE($2, likes), likes_checked_at = CASE WHEN $2 IS NULL THEN likes_checked_at ELSE NOW() END WHERE id = $1`, [o.id, r.likes]);
+                else await apLog(job.agency_id, job.model_id, 'warn', `Archivage de l'ancien post refusé par Reveal (code ${r.status})`, { post: r.id });
+              }
+              archived = res.filter(r => r.ok).length;
+            }
+          } catch (e) { await apLog(job.agency_id, job.model_id, 'warn', "Archivage de l'ancien post impossible : " + e.message); }
+        }
       }
     }
     await pool.query(`UPDATE autopost_jobs SET status = 'done', done_at = NOW(), error = NULL, reveal_post_id = $2 WHERE id = $1`, [job.id, postId]);
     await pool.query(`UPDATE autopost_media SET times_posted = times_posted + 1, last_posted_at = NOW() WHERE id = $1`, [media.id]);
     await markSession(job.agency_id, 'ok');
-    log(`✅ ${modelName} : ${job.kind} publié`);
+    log(`✅ ${modelName} : ${job.kind} publié${archived ? ` (+ ${archived} ancien(s) post(s) archivé(s))` : ''}`);
   } catch (e) {
     let shotKey = null;
     try {

@@ -38,7 +38,7 @@ async function agencyRow(agencyId) {
 const SETTINGS_DEFAULTS = {
   enabled: false, reveal_model_id: null, posts_per_day: 2, reels_per_day: 1, stories_per_day: 3,
   window_start: '09:00', window_end: '23:00', post_audience: 'subscribers', story_public: true,
-  rotation_enabled: true, rotation_cooldown_days: 30, rotation_mix_pct: 0, captions: '',
+  rotation_enabled: true, rotation_cooldown_days: 30, rotation_mix_pct: 0, captions: '', rotation_archive_old: true,
 };
 
 // ---------- vue d'ensemble ----------
@@ -107,14 +107,15 @@ router.put('/models/:id/settings', wrap(async (req, res) => {
   if (v.enabled && !revealId) throw fail(400, "Il faut l'identifiant Reveal de la modèle avant d'activer (copie l'adresse de sa page sur dashboard.reveal.me)");
   await pool.query(
     `INSERT INTO autopost_settings (model_id, agency_id, enabled, reveal_model_id, posts_per_day, reels_per_day, stories_per_day,
-       window_start, window_end, post_audience, story_public, rotation_enabled, rotation_cooldown_days, rotation_mix_pct, captions, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW())
+       window_start, window_end, post_audience, story_public, rotation_enabled, rotation_cooldown_days, rotation_mix_pct, captions, rotation_archive_old, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
      ON CONFLICT (model_id) DO UPDATE SET agency_id=$2, enabled=$3, reveal_model_id=$4, posts_per_day=$5, reels_per_day=$6, stories_per_day=$7,
        window_start=$8, window_end=$9, post_audience=$10, story_public=$11, rotation_enabled=$12, rotation_cooldown_days=$13,
-       rotation_mix_pct=$14, captions=$15, updated_at=NOW()`,
+       rotation_mix_pct=$14, captions=$15, rotation_archive_old=$16, updated_at=NOW()`,
     [m.id, req.agencyId, !!v.enabled, revealId, int(v.posts_per_day, 0, 20), int(v.reels_per_day, 0, 20), int(v.stories_per_day, 0, 20),
      time(v.window_start), time(v.window_end), v.post_audience === 'public' ? 'public' : 'subscribers', !!v.story_public,
-     !!v.rotation_enabled, int(v.rotation_cooldown_days, 1, 365), int(v.rotation_mix_pct, 0, 100), String(v.captions || '').slice(0, 20000)]
+     !!v.rotation_enabled, int(v.rotation_cooldown_days, 1, 365), int(v.rotation_mix_pct, 0, 100), String(v.captions || '').slice(0, 20000),
+     v.rotation_archive_old !== false]
   );
   await planner.replanModel(m.id);
   res.json({ ok: true });
@@ -203,7 +204,7 @@ router.get('/jobs', wrap(async (req, res) => {
   const order = req.query.scope === 'upcoming' ? 'ASC' : 'DESC';
   const { rows } = await pool.query(
     `SELECT j.id, j.model_id, mo.name AS model_name, j.kind, j.scheduled_at, j.status, j.is_rotation, j.caption, j.audience,
-            j.attempts, j.error, (j.screenshot_key IS NOT NULL) AS has_screenshot, j.likes, j.done_at, j.media_id, m.filename
+            j.attempts, j.error, (j.screenshot_key IS NOT NULL) AS has_screenshot, j.likes, j.done_at, j.archived_at, j.media_id, m.filename
      FROM autopost_jobs j LEFT JOIN autopost_media m ON m.id = j.media_id LEFT JOIN models mo ON mo.id = j.model_id
      WHERE ${where} ORDER BY COALESCE(j.done_at, j.scheduled_at) ${order} LIMIT ${Math.min(500, parseInt(req.query.limit, 10) || 100)}`, vals);
   res.json(rows);

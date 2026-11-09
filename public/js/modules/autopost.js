@@ -192,6 +192,7 @@ function apOpenSettings(id) {
     '<div style="font-size:12px;color:var(--text-tertiary);margin:-4px 0 12px">Les reels partent toujours en « Feed vidéo ».</div>' +
     '<div style="padding:12px;border-radius:10px;background:var(--bg-subtle);border:1px solid var(--border-default);margin-bottom:12px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600">Rotation des anciens posts</div><div style="font-size:12px;color:var(--text-tertiary)">Republie l\'ancien contenu (le plus liké d\'abord) quand il n\'y a plus de neuf</div></div>' + apToggle('ap-rot', s.rotation_enabled) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><div><div style="font-weight:600;font-size:13px">Archiver l\'ancien post au repost</div><div style="font-size:12px;color:var(--text-tertiary)">Évite les doublons sur le profil (restaurable dans Reveal). Posts et reels.</div></div>' + apToggle('ap-rot-arch', s.rotation_archive_old !== false) + '</div>' +
       '<div style="display:flex;gap:10px;margin-top:10px">' + num('rotation_cooldown_days', 'Pas de repost avant (jours)', s.rotation_cooldown_days, 1, 365) + num('rotation_mix_pct', '% de repost même s\'il reste du neuf', s.rotation_mix_pct, 0, 100) + '</div></div>' +
     '<div class="form-group"><label class="form-label">Légendes de ' + apEsc(m.name) + ' (une par ligne, piochées au hasard)</label>' +
       '<textarea class="form-input" name="captions" rows="5" placeholder="Laisse vide pour utiliser les légendes générales de l\'agence">' + apEsc(s.captions || '') + '</textarea></div>' +
@@ -205,6 +206,7 @@ function apSaveSettings(id) {
   ['reveal_model_id', 'posts_per_day', 'reels_per_day', 'stories_per_day', 'window_start', 'window_end', 'post_audience', 'rotation_cooldown_days', 'rotation_mix_pct', 'captions'].forEach(function(k) { v[k] = f.elements[k].value; });
   v.story_public = f.elements.story_public.value === '1';
   v.rotation_enabled = document.getElementById('ap-rot').checked;
+  v.rotation_archive_old = document.getElementById('ap-rot-arch').checked;
   var btn = document.getElementById('ap-save-settings'); btn.disabled = true;
   apApi('PUT', '/models/' + id + '/settings', v).then(function() { apCloseModal(); apToast('Réglages enregistrés, planning du jour recalculé', 'success'); apLoad(); })
     .catch(function(e) { btn.disabled = false; apToast(e.message, 'error'); });
@@ -339,7 +341,7 @@ function apRenderJobs(b, scope) {
       var st = AP_STATUS[j.status] || [j.status, 'var(--text-tertiary)'];
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border-default);border-radius:10px;margin-bottom:6px;background:var(--bg-surface)">' +
         '<div style="font-variant-numeric:tabular-nums;font-weight:600;width:48px">' + apFmtTime(when) + '</div>' +
-        '<div style="flex:1;min-width:0"><div style="font-weight:600">' + apEsc(j.model_name) + ' · ' + AP_KIND1[j.kind] + ' <span style="font-weight:400;color:var(--text-tertiary);font-size:12px">' + (AP_AUD[j.audience] || '') + '</span>' + (j.is_rotation ? ' ' + apPill('Repost', 'var(--accent-purple)') : '') + '</div>' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:600">' + apEsc(j.model_name) + ' · ' + AP_KIND1[j.kind] + ' <span style="font-weight:400;color:var(--text-tertiary);font-size:12px">' + (AP_AUD[j.audience] || '') + '</span>' + (j.is_rotation ? ' ' + apPill('Repost', 'var(--accent-purple)') : '') + (j.archived_at ? ' ' + apPill('Archivé', 'var(--text-tertiary)') : '') + '</div>' +
           '<div style="font-size:12px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + apEsc(j.filename || (j.status === 'pending' ? 'Contenu choisi au moment de publier' : '')) + (j.caption ? ' · « ' + apEsc(j.caption) + ' »' : '') + '</div>' +
           (j.error ? '<div style="font-size:12px;color:var(--accent-red);margin-top:2px">' + apEsc(j.error) + '</div>' : '') + '</div>' +
         (j.likes != null ? '<div style="font-weight:600">❤️ ' + j.likes + '</div>' : '') +
