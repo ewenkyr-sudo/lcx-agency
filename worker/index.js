@@ -20,6 +20,7 @@ const WORKER_ID = process.env.AUTOPOST_WORKER_ID || `worker-${os.hostname()}`;
 const TICK_MS = 20000;
 const MAX_LATE_MIN = 120;      // créneau raté depuis plus de 2 h -> sauté
 const MAX_ATTEMPTS = 2;
+const KIND_FR = { post: 'le post', reel: 'le reel', story: 'la story' };
 const TMP = path.join(os.tmpdir(), 'autopost');
 fs.mkdirSync(TMP, { recursive: true });
 
@@ -67,10 +68,29 @@ async function withBrowser(agencyId, fn) {
     await ctx.addInitScript(pw.initScript);
     const page = await ctx.newPage();
     page.setDefaultTimeout(30000);
-    return await fn(page);
+    try {
+      return await fn(page);
+    } finally {
+      // Reveal renouvelle sa connexion toutes les 24 h (jeton d'accès) et donne un nouveau jeton de
+      // renouvellement à chaque fois : on garde la version à jour, sinon la session meurt au bout d'un jour.
+      await saveRenewedSession(agencyId, page, ctx, sess, origin).catch(e => log('Sauvegarde session KO :', e.message));
+    }
   } finally {
     await browser.close().catch(() => {});
   }
+}
+
+async function saveRenewedSession(agencyId, page, ctx, oldSess, origin) {
+  if (page.isClosed() || !page.url().startsWith(origin)) return;
+  const st = await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  const authKeys = Object.keys(st.local).filter(k => k.startsWith('auth_session'));
+  if (!authKeys.length) return; // déconnecté : on ne remplace pas la session par du vide
+  const changed = authKeys.some(k => st.local[k] !== (oldSess.local || {})[k]);
+  if (!changed) return;
+  const cookies = (await ctx.cookies()).filter(c => /reveal\.me$|127\.0\.0\.1|localhost/.test(c.domain));
+  const fresh = { local: st.local, session: st.session, cookies, savedAt: new Date().toISOString() };
+  await pool.query(`UPDATE autopost_agency SET session_enc = $1, session_updated_at = NOW() WHERE agency_id = $2`, [sessionLib.encrypt(fresh), agencyId]);
+  log(`🔑 session agence ${agencyId} renouvelée et sauvegardée`);
 }
 
 async function markSession(agencyId, status) {
@@ -97,7 +117,7 @@ async function claimJob() {
       await client.query(`UPDATE autopost_jobs SET status = 'skipped', error = $2, done_at = NOW() WHERE id = $1`,
         [job.id, 'Créneau trop ancien (le bot était arrêté ?)']);
       await client.query('COMMIT');
-      return { skipped: true };
+      return { skipped: true, tooOld: true, job };
     }
     if (!settings.reveal_model_id) {
       await client.query(`UPDATE autopost_jobs SET status = 'failed', error = $2, done_at = NOW() WHERE id = $1`, [job.id, 'Identifiant Reveal manquant']);
@@ -197,18 +217,18 @@ async function runJob({ job, media, settings }) {
     const retry = !expired && job.attempts + 1 < MAX_ATTEMPTS;
     await pool.query(
       `UPDATE autopost_jobs SET status = $2, error = $3, screenshot_key = COALESCE($4, screenshot_key),
-         scheduled_at = CASE WHEN $2 = 'pending' THEN NOW() + INTERVAL '10 minutes' ELSE scheduled_at END,
+         scheduled_at = CASE WHEN $2 = 'pending' AND NOT $5 THEN NOW() + INTERVAL '10 minutes' ELSE scheduled_at END,
          done_at = CASE WHEN $2 = 'failed' THEN NOW() ELSE NULL END
        WHERE id = $1`,
-      [job.id, expired ? 'pending' : (retry ? 'pending' : 'failed'), String(e.message).slice(0, 1000), shotKey]);
+      [job.id, expired ? 'pending' : (retry ? 'pending' : 'failed'), String(e.message).slice(0, 1000), shotKey, expired]);
     if (expired) {
       // on remet le créneau en attente (attempts inchangé) et on bloque tout jusqu'à reconnexion
       await pool.query('UPDATE autopost_jobs SET attempts = GREATEST(attempts - 1, 0) WHERE id = $1', [job.id]);
-      const was = (await pool.query('SELECT session_status FROM autopost_agency WHERE agency_id = $1', [job.agency_id])).rows[0]?.session_status;
-      await markSession(job.agency_id, 'expired');
-      if (was !== 'expired') await notify(job.agency_id, 'whatsapp_failures', `🔑 Auto-post Reveal en pause : la connexion au compte agence a expiré. Reconnecte-le dans le CRM (Auto-post > Connexion).`);
+      await sessionExpired(job.agency_id);
     } else if (!retry) {
-      await notify(job.agency_id, 'whatsapp_failures', `❌ Auto-post : échec ${job.kind} pour ${modelName} — ${String(e.message).slice(0, 120)}`);
+      await notify(job.agency_id, 'whatsapp_failures',
+        `❌ Auto-post : ${KIND_FR[job.kind]} de ${modelName} pas publié après 2 essais.\n` +
+        `Raison : ${String(e.message).slice(0, 150)}\n👉 Détails et capture dans le CRM : Auto-post > Historique (bouton Relancer).`);
     }
     await apLog(job.agency_id, job.model_id, 'error', `Échec ${job.kind} : ${e.message}`, { job: job.id });
     log(`❌ ${modelName} : ${e.message}`);
@@ -223,13 +243,50 @@ async function checkPendingSessions() {
   for (const r of rows) {
     try {
       const ok = await withBrowser(r.agency_id, page => reveal.checkSession(page));
-      await markSession(r.agency_id, ok ? 'ok' : 'expired');
+      if (ok) await markSession(r.agency_id, 'ok'); else await sessionExpired(r.agency_id);
       log(`🔑 session agence ${r.agency_id} : ${ok ? 'ok' : 'refusée'}`);
     } catch (e) {
-      await markSession(r.agency_id, 'expired');
+      await sessionExpired(r.agency_id);
       await apLog(r.agency_id, null, 'error', 'Vérif session : ' + e.message);
     }
   }
+}
+
+// Garde la connexion Reveal vivante même sans publication (le jeton de renouvellement expire au bout de 14 jours)
+async function keepSessionsAlive() {
+  const { rows } = await pool.query(
+    `SELECT agency_id FROM autopost_agency WHERE session_status = 'ok' AND session_enc IS NOT NULL
+     AND (session_checked_at IS NULL OR session_checked_at < NOW() - INTERVAL '6 hours')`);
+  for (const r of rows) {
+    try {
+      const ok = await withBrowser(r.agency_id, page => reveal.checkSession(page));
+      if (ok) await markSession(r.agency_id, 'ok');
+      else await sessionExpired(r.agency_id);
+    } catch (e) {
+      if (e instanceof reveal.SessionExpired) await sessionExpired(r.agency_id);
+      else await apLog(r.agency_id, null, 'warn', 'Entretien session : ' + e.message);
+    }
+  }
+}
+
+// Connexion perdue : statut « expirée » + WhatsApp (puis rappel toutes les 6 h tant que ce n'est pas réglé)
+async function sessionExpired(agencyId) {
+  await markSession(agencyId, 'expired');
+  await remindExpired(agencyId, true);
+}
+async function remindExpired(agencyId, force) {
+  const { rows } = await pool.query(
+    `UPDATE autopost_agency SET expired_notified_at = NOW()
+     WHERE agency_id = $1 AND session_status = 'expired'
+       AND (expired_notified_at IS NULL OR expired_notified_at < NOW() - INTERVAL '6 hours' ${force ? "OR expired_notified_at < session_updated_at" : ''})
+     RETURNING agency_id`, [agencyId]);
+  if (!rows.length) return;
+  const { rows: w } = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM autopost_jobs WHERE agency_id = $1 AND status = 'pending' AND scheduled_at <= NOW()`, [agencyId]);
+  await notify(agencyId, 'whatsapp_failures',
+    `🔑 Auto-post Reveal en PAUSE : la connexion au compte agence a expiré.\n` +
+    (w[0].c ? `${w[0].c} publication(s) en attente.\n` : '') +
+    `👉 Reconnecte-la dans le CRM : Auto-post > Compte Reveal > Changer.`);
 }
 
 // ---------- collecte des j'aime et des stats ----------
@@ -325,8 +382,13 @@ async function tick() {
       state.lastPlan = Date.now();
     }
     await checkPendingSessions();
+    await keepSessionsAlive();
+    // rappel WhatsApp si la connexion est toujours expirée
+    const { rows: exp } = await pool.query(`SELECT agency_id FROM autopost_agency WHERE session_status = 'expired'`);
+    for (const r of exp) await remindExpired(r.agency_id, false);
     // publie tout ce qui est dû
-    for (let i = 0; i < 10; i++) {
+    const tooOld = {};
+    for (let i = 0; i < 25; i++) {
       if (state.stopping) break; // arrêt demandé (mise à jour) : on ne prend plus rien
       const c = await claimJob();
       if (!c) break;
@@ -335,10 +397,21 @@ async function tick() {
         await notify(c.job.agency_id, 'whatsapp_failures', `📦 Auto-post : plus de ${c.job.kind}s à publier pour ${nm}. Ajoute du contenu dans le CRM.`);
         continue;
       }
+      if (c.tooOld) { const k = c.job.agency_id; (tooOld[k] = tooOld[k] || []).push(c.job); continue; }
       if (c.skipped) continue;
       await runJob(c);
       const pause = process.env.AUTOPOST_PAUSE_MS ? Number(process.env.AUTOPOST_PAUSE_MS) : 15000 + Math.random() * 30000;
       await new Promise(r => setTimeout(r, pause)); // pause entre deux publications
+    }
+    for (const [agencyId, jobs] of Object.entries(tooOld)) {
+      const names = {};
+      for (const j of jobs) {
+        const nm = (await pool.query('SELECT name FROM models WHERE id = $1', [j.model_id])).rows[0]?.name?.trim() || `#${j.model_id}`;
+        (names[nm] = names[nm] || []).push(KIND_FR[j.kind].replace(/^(le|la) /, ''));
+      }
+      await notify(Number(agencyId), 'whatsapp_failures',
+        `⏭️ Auto-post : ${jobs.length} publication(s) sautée(s) car le bot n'a pas pu les faire à temps :\n` +
+        Object.entries(names).map(([n, k]) => `• ${n} : ${k.join(', ')}`).join('\n'));
     }
     const p = planner.parisParts();
     // stats : une fois par jour vers 23h30 (heure de Paris)

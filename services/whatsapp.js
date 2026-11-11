@@ -1,12 +1,30 @@
 const https = require('https');
 const pool = require('../db/pool');
 
+// Requête GET simple (CallMeBot). Résout avec { status, body }.
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { timeout: 20000 }, res => {
+      let body = '';
+      res.on('data', c => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    });
+    req.on('timeout', () => req.destroy(new Error('délai dépassé')));
+    req.on('error', reject);
+  });
+}
+
 async function sendWhatsAppToNumber(number, apiKey, message, provider) {
   number = number.replace(/[^0-9]/g, '');
   if (!number || !apiKey) return;
   if (provider === 'callmebot' || !provider) {
     const url = `https://api.callmebot.com/whatsapp.php?phone=${number}&text=${encodeURIComponent(message)}&apikey=${apiKey}`;
-    httpGet(url).catch(e => console.log('WhatsApp error:', e.message));
+    try {
+      const r = await httpGet(url);
+      if (r.status !== 200 || /error|invalid|not (allowed|found)/i.test(r.body.slice(0, 500))) {
+        console.log('WhatsApp CallMeBot refus :', r.status, r.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200));
+      }
+    } catch (e) { console.log('WhatsApp error:', e.message); }
   }
 }
 
