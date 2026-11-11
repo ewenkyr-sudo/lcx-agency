@@ -4786,6 +4786,7 @@ async function start() {
   await require('./db/autopost-schema').initAutopostDB();
   // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
   if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();
+  else require('./services/autopost/watchdog').start(); // prévient sur WhatsApp si le bot s'arrête
 
   // Pass broadcast to scraping module
   setBroadcast(broadcast);
