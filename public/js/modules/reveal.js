@@ -269,3 +269,71 @@ function rvMapModel(id, crmId) {
   rvApi('PUT', '/models/' + id + '/map', { crm_model_id: crmId || null }).then(function() { rvToast('Correspondance enregistrée', 'success'); rvLoadStatus(); })
     .catch(function(e) { rvToast(e.message, 'error'); });
 }
+
+// ---------- encart sur le Dashboard (admin) ----------
+function rvGoTo(tab) {
+  rv.tab = tab || 'overview';
+  var nav = document.querySelector('.nav-item[data-section="reveal"]');
+  if (nav) nav.click();
+}
+function rvDashWidget() {
+  var box = document.getElementById('dashboard-reveal');
+  if (!box) return;
+  rvApi('GET', '/status').then(function(s) {
+    rv.status = s;
+    if (!s.connected) {
+      box.innerHTML = '<div class="panel" style="padding:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+        + '<div><div style="font-weight:700">Stats Reveal</div><div style="font-size:13px;color:var(--text-tertiary)">Connecte l\'API Reveal pour voir ton CA en direct ici.</div></div>'
+        + '<button class="btn btn-primary" onclick="rvGoTo(\'settings\')">Connecter</button></div>';
+      return;
+    }
+    var today = rvParis(0), yest = rvParis(-1), month = today.slice(0, 8) + '01';
+    return Promise.all([
+      rvApi('GET', '/overview?from=' + (yest < month ? yest : month) + '&to=' + today),
+      rvApi('GET', '/chatters?from=' + month + '&to=' + today),
+      s.sales_enabled === false ? Promise.resolve({ sales: [] }) : rvApi('GET', '/sales?limit=6'),
+    ]).then(function(r) {
+      var daily = r[0].daily, models = r[0].models;
+      var day = function(d) { return daily.find(function(x) { return x.d === d; }) || { net: 0, ttc: 0, agency: 0, new_subs: 0 }; };
+      var td = day(today), yd = day(yest);
+      var m = daily.filter(function(x) { return x.d >= month; }).reduce(function(a, x) {
+        a.net += Number(x.net); a.agency += Number(x.agency); a.ttc += Number(x.ttc); a.subs += Number(x.new_subs); return a;
+      }, { net: 0, agency: 0, ttc: 0, subs: 0 });
+      // le CA par modèle couvre hier + le mois : on garde le mois seulement si hier est dans le mois
+      var modelsMonth = yest < month ? null : models;
+      var chatters = r[1].chatters.filter(function(c) { return !c.is_bot && Number(c.net) > 0; }).slice(0, 5);
+      var row = function(left, sub, right) {
+        return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle);font-size:13px"><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + left + '</div>'
+          + (sub ? '<div style="font-size:11px;color:var(--text-tertiary)">' + sub + '</div>' : '') + '</div><div style="font-weight:600;white-space:nowrap">' + right + '</div></div>';
+      };
+      var empty = '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0">Rien pour l\'instant</div>';
+      var col = function(title, tab, body) {
+        return '<div class="panel" style="padding:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:600">' + title + '</div>'
+          + '<button class="btn btn-ghost" style="padding:2px 8px;font-size:12px" onclick="rvGoTo(\'' + tab + '\')">Tout voir</button></div>' + body + '</div>';
+      };
+      box.innerHTML = '<div style="margin-bottom:20px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">'
+        + '<div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:' + (s.last_error ? 'var(--accent-red)' : 'var(--accent-green)') + '"></span>Reveal'
+        + '<span style="font-weight:400;font-size:12px;color:var(--text-tertiary)">' + (s.last_error ? rvEsc(s.last_error) : 'à jour ' + rvAgo(s.last_sync_at)) + '</span></div>'
+        + '<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="rvGoTo(\'overview\')">Stats Reveal →</button></div>'
+        + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
+        + rvStat('CA net aujourd\'hui', rvEur(td.net), 'Hier (journée entière) : ' + rvEur(yd.net))
+        + rvStat('CA net ce mois', rvEur(m.net), 'TTC : ' + rvEur(m.ttc))
+        + rvStat('Part agence ce mois', rvEur(m.agency), null, 'var(--accent-green)')
+        + rvStat('Nouveaux abonnés aujourd\'hui', rvNum(td.new_subs), rvNum(m.subs) + ' ce mois')
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;align-items:start">'
+        + (modelsMonth ? col('Modèles ce mois', 'overview', modelsMonth.filter(function(x) { return Number(x.net) > 0; }).slice(0, 5).map(function(x) {
+            return row(rvEsc(x.display_name || x.user_name), rvNum(x.new_subs) + ' nouveaux abonnés', rvEur(x.net));
+          }).join('') || empty) : '')
+        + col('Top chatteurs du mois', 'chatters', chatters.map(function(c, i) {
+            return row((i < 3 ? ['🥇', '🥈', '🥉'][i] + ' ' : '') + rvEsc((c.first_name || '') + ' ' + (c.last_name || '')), rvNum(c.ppv_purchased) + ' PPV · ' + rvNum(c.tips) + ' pourboires', rvEur(c.net));
+          }).join('') || empty)
+        + (s.sales_enabled === false ? '' : col('Dernières ventes', 'sales', r[2].sales.map(function(x) {
+            var when = new Date(x.sale_created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+            return row(rvEsc(x.model_name || '') + ' · ' + (RV_TYPES[x.type] || rvEsc(x.type)), when + (x.fan_username ? ' · ' + rvEsc(x.fan_username) : '') + (x.status === 'refunded' ? ' · <span style="color:var(--accent-red)">remboursé</span>' : ''), rvEur(x.amount_ttc));
+          }).join('') || empty))
+        + '</div></div>';
+    });
+  }).catch(function() { box.innerHTML = ''; });
+}

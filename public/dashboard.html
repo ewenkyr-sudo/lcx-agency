@@ -1690,6 +1690,9 @@ function renderDashboard() {
       </div>
     </div>
 
+    <!-- Reveal (API officielle) -->
+    <div id="dashboard-reveal"></div>
+
     <div class="two-col">
       <div class="panel">
         <div class="panel-header">
@@ -1746,6 +1749,7 @@ function renderDashboard() {
 
   // Load stats in dashboard for admin
   if (isAdmin()) {
+    if (typeof rvDashWidget === 'function') rvDashWidget();
     loadDashActiveShifts();
     loadDashboardChatterStats();
     loadDashboardOutreachStats();
