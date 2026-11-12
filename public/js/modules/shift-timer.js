@@ -5,6 +5,7 @@ var _activeShift = null;
 var _shiftTimerInterval = null;
 var _shiftAutoSaveInterval = null;
 var _shiftDirty = false;
+var _revealManaged = false; // ventes relevées automatiquement par l'API Reveal
 
 // ============ CHATTER VIEW ============
 
@@ -12,6 +13,10 @@ async function initShiftTimer() {
   try {
     var res = await fetch('/api/chatter-shifts/mine/current', { credentials: 'include' });
     if (res.ok) _activeShift = await res.json();
+  } catch(e) {}
+  try {
+    var rr = await fetch('/api/reveal/me', { credentials: 'include' });
+    if (rr.ok) _revealManaged = !!(await rr.json()).managed;
   } catch(e) {}
   renderShiftWidget();
 }
@@ -50,7 +55,8 @@ function renderShiftWidget() {
     // Revenue inputs
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:16px">' + t('shift.shift_revenue') + '</h3>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">'
+    + (_revealManaged ? '<div style="padding:12px 14px;border-radius:10px;background:var(--accent-blue-bg, rgba(59,130,246,0.1));color:var(--text-secondary);font-size:13px;line-height:1.5">Rien à saisir : tes PPV et pourboires sont relevés automatiquement depuis Reveal et ajoutés à tes shifts.</div>' : '')
+    + '<div style="display:' + (_revealManaged ? 'none' : 'grid') + ';grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">'
     + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">PPV ' + t('shift.sent') + '</label>'
     + '<input type="number" id="shift-ppv-count" class="form-input" value="' + (_activeShift.ppv_count || 0) + '" min="0" onchange="onShiftFieldChange()" style="font-size:16px;font-weight:700;text-align:center"></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px">PPV ' + t('shift.sold') + '</label>'
@@ -205,9 +211,9 @@ function showEndShiftModal() {
     + '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:8px">' + t('shift.recap') + '</div>'
     + '<div class="grid-2col" style="gap:10px">'
     + '<div><div style="font-size:20px;font-weight:800">' + elapsedH + 'h ' + elapsedM + 'min</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('shift.duration') + '</div></div>'
-    + '<div><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('shift.total_revenue') + '</div></div>'
+    + (_revealManaged ? '<div style="font-size:13px;color:var(--text-secondary)">Ventes relevées par Reveal</div>' : '<div><div style="font-size:20px;font-weight:800;color:var(--green)">$' + totalRev.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + t('shift.total_revenue') + '</div></div>'
     + '<div><div style="font-size:16px;font-weight:700">' + ppvCount + ' → ' + ppvSold + '</div><div style="font-size:11px;color:var(--text-tertiary)">PPV ' + t('shift.sent') + '/' + t('shift.sold') + '</div></div>'
-    + '<div><div style="font-size:16px;font-weight:700">$' + ppvTotal.toFixed(2) + ' / $' + tipsTotal.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-tertiary)">PPV / Tips</div></div>'
+    + '<div><div style="font-size:16px;font-weight:700">$' + ppvTotal.toFixed(2) + ' / $' + tipsTotal.toFixed(2) + '</div><div style="font-size:11px;color:var(--text-tertiary)">PPV / Tips</div></div>')
     + '</div></div>'
     + '<div class="form-group"><label class="form-label">' + t('shift.handover_notes') + '</label>'
     + '<textarea id="shift-handover" class="form-input" rows="3" placeholder="' + t('shift.handover_placeholder') + '"></textarea></div>'

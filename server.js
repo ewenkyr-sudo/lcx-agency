@@ -1215,8 +1215,10 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
 // Add shift report
 app.post('/api/shifts', authMiddleware, async (req, res) => {
   if (req.user.role !== 'chatter' && req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== 'platform_admin') return res.status(403).json({ error: 'Accès refusé' });
-  const { date, model_name, ppv_total, tips_total, shift_notes } = req.body;
+  let { date, model_name, ppv_total, tips_total, shift_notes } = req.body;
   if (!model_name) return res.status(400).json({ error: 'Modèle requis' });
+  // chatteur suivi par l'API Reveal : ses ventes arrivent toutes seules, on ignore la saisie (évite le double comptage)
+  if (await require('./routes/reveal').revealManagesUser(req.user.id, req.agencyId)) { ppv_total = 0; tips_total = 0; }
   const shiftDate = date || new Date().toISOString().split('T')[0];
   const { rows } = await pool.query(
     'INSERT INTO chatter_shifts (user_id, date, model_name, ppv_total, tips_total, shift_notes, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
@@ -1485,6 +1487,7 @@ app.post('/api/chatter-shifts/start', authMiddleware, async (req, res) => {
 app.post('/api/chatter-shifts/:id/update', authMiddleware, async (req, res) => {
   try {
     var { ppv_total, tips_total, ppv_count, ppv_sold, shift_notes } = req.body;
+    if (await require('./routes/reveal').revealManagesUser(req.user.id, req.agencyId)) { ppv_total = null; tips_total = null; ppv_count = null; ppv_sold = null; }
     await pool.query(
       `UPDATE chatter_shifts SET ppv_total = COALESCE($1, ppv_total), tips_total = COALESCE($2, tips_total),
        ppv_count = COALESCE($3, ppv_count), ppv_sold = COALESCE($4, ppv_sold), shift_notes = COALESCE($5, shift_notes)
@@ -4771,6 +4774,8 @@ app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, admin
 
 // ============ AUTO-POST REVEAL ============
 app.use('/api/autopost', require('./routes/autopost'));
+// ============ API REVEAL (stats, chatteurs, liens, ventes) ============
+app.use('/api/reveal', require('./routes/reveal'));
 
 // ============ CATCH-ALL (must be last route) ============
 app.get('*', (req, res) => {
@@ -4784,6 +4789,8 @@ async function start() {
   await migrateToMultiAgency();
   await migrateToMultiMembership();
   await require('./db/autopost-schema').initAutopostDB();
+  await require('./db/reveal-api-schema').initRevealApiDB();
+  if (process.env.REVEAL_API_SYNC !== 'false') require('./services/reveal-api/sync').start();
   // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
   if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();
 

@@ -70,11 +70,25 @@ async function generateReport(modelId, { days = 14, save = false } = {}) {
      WHERE model_id = $1 AND avg_likes IS NOT NULL AND kind <> 'story' AND times_posted >= 2 AND disabled = false ORDER BY avg_likes ASC LIMIT 3`, [modelId]);
 
   // jours avec plus de publications => plus d'abonnés / de revenus ?
+  // Stats du jour : API officielle Reveal si elle est branchée, sinon relevé du bot sur le dashboard
   const { rows: daily } = await pool.query(
-    `SELECT d.date, d.revenue, d.new_subs,
-       (SELECT COUNT(*) FROM autopost_jobs j WHERE j.model_id = d.model_id AND j.status = 'done'
-          AND (j.done_at AT TIME ZONE 'Europe/Paris')::date = d.date)::int AS published
-     FROM autopost_daily_stats d WHERE d.model_id = $1 AND d.date >= $2::date ORDER BY d.date`, [modelId, since]);
+    `WITH api AS (
+       SELECT r.date, (r.agency_revenue + r.model_revenue) / 100.0 AS revenue, r.new_subscribers AS new_subs
+       FROM reveal_stats_daily r JOIN reveal_models rm ON rm.reveal_model_id = r.reveal_model_id
+       WHERE rm.crm_model_id = $1 AND r.date >= $2::date
+     ), bot AS (
+       SELECT d.date, d.revenue, d.new_subs FROM autopost_daily_stats d
+       WHERE d.model_id = $1 AND d.date >= $2::date AND NOT EXISTS (SELECT 1 FROM api)
+     ), src AS (SELECT * FROM api UNION ALL SELECT * FROM bot)
+     SELECT src.date, src.revenue, src.new_subs,
+       (SELECT COUNT(*) FROM autopost_jobs j WHERE j.model_id = $1 AND j.status = 'done'
+          AND (j.done_at AT TIME ZONE 'Europe/Paris')::date = src.date)::int AS published
+     FROM src ORDER BY src.date`, [modelId, since]).catch(async () =>
+    pool.query(
+      `SELECT d.date, d.revenue, d.new_subs,
+         (SELECT COUNT(*) FROM autopost_jobs j WHERE j.model_id = d.model_id AND j.status = 'done'
+            AND (j.done_at AT TIME ZONE 'Europe/Paris')::date = d.date)::int AS published
+       FROM autopost_daily_stats d WHERE d.model_id = $1 AND d.date >= $2::date ORDER BY d.date`, [modelId, since]));
   let volumeEffect = null;
   if (daily.length >= 6) {
     const sorted = [...daily].sort((a, b) => a.published - b.published);
