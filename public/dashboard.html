@@ -95,6 +95,9 @@
     <div class="nav-item" data-section="performances" onclick="switchSection(event)">
       <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span data-i18n="nav.performances">Performances</span>
     </div>
+    <div class="nav-item" data-section="reveal" onclick="switchSection(event)">
+      <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span> <span>Stats Reveal</span>
+    </div>
     <div class="nav-item" data-section="autopost" onclick="switchSection(event)">
       <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 15 11 17 15 13"/></svg></span> <span>Auto-post Reveal</span>
     </div>
@@ -604,6 +607,12 @@
   <div class="section" id="section-student-resources"></div>
   <div class="section" id="section-student-objectives"></div>
   <div class="section" id="section-student-analytics"></div>
+
+  <!-- REVEAL API SECTION -->
+  <div class="section" id="section-reveal">
+    <div class="page-header"><div><div class="page-title">Stats Reveal</div><div class="page-subtitle">Chiffres officiels de l'API Reveal : modèles, chatteurs, liens de suivi et ventes</div></div></div>
+    <div id="reveal-content"></div>
+  </div>
 
   <!-- AUTO-POST REVEAL SECTION -->
   <div class="section" id="section-autopost">
@@ -1378,7 +1387,7 @@ function applyRoleBasedAccess() {
   // Accounts section: only visible to user "ewen" (feature in progress)
   var showAccounts = currentUser.username === 'ewen';
   const adminNav = ['nav-principal', 'nav-teams', 'nav-tools'].concat(showAccounts ? ['nav-accounts'] : []).concat(['nav-admin']);
-  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'autopost', 'finance', 'activity-log'].concat(showAccounts ? ['accounts'] : []).concat(['settings']);
+  const adminSections = ['dashboard', 'planning', 'tasks', 'models', 'chatters', 'outreach', 'va', 'stats', 'coaching', 'performances', 'analytics', 'reveal', 'autopost', 'finance', 'activity-log'].concat(showAccounts ? ['accounts'] : []).concat(['settings']);
   // In student_owned agencies, super_admin also gets student sections
   const studentOwnedNav = ['nav-principal', 'nav-student', 'nav-tools', 'nav-admin'];
   const studentOwnedSections = ['dashboard', 'student-home', 'student-outreach', 'student-planning', 'student-tasks', 'student-recruits', 'student-models', 'student-revenue', 'student-messages', 'student-resources', 'student-objectives', 'student-analytics', 'stats', 'finance', 'settings'];
@@ -1468,6 +1477,7 @@ function switchSection(e) {
     'student-analytics': renderStudentAnalytics,
     'va': renderVA,
     'analytics': renderAnalytics,
+    'reveal': renderReveal,
     'autopost': renderAutopost,
     'finance': renderFinance,
     'activity-log': renderActivityLog,
@@ -1680,6 +1690,9 @@ function renderDashboard() {
       </div>
     </div>
 
+    <!-- Reveal (API officielle) -->
+    <div id="dashboard-reveal"></div>
+
     <div class="two-col">
       <div class="panel">
         <div class="panel-header">
@@ -1736,6 +1749,7 @@ function renderDashboard() {
 
   // Load stats in dashboard for admin
   if (isAdmin()) {
+    if (typeof rvDashWidget === 'function') rvDashWidget();
     loadDashActiveShifts();
     loadDashboardChatterStats();
     loadDashboardOutreachStats();
@@ -1908,6 +1922,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/outreach.js"></script>
 <script src="/js/modules/settings.js"></script>
 <script src="/js/modules/analytics.js"></script>
+<script src="/js/modules/reveal.js"></script>
 <script src="/js/modules/autopost.js"></script>
 <script src="/js/modules/finances.js"></script>
 <script src="/js/modules/misc.js"></script>
