@@ -17,6 +17,7 @@ function range(req, defDays = 30) {
   const from = isDate(req.query.from) ? req.query.from : sync.parisDate(-(defDays - 1));
   return { from, to };
 }
+const modelOf = req => (req.query.model && /^[\w-]{1,80}$/.test(req.query.model) ? req.query.model : null);
 
 // Le chatteur connecté est-il suivi par l'API (saisie PPV / pourboires inutile) ?
 async function revealManagesUser(userId, agencyId) {
@@ -89,7 +90,7 @@ router.post('/sync', wrap(async (req, res) => {
 // ---------- vue d'ensemble ----------
 router.get('/overview', wrap(async (req, res) => {
   const { from, to } = range(req);
-  const a = req.agencyId;
+  const a = req.agencyId, mid = modelOf(req);
   const totals = (await pool.query(
     `SELECT COALESCE(SUM(revenue_ttc),0)::bigint ttc, COALESCE(SUM(revenue_ht),0)::bigint ht, COALESCE(SUM(agency_revenue),0)::bigint agency,
             COALESCE(SUM(model_revenue),0)::bigint model, COALESCE(SUM(new_subscribers),0)::int new_subs, COALESCE(SUM(unsubscribes),0)::int unsubs,
@@ -98,19 +99,19 @@ router.get('/overview', wrap(async (req, res) => {
             COALESCE(SUM(tips_net),0)::bigint tips_net, COALESCE(SUM(payment_links_net),0)::bigint links_net, COALESCE(SUM(boudoir_net),0)::bigint boudoir_net,
             COALESCE(SUM(paid_messages_net),0)::bigint paid_msg_net, COALESCE(SUM(other_net),0)::bigint other_net,
             COALESCE(SUM(messages_sent),0)::int messages_sent, COALESCE(SUM(messages_received),0)::int messages_received
-     FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3`, [a, from, to])).rows[0];
+     FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3 AND ($4::text IS NULL OR reveal_model_id = $4)`, [a, from, to, mid])).rows[0];
   const daily = (await pool.query(
     `SELECT to_char(date,'YYYY-MM-DD') d, SUM(revenue_ttc)::bigint ttc, SUM(agency_revenue)::bigint agency, SUM(agency_revenue + model_revenue)::bigint net,
             SUM(new_subscribers)::int new_subs
-     FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3 GROUP BY date ORDER BY date`, [a, from, to])).rows;
+     FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3 AND ($4::text IS NULL OR reveal_model_id = $4) GROUP BY date ORDER BY date`, [a, from, to, mid])).rows;
   const models = (await pool.query(
-    `SELECT rm.reveal_model_id, rm.display_name, rm.user_name, rm.avatar_url, rm.subscribers_count, rm.crm_model_id, m.name crm_name,
+    `SELECT rm.reveal_model_id, rm.display_name, rm.user_name, rm.avatar_url, rm.subscribers_count, rm.subscription_price, rm.crm_model_id, m.name crm_name,
             COALESCE(SUM(s.revenue_ttc),0)::bigint ttc, COALESCE(SUM(s.agency_revenue),0)::bigint agency, COALESCE(SUM(s.agency_revenue + s.model_revenue),0)::bigint net,
             COALESCE(SUM(s.new_subscribers),0)::int new_subs, COALESCE(SUM(s.unsubscribes),0)::int unsubs,
             COALESCE(SUM(s.ppv_purchased),0)::int ppv_purchased, COALESCE(SUM(s.ppv_sent),0)::int ppv_sent, COALESCE(SUM(s.tips_count),0)::int tips
      FROM reveal_models rm LEFT JOIN models m ON m.id = rm.crm_model_id
      LEFT JOIN reveal_stats_daily s ON s.reveal_model_id = rm.reveal_model_id AND s.date BETWEEN $2 AND $3
-     WHERE rm.agency_id = $1 GROUP BY rm.reveal_model_id, m.name ORDER BY net DESC`, [a, from, to])).rows;
+     WHERE rm.agency_id = $1 AND ($4::text IS NULL OR rm.reveal_model_id = $4) GROUP BY rm.reveal_model_id, m.name ORDER BY net DESC`, [a, from, to, mid])).rows;
   res.json({ from, to, totals, daily, models });
 }));
 
@@ -146,7 +147,7 @@ router.put('/models/:id/map', wrap(async (req, res) => {
 // ---------- chatteurs ----------
 router.get('/chatters', wrap(async (req, res) => {
   const { from, to } = range(req);
-  const a = req.agencyId;
+  const a = req.agencyId, mid = modelOf(req);
   const rows = (await pool.query(
     `SELECT rc.chatter_id, rc.first_name, rc.last_name, rc.email, rc.role, rc.is_bot, rc.is_external, rc.removed_at, rc.crm_user_id, u.display_name crm_name,
             COALESCE(SUM(d.sales_count),0)::int sales, COALESCE(SUM(d.revenue_ttc),0)::bigint ttc, COALESCE(SUM(d.revenue_ht),0)::bigint ht,
@@ -155,11 +156,12 @@ router.get('/chatters', wrap(async (req, res) => {
             COALESCE(SUM(d.tips_count),0)::int tips, COALESCE(SUM(d.tips_net),0)::bigint tips_net,
             COALESCE(SUM(d.messages_sent),0)::int messages_sent, COALESCE(SUM(d.ppv_sent),0)::int ppv_sent
      FROM reveal_chatters rc LEFT JOIN users u ON u.id = rc.crm_user_id
-     LEFT JOIN reveal_chatter_daily d ON d.chatter_id = rc.chatter_id AND d.date BETWEEN $2 AND $3
-     WHERE rc.agency_id = $1 GROUP BY rc.chatter_id, u.display_name ORDER BY net DESC, rc.first_name`, [a, from, to])).rows;
+     LEFT JOIN reveal_chatter_daily d ON d.chatter_id = rc.chatter_id AND d.date BETWEEN $2 AND $3 AND ($4::text IS NULL OR d.reveal_model_id = $4)
+     WHERE rc.agency_id = $1 AND ($4::text IS NULL OR rc.model_ids ? $4 OR d.chatter_id IS NOT NULL)
+     GROUP BY rc.chatter_id, u.display_name ORDER BY net DESC, rc.first_name`, [a, from, to, mid])).rows;
   const nobody = (await pool.query(
     `SELECT COALESCE(SUM(net_revenue),0)::bigint net, COALESCE(SUM(revenue_ttc),0)::bigint ttc FROM reveal_chatter_daily
-     WHERE agency_id = $1 AND chatter_id = '' AND date BETWEEN $2 AND $3`, [a, from, to])).rows[0];
+     WHERE agency_id = $1 AND chatter_id = '' AND date BETWEEN $2 AND $3 AND ($4::text IS NULL OR reveal_model_id = $4)`, [a, from, to, mid])).rows[0];
   const users = (await pool.query(
     `SELECT DISTINCT u.id, u.display_name, u.role FROM users u
      LEFT JOIN agency_memberships am ON am.user_id = u.id
@@ -186,7 +188,8 @@ router.get('/tracking', wrap(async (req, res) => {
             COALESCE(SUM(d.clicks),0)::int p_clicks, COALESCE(SUM(d.new_subscribers),0)::int p_subs, COALESCE(SUM(d.revenue_ttc),0)::bigint p_revenue
      FROM reveal_tracking_links l LEFT JOIN reveal_models rm ON rm.reveal_model_id = l.reveal_model_id
      LEFT JOIN reveal_tracking_daily d ON d.tracking_link_id = l.tracking_link_id AND d.date BETWEEN $2 AND $3
-     WHERE l.agency_id = $1 GROUP BY l.tracking_link_id, rm.display_name ORDER BY p_revenue DESC, l.revenue_ttc DESC`, [req.agencyId, from, to]);
+     WHERE l.agency_id = $1 AND ($4::text IS NULL OR l.reveal_model_id = $4)
+     GROUP BY l.tracking_link_id, rm.display_name ORDER BY p_revenue DESC, l.revenue_ttc DESC`, [req.agencyId, from, to, modelOf(req)]);
   res.json({ from, to, links: rows });
 }));
 
@@ -206,7 +209,8 @@ router.get('/sales', wrap(async (req, res) => {
     `SELECT s.fan_username, rm.display_name model_name, COUNT(*)::int n, SUM(CASE WHEN s.status = 'refunded' THEN 0 ELSE s.amount_ttc END)::bigint total
      FROM reveal_sales s LEFT JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id
      WHERE s.agency_id = $1 AND s.fan_username IS NOT NULL AND s.sale_created_at > NOW() - INTERVAL '31 days'
-     GROUP BY s.fan_username, rm.display_name ORDER BY total DESC LIMIT 10`, [req.agencyId])).rows;
+       AND ($2::text IS NULL OR s.reveal_model_id = $2)
+     GROUP BY s.fan_username, rm.display_name ORDER BY total DESC LIMIT 10`, [req.agencyId, modelOf(req)])).rows;
   res.json({ sales: rows, topFans });
 }));
 

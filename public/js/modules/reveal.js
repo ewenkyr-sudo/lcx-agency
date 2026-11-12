@@ -1,6 +1,6 @@
 // REVEAL MODULE — données de l'API officielle Reveal (stats, chatteurs, liens de suivi, ventes)
 
-var rv = { tab: 'overview', period: '30d', status: null };
+var rv = { tab: 'overview', period: '30d', status: null, model: '', models: [] };
 var RV_TYPES = { subscription: 'Abonnement', renewal: 'Renouvellement', ppv: 'PPV', mass_dm: 'Mass DM', tip: 'Pourboire', payment_link: 'Lien de paiement', boudoir: 'Boudoir', paid_message: 'Message payant', other: 'Autre' };
 
 function rvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -30,7 +30,9 @@ function rvRange() {
   }
   return { from: rvParis(-29), to: today };
 }
-function rvQs() { var r = rvRange(); return '?from=' + r.from + '&to=' + r.to; }
+function rvQs() { var r = rvRange(); return '?from=' + r.from + '&to=' + r.to + (rv.model ? '&model=' + encodeURIComponent(rv.model) : ''); }
+function rvCurModel() { return rv.models.find(function(m) { return m.reveal_model_id === rv.model; }); }
+function rvAvatar(m, size) { size = size || 26; return m && m.avatar_url ? '<img src="' + rvEsc(m.avatar_url) + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex-shrink:0">' : '<span style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--bg-subtle);display:inline-flex;align-items:center;justify-content:center;font-size:' + Math.round(size * 0.45) + 'px;flex-shrink:0">' + rvEsc(((m && (m.display_name || m.user_name)) || '?').charAt(0).toUpperCase()) + '</span>'; }
 function rvStat(label, value, sub, color) {
   return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value" style="font-size:22px' + (color ? ';color:' + color : '') + '">' + value + '</div>' + (sub ? '<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">' + sub + '</div>' : '') + '</div>';
 }
@@ -41,7 +43,7 @@ function renderReveal() {
   if (!c) return;
   if (!c.dataset.ready) {
     c.dataset.ready = '1';
-    c.innerHTML = '<div id="rv-status"></div>'
+    c.innerHTML = '<div id="rv-status"></div><div id="rv-models" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"></div>'
       + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:16px 0">'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap" id="rv-tabs">' + [['overview', 'Vue d\'ensemble'], ['chatters', 'Chatteurs'], ['tracking', 'Liens de suivi'], ['sales', 'Ventes'], ['settings', 'Réglages']].map(function(t) {
         return '<button class="filter-chip' + (rv.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '" onclick="rvTab(\'' + t[0] + '\')">' + t[1] + '</button>';
@@ -53,13 +55,40 @@ function renderReveal() {
   rvLoadStatus().then(function() {
     if (!rv.status.connected && rv.tab !== 'settings') rv.tab = 'settings';
     rvTab(rv.tab);
+    if (rv.status.connected) rvLoadModels();
   });
+}
+
+// ---------- filtre par modèle ----------
+function rvLoadModels() {
+  return rvApi('GET', '/models').then(function(o) {
+    rv.models = o.reveal || [];
+    if (rv.model && !rvCurModel()) rv.model = '';
+    rvRenderModelChips();
+  }).catch(function() {});
+}
+function rvRenderModelChips() {
+  var el = document.getElementById('rv-models');
+  if (!el) return;
+  if (!rv.status || !rv.status.connected || rv.models.length < 2) { el.innerHTML = ''; return; }
+  var chip = function(id, label, m) {
+    return '<button class="filter-chip' + (rv.model === id ? ' active' : '') + '" style="display:inline-flex;align-items:center;gap:6px" onclick="rvSetModel(\'' + id + '\')">'
+      + (m ? rvAvatar(m, 20) : '') + rvEsc(label) + '</button>';
+  };
+  el.innerHTML = chip('', 'Toutes les modèles') + rv.models.map(function(m) { return chip(m.reveal_model_id, m.display_name || m.user_name, m); }).join('');
+}
+function rvSetModel(id) {
+  rv.model = id || '';
+  rvRenderModelChips();
+  if (rv.tab === 'settings') rv.tab = 'overview';
+  rvTab(rv.tab);
 }
 
 function rvTab(t) {
   rv.tab = t;
   document.querySelectorAll('#rv-tabs .filter-chip').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === t); });
   var p = document.getElementById('rv-period'); if (p) p.style.visibility = (t === 'settings' || t === 'sales') ? 'hidden' : 'visible';
+  var mc = document.getElementById('rv-models'); if (mc) mc.style.display = t === 'settings' ? 'none' : 'flex';
   rvBody();
 }
 
@@ -114,7 +143,13 @@ function rvOverview(b) {
     var t = o.totals, net = Number(t.agency) + Number(t.model);
     var mix = [['Abonnements', t.subs_net], ['Renouvellements', t.renewals_net], ['PPV', t.ppv_net], ['Pourboires', t.tips_net], ['Liens de paiement', t.links_net], ['Boudoir', t.boudoir_net], ['Messages payants', t.paid_msg_net], ['Autre', t.other_net]]
       .filter(function(x) { return Number(x[1]) > 0; });
-    b.innerHTML = '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
+    var cm = rv.model ? (o.models[0] || rvCurModel()) : null;
+    b.innerHTML = (cm ? '<div class="panel" style="padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">' + rvAvatar(cm, 52)
+        + '<div style="flex:1;min-width:180px"><div style="font-weight:700;font-size:17px">' + rvEsc(cm.display_name || cm.user_name) + ' <span style="font-weight:400;font-size:13px;color:var(--text-tertiary)">@' + rvEsc(cm.user_name) + '</span></div>'
+        + '<div style="font-size:13px;color:var(--text-secondary);margin-top:2px">' + rvNum(cm.subscribers_count) + ' abonnés' + (cm.subscription_price ? ' · abonnement ' + rvEur(cm.subscription_price) : '')
+        + ' · ' + (cm.crm_name ? 'CRM : ' + rvEsc(cm.crm_name) : '<span style="color:var(--accent-yellow)">pas reliée au CRM</span>') + '</div></div>'
+        + '<button class="btn btn-ghost" style="font-size:12px" onclick="rvSetModel(\'\')">← Toutes les modèles</button></div>' : '')
+      + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
       + rvStat('CA TTC', rvEur(t.ttc), 'HT : ' + rvEur(t.ht))
       + rvStat('Part agence', rvEur(t.agency), 'Part modèles : ' + rvEur(t.model), 'var(--accent-green)')
       + rvStat('Nouveaux abonnés', rvNum(t.new_subs), rvNum(t.unsubs) + ' fins d\'abonnement')
@@ -129,12 +164,12 @@ function rvOverview(b) {
             + '<div style="flex:1;height:8px;background:var(--bg-subtle);border-radius:4px"><div style="height:100%;width:' + pct + '%;background:var(--accent-blue);border-radius:4px"></div></div>'
             + '<div style="width:120px;text-align:right">' + rvEur(x[1]) + ' <span style="color:var(--text-muted)">' + pct + ' %</span></div></div>';
         }).join('') + '</div>' : '')
-      + '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Modèle</th><th>CA TTC</th><th>Net</th><th>Agence</th><th>Nouv. abonnés</th><th>Abonnés</th><th>PPV vendus</th><th>Pourboires</th></tr></thead><tbody>'
+      + (cm ? '' : '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Modèle</th><th>CA TTC</th><th>Net</th><th>Agence</th><th>Nouv. abonnés</th><th>Abonnés</th><th>PPV vendus</th><th>Pourboires</th></tr></thead><tbody>'
       + o.models.map(function(m) {
-        return '<tr><td style="text-align:left"><div style="display:flex;align-items:center;gap:8px">' + (m.avatar_url ? '<img src="' + rvEsc(m.avatar_url) + '" style="width:26px;height:26px;border-radius:50%;object-fit:cover">' : '')
+        return '<tr style="cursor:pointer" title="Voir les stats de ' + rvEsc(m.display_name || m.user_name) + '" onclick="rvSetModel(\'' + m.reveal_model_id + '\')"><td style="text-align:left"><div style="display:flex;align-items:center;gap:8px">' + rvAvatar(m)
           + '<div><div style="font-weight:600">' + rvEsc(m.display_name || m.user_name) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + (m.crm_name ? 'CRM : ' + rvEsc(m.crm_name) : '<span style="color:var(--accent-yellow)">pas reliée au CRM</span>') + '</div></div></div></td>'
           + '<td>' + rvEur(m.ttc) + '</td><td>' + rvEur(m.net) + '</td><td style="color:var(--accent-green)">' + rvEur(m.agency) + '</td><td>' + rvNum(m.new_subs) + '</td><td>' + rvNum(m.subscribers_count) + '</td><td>' + rvNum(m.ppv_purchased) + '</td><td>' + rvNum(m.tips) + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+      }).join('') + '</tbody></table><div style="font-size:12px;color:var(--text-tertiary);padding:10px 14px">Clique sur une modèle pour voir ses stats en détail.</div></div>');
   }).catch(function(e) { b.innerHTML = '<div class="empty-state"><div class="empty-state-title">' + rvEsc(e.message) + '</div></div>'; });
 }
 
@@ -183,7 +218,7 @@ function rvSales(b) {
     b.innerHTML = '<div class="empty-state"><div class="empty-state-title">Ventes non disponibles</div><div style="color:var(--text-tertiary);font-size:13px;max-width:460px;margin:auto">Ta clé n\'a pas l\'accès « Ventes une par une ». Dans Reveal > Paramètres > CRM / API, clique sur « Ajouter les ventes » sur ta clé (sans la changer), puis « Actualiser » ici.</div></div>';
     return;
   }
-  rvApi('GET', '/sales?limit=200').then(function(o) {
+  rvApi('GET', '/sales?limit=200' + (rv.model ? '&model=' + encodeURIComponent(rv.model) : '')).then(function(o) {
     b.innerHTML = '<div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:14px;align-items:start" class="rv-sales-grid">'
       + '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Quand</th><th style="text-align:left">Modèle</th><th style="text-align:left">Type</th><th style="text-align:left">Fan</th><th style="text-align:left">Chatteur</th><th>Montant</th></tr></thead><tbody>'
       + (o.sales.length ? o.sales.map(function(s) {
