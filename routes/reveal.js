@@ -41,7 +41,8 @@ router.get('/status', wrap(async (req, res) => {
     `SELECT (SELECT COUNT(*) FROM reveal_models WHERE agency_id = $1)::int AS models,
             (SELECT COUNT(*) FROM reveal_models WHERE agency_id = $1 AND crm_model_id IS NULL)::int AS models_unmapped,
             (SELECT COUNT(*) FROM reveal_chatters WHERE agency_id = $1 AND NOT is_bot AND removed_at IS NULL)::int AS chatters,
-            (SELECT COUNT(*) FROM reveal_chatters WHERE agency_id = $1 AND NOT is_bot AND removed_at IS NULL AND crm_user_id IS NULL)::int AS chatters_unmapped,
+            (SELECT COUNT(*) FROM reveal_chatters c WHERE c.agency_id = $1 AND NOT c.is_bot AND c.removed_at IS NULL AND c.crm_user_id IS NULL
+               AND EXISTS (SELECT 1 FROM reveal_chatter_daily d WHERE d.chatter_id = c.chatter_id AND d.date >= CURRENT_DATE - 31 AND d.sales_count > 0))::int AS chatters_unmapped,
             (SELECT COUNT(*) FROM reveal_sales WHERE agency_id = $1)::int AS sales`, [req.agencyId])).rows[0];
   res.json({
     connected: !!st.key_enc, key_last4: st.key_last4 || null, connected_at: st.connected_at, last_sync_at: st.last_sync_at,

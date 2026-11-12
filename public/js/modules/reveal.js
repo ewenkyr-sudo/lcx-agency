@@ -72,7 +72,7 @@ function rvLoadStatus() {
     var warn = [];
     if (s.last_error) warn.push('<span style="color:var(--accent-red)">⚠️ ' + rvEsc(s.last_error) + '</span> <span style="color:var(--text-tertiary)">(' + rvAgo(s.last_error_at) + ')</span>');
     if (s.counts.models_unmapped) warn.push(s.counts.models_unmapped + ' modèle(s) Reveal pas reliée(s) au CRM → onglet Réglages');
-    if (s.counts.chatters_unmapped) warn.push(s.counts.chatters_unmapped + ' chatteur(s) Reveal pas relié(s) à un compte CRM → onglet Chatteurs');
+    if (s.counts.chatters_unmapped) warn.push(s.counts.chatters_unmapped + ' chatteur(s) qui vendent sur Reveal pas relié(s) à un compte CRM → onglet Chatteurs');
     if (s.sales_enabled === false) warn.push('La clé n\'a pas l\'accès « Ventes une par une » : ventes et Fan CRM désactivés');
     el.innerHTML = '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)">'
       + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + (s.last_error ? 'var(--accent-red)' : 'var(--accent-green)') + '"></span>API Reveal connectée</span>'
@@ -118,9 +118,9 @@ function rvOverview(b) {
       + rvStat('CA TTC', rvEur(t.ttc), 'HT : ' + rvEur(t.ht))
       + rvStat('Part agence', rvEur(t.agency), 'Part modèles : ' + rvEur(t.model), 'var(--accent-green)')
       + rvStat('Nouveaux abonnés', rvNum(t.new_subs), rvNum(t.unsubs) + ' fins d\'abonnement')
-      + rvStat('PPV vendus', rvNum(t.ppv_purchased), rvNum(t.ppv_sent) + ' envoyés' + (t.ppv_sent ? ' · ' + Math.round(t.ppv_purchased / t.ppv_sent * 100) + ' %' : ''))
+      + rvStat('PPV vendus', rvNum(t.ppv_purchased), (t.ppv_sent ? rvNum(t.ppv_sent) + ' envoyés · ' + Math.round(t.ppv_purchased / t.ppv_sent * 100) + ' %' : rvEur(t.ppv_net) + ' net'))
       + rvStat('Pourboires', rvNum(t.tips), rvEur(t.tips_net) + ' net')
-      + rvStat('Messages', rvNum(t.messages_sent), rvNum(t.messages_received) + ' reçus des fans')
+      + (Number(t.messages_sent) || Number(t.messages_received) ? rvStat('Messages', rvNum(t.messages_sent), rvNum(t.messages_received) + ' reçus des fans') : '')
       + '</div>'
       + rvBars(o.daily)
       + (mix.length ? '<div class="panel" style="padding:16px;margin-bottom:14px"><div style="font-weight:600;margin-bottom:10px">D\'où vient le CA net</div>' + mix.map(function(x) {

@@ -265,10 +265,10 @@ async function applySale(agencyId, item, st) {
      s.fan?.memberId || null, s.fan?.userName || null, s.chatterId || null]);
   const sale = (await pool.query(`SELECT * FROM reveal_sales WHERE id = $1`, [s.id])).rows[0];
 
-  // Fan CRM
+  // Fan CRM (une erreur ici ne doit jamais bloquer le relevé des ventes)
   const { rows: mm } = await pool.query(`SELECT rm.crm_model_id, m.name FROM reveal_models rm LEFT JOIN models m ON m.id = rm.crm_model_id WHERE rm.reveal_model_id = $1`, [sale.reveal_model_id]);
   const crmModel = mm[0]?.crm_model_id;
-  if (crmModel && sale.fan_username) {
+  if (crmModel && sale.fan_username) try {
     const chatterUser = sale.chatter_id ? (await pool.query(`SELECT crm_user_id FROM reveal_chatters WHERE chatter_id = $1`, [sale.chatter_id])).rows[0]?.crm_user_id : null;
     if (!refunded && !sale.fan_crm_applied) {
       const fanId = await upsertFan(agencyId, crmModel, sale);
@@ -285,6 +285,8 @@ async function applySale(agencyId, item, st) {
         [fanId, -(sale.amount_ttc || 0) / 100, `Remboursement ${SALE_TYPES_FR[sale.type] || sale.type} (Reveal)`, item.occurredAt]);
       await pool.query(`UPDATE reveal_sales SET refund_applied = true WHERE id = $1`, [sale.id]);
     }
+  } catch (e) {
+    console.error('[reveal-api] fan CRM', sale.id, e.message);
   }
 
   // Alerte WhatsApp pour les grosses ventes (seulement les ventes récentes, pas le rattrapage)
@@ -299,13 +301,16 @@ async function applySale(agencyId, item, st) {
 }
 
 async function upsertFan(agencyId, modelId, sale) {
+  // Un fan peut déjà exister pour cette modèle (ajouté à la main ou par une autre agence) : on le réutilise
   const { rows } = await pool.query(
-    `SELECT id FROM fans WHERE agency_id = $1 AND model_id = $2 AND platform = 'reveal' AND LOWER(username) = LOWER($3) LIMIT 1`,
-    [agencyId, modelId, sale.fan_username]);
+    `SELECT id FROM fans WHERE model_id = $1 AND platform = 'reveal' AND LOWER(username) = LOWER($2) ORDER BY (username = $2) DESC, id LIMIT 1`,
+    [modelId, sale.fan_username]);
   if (rows[0]) return rows[0].id;
   const ins = await pool.query(
     `INSERT INTO fans (agency_id, model_id, platform, username, display_name, total_spent, first_seen_at, notes)
-     VALUES ($1,$2,'reveal',$3,$3,0,$4,'Ajouté automatiquement depuis Reveal') RETURNING id`,
+     VALUES ($1,$2,'reveal',$3,$3,0,$4,'Ajouté automatiquement depuis Reveal')
+     ON CONFLICT (model_id, platform, username) DO UPDATE SET username = EXCLUDED.username
+     RETURNING id`,
     [agencyId, modelId, sale.fan_username, sale.sale_created_at]);
   return ins.rows[0].id;
 }
@@ -325,8 +330,8 @@ async function fullSync(agencyId, { force = false } = {}) {
     await syncTracking(agencyId, key, from, to);
     await updateObjectives(agencyId);
     await updateShifts(agencyId);
-    await syncSales(agencyId, key);
     await pool.query(`UPDATE reveal_api_state SET last_sync_at = NOW(), last_error = NULL, backfilled = true WHERE agency_id = $1`, [agencyId]);
+    await syncSales(agencyId, key);
     return { ok: true, first };
   } catch (e) {
     await setError(agencyId, e);
