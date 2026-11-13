@@ -370,11 +370,19 @@ var MODEL_COLORS = ['#1449E6', '#EA580C', '#0D9488', '#7C3AED', '#D97706', '#D61
 function modelColor(crmId, name) {
   var list = (typeof allModels !== 'undefined' ? allModels : []).slice().sort(function(a, b) { return a.id - b.id; });
   var i = list.findIndex(function(m) { return (crmId != null && m.id === Number(crmId)) || (name && m.name === name); });
-  if (i < 0) { // modèle hors CRM : couleur dérivée du nom, après celles du CRM
+  // couleur choisie dans Modèles
+  if (i >= 0 && list[i].chart_color) return list[i].chart_color;
+  // sinon : couleurs de la palette pas encore prises par une autre modèle, dans l'ordre
+  var used = list.map(function(m) { return String(m.chart_color || '').toLowerCase(); });
+  var free = MODEL_COLORS.filter(function(c) { return used.indexOf(c.toLowerCase()) < 0; });
+  if (!free.length) free = MODEL_COLORS;
+  var autoList = list.filter(function(m) { return !m.chart_color; });
+  var j = i >= 0 ? autoList.indexOf(list[i]) : -1;
+  if (j < 0) { // modèle hors CRM : couleur dérivée du nom
     var h = 0; String(name || crmId || '').split('').forEach(function(c) { h = (h * 31 + c.charCodeAt(0)) >>> 0; });
-    i = list.length + (h % MODEL_COLORS.length);
+    j = autoList.length + (h % free.length);
   }
-  return MODEL_COLORS[i % MODEL_COLORS.length];
+  return free[j % free.length];
 }
 
 // Graphique : une barre par modèle et par jour, sur tout le mois en cours (jours à venir vides)

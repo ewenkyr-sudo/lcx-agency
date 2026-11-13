@@ -746,6 +746,15 @@ app.put('/api/models/:id/avatar', authMiddleware, adminOnly, async (req, res) =>
   res.json({ ok: true });
 });
 
+// Couleur de la modèle dans les graphiques
+app.put('/api/models/:id/color', authMiddleware, adminOnly, async (req, res) => {
+  const c = req.body?.color ? String(req.body.color) : null;
+  if (c && !/^#[0-9a-fA-F]{6}$/.test(c)) return res.status(400).json({ error: 'Couleur invalide' });
+  const { rowCount } = await pool.query('UPDATE models SET chart_color = $1 WHERE id = $2 AND (agency_id = $3 OR agency_id IS NULL)', [c, req.params.id, req.agencyId]);
+  if (!rowCount) return res.status(404).json({ error: 'Modèle introuvable' });
+  res.json({ ok: true });
+});
+
 app.delete('/api/models/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
   await pool.query('UPDATE models SET photo_url = NULL WHERE id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [req.params.id, req.agencyId]);
   res.json({ ok: true });

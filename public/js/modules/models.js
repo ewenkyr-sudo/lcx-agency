@@ -70,6 +70,16 @@ function uploadModelAvatar(modelId, file) {
   reader.readAsDataURL(file);
 }
 
+function setModelColor(modelId, color) {
+  fetch('/api/models/' + modelId + '/color', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ color: color }) })
+    .then(function(r) { if (!r.ok) throw new Error('Erreur'); })
+    .then(function() {
+      var m = allModels.find(function(x) { return x.id === modelId; }); if (m) m.chart_color = color;
+      renderModels();
+      showToast('Couleur enregistrée', 'success');
+    }).catch(function(e) { showToast(e.message, 'error'); });
+}
+
 function renderModels() {
   const container = document.getElementById('models-content');
   const actions = document.getElementById('models-actions');
@@ -86,7 +96,7 @@ function renderModels() {
             <div class="model-header">
               ${modelAvatarHtml(m, 48, isAdmin())}
               <div>
-                <div class="model-name">${m.name}</div>
+                <div class="model-name" style="display:flex;align-items:center;gap:8px">${m.name}${isAdmin() ? `<label title="Couleur dans les graphiques" style="position:relative;width:14px;height:14px;border-radius:50%;background:${modelColor(m.id, m.name)};cursor:pointer;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.08)"><input type="color" value="${modelColor(m.id, m.name)}" onclick="event.stopPropagation()" onchange="setModelColor(${m.id}, this.value)" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;padding:0"></label>` : ''}</div>
                 <div class="model-platform">${(m.platforms || []).join(' + ')}</div>
               </div>
               <select onchange="updateModelDrive(${m.id},'lifecycle_status',this.value);this.style.background=this.options[this.selectedIndex].getAttribute('data-bg')" style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:8px;border:none;font-weight:600;cursor:pointer;font-family:inherit;background:${m.lifecycle_status==='recruited'?'var(--blue-bg)':m.lifecycle_status==='onboarding'?'var(--yellow-bg)':m.lifecycle_status==='revenue'?'var(--green-bg)':'var(--green-bg)'};color:${m.lifecycle_status==='recruited'?'var(--blue)':m.lifecycle_status==='onboarding'?'var(--yellow)':m.lifecycle_status==='revenue'?'var(--accent)':'var(--green)'}">
