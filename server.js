@@ -729,10 +729,26 @@ app.delete('/api/team/:id', authMiddleware, adminOnly, async (req, res) => {
 // ============ MODELS CRUD ============
 app.get('/api/models', authMiddleware, async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT m.*, s.reveal_model_id AS autopost_reveal_id FROM models m
+    `SELECT m.*, s.reveal_model_id AS autopost_reveal_id,
+            (SELECT rm.avatar_url FROM reveal_models rm WHERE rm.crm_model_id = m.id AND rm.avatar_url IS NOT NULL LIMIT 1) AS reveal_avatar_url
+     FROM models m
      LEFT JOIN autopost_settings s ON s.model_id = m.id
      WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name`, [req.agencyId]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
+});
+
+// Photo de profil d'une modèle (image redimensionnée côté navigateur, envoyée en data URL)
+app.put('/api/models/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
+  const url = String(req.body?.avatar_url || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(url) || url.length > 400000) return res.status(400).json({ error: 'Image invalide ou trop lourde' });
+  const { rowCount } = await pool.query('UPDATE models SET photo_url = $1 WHERE id = $2 AND (agency_id = $3 OR agency_id IS NULL)', [url, req.params.id, req.agencyId]);
+  if (!rowCount) return res.status(404).json({ error: 'Modèle introuvable' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/models/:id/avatar', authMiddleware, adminOnly, async (req, res) => {
+  await pool.query('UPDATE models SET photo_url = NULL WHERE id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [req.params.id, req.agencyId]);
+  res.json({ ok: true });
 });
 
 app.post('/api/models', authMiddleware, adminOnly, async (req, res) => {
