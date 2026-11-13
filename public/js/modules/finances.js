@@ -175,7 +175,7 @@ function renderFinanceCharts(monthly, breakdown) {
     if (financeChartMonthly) financeChartMonthly.destroy();
     financeChartMonthly = new Chart(ctx1.getContext('2d'), {
       type: 'bar',
-      data: { labels: months.map(function(m) { return m.slice(5); + '/' + m.slice(2, 4) }), datasets: datasets },
+      data: { labels: months.map(function(m) { return new Date(m + '-15T12:00:00Z').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }), datasets: datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
