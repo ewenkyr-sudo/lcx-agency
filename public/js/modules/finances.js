@@ -165,8 +165,10 @@ function renderFinanceCharts(monthly, breakdown) {
         var row = monthly.find(function(r) { return r.month === m && r.model_name === name; });
         return row ? parseFloat(row.revenue) : 0;
       }),
-      backgroundColor: chartColors[i % chartColors.length] + 'CC',
-      borderRadius: 4
+      backgroundColor: modelColor(null, name),
+      keepColor: true,
+      borderRadius: 0,
+      maxBarThickness: 26
     };
   });
 
@@ -196,7 +198,7 @@ function renderFinanceCharts(monthly, breakdown) {
       type: 'doughnut',
       data: {
         labels: topByModel.map(function(r) { return r.model_name; }),
-        datasets: [{ data: topByModel.map(function(r) { return parseFloat(r.revenue); }), backgroundColor: chartColors.slice(0, topByModel.length), borderWidth: 0 }]
+        datasets: [{ data: topByModel.map(function(r) { return parseFloat(r.revenue); }), keepColor: true, backgroundColor: topByModel.map(function(r) { return modelColor(null, r.model_name); }), borderColor: CHART_SURFACE, borderWidth: 3, borderRadius: 4, hoverOffset: 4 }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
     });

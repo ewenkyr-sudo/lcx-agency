@@ -88,6 +88,18 @@ router.post('/sync', wrap(async (req, res) => {
 }));
 
 // ---------- vue d'ensemble ----------
+// CA net par jour et par modèle (graphique « Revenu journalier » par modèle)
+router.get('/daily-by-model', wrap(async (req, res) => {
+  const { from, to } = range(req);
+  const { rows } = await pool.query(
+    `SELECT to_char(s.date,'YYYY-MM-DD') AS d, s.reveal_model_id, rm.crm_model_id, COALESCE(m.name, rm.display_name) AS name,
+            SUM(s.agency_revenue + s.model_revenue)::bigint AS net
+     FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
+     WHERE s.agency_id = $1 AND s.date BETWEEN $2 AND $3
+     GROUP BY 1, 2, 3, 4 ORDER BY 1`, [req.agencyId, from, to]);
+  res.json({ from, to, rows });
+}));
+
 router.get('/overview', wrap(async (req, res) => {
   const { from, to } = range(req);
   const a = req.agencyId, mid = modelOf(req);
