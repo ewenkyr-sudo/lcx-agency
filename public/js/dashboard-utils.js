@@ -8,7 +8,7 @@
 var CHART_PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 var CHART_SURFACE = '#131316';
 // Style « Reveal » : une couleur vive pour la série principale, un gris pour la série de comparaison
-var CHART_ACCENT = '#3B82F6', CHART_SECOND = '#5B5B63';
+var CHART_ACCENT = '#1F6FFF', CHART_SECOND = '#5B5B63';
 var CHART_TEXT = '#A1A1AA', CHART_MUTED = '#71717A';
 
 var chartDarkTooltip = {
@@ -187,7 +187,8 @@ function chartShortNumber(v) {
     var opts = chart.options || {};
     if (isRound(chart.config.type) || opts.indexAxis === 'y') return;
     var y = chart.scales.y; if (!y || (y.options && y.options.stacked)) return;
-    var meta = chart.getDatasetMeta(0), ds = chart.data.datasets[0];
+    var idx = Math.max(0, chart.data.datasets.findIndex(function(x) { return x.peak; }));
+    var meta = chart.getDatasetMeta(idx), ds = chart.data.datasets[idx];
     if (!meta || meta.hidden || !ds || !meta.data.length) return;
     var best = -1, bestV = -Infinity;
     (ds.data || []).forEach(function(v, i) { var n = Number(v && typeof v === 'object' ? v.y : v); if (isFinite(n) && n > bestV) { bestV = n; best = i; } });
@@ -225,6 +226,58 @@ function chartShortNumber(v) {
     }
   });
 })();
+
+// ========== GRAPHIQUE « MOIS EN COURS vs MOIS DERNIER » (comme sur Reveal) ==========
+// rows : [{ d: 'YYYY-MM-DD', v: nombre }] couvrant au moins le mois dernier et le mois en cours
+// today : 'YYYY-MM-DD'. Renvoie { chart, title, subtitle }.
+function monthCompareChart(canvas, rows, today, opts) {
+  opts = opts || {};
+  if (!canvas || typeof Chart === 'undefined') return null;
+  var old = Chart.getChart(canvas); if (old) old.destroy();
+  var cur = today.slice(0, 7);
+  var pd = new Date(Date.UTC(+cur.slice(0, 4), +cur.slice(5, 7) - 2, 1));
+  var prev = pd.toISOString().slice(0, 7);
+  var len = function(m) { return new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7), 0)).getUTCDate(); };
+  var n = Math.max(len(cur), len(prev));
+  var map = {};
+  (rows || []).forEach(function(r) { map[String(r.d).slice(0, 10)] = (map[String(r.d).slice(0, 10)] || 0) + (Number(r.v) || 0); });
+  var pad = function(i) { return (i < 10 ? '0' : '') + i; };
+  var curData = [], prevData = [];
+  var todayDay = +today.slice(8, 10);
+  for (var i = 1; i <= n; i++) {
+    // jours à venir du mois en cours : vides (les barres restent à gauche)
+    curData.push(i <= len(cur) && i <= todayDay ? (map[cur + '-' + pad(i)] || 0) : null);
+    prevData.push(i <= len(prev) ? (map[prev + '-' + pad(i)] || 0) : null);
+  }
+  var monthName = function(m) { return new Date(m + '-15T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long' }); };
+  var cap = function(x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+  var unit = opts.unit || '€';
+  var fmt = function(v) { return (Number(v) || 0).toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0 }) + ' ' + unit; };
+  var chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: Array.from({ length: n }, function(_, i) { return pad(i + 1); }),
+      datasets: [
+        { label: cap(monthName(prev)), data: prevData, keepColor: true, backgroundColor: CHART_SECOND, hoverBackgroundColor: CHART_SECOND, borderRadius: 4, borderSkipped: false, maxBarThickness: 6, categoryPercentage: 0.8, barPercentage: 0.9 },
+        { label: cap(monthName(cur)), data: curData, peak: true, keepColor: true, backgroundColor: CHART_ACCENT, hoverBackgroundColor: CHART_ACCENT, borderRadius: 4, borderSkipped: false, maxBarThickness: 6, categoryPercentage: 0.8, barPercentage: 0.9 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: {
+          title: function(items) { return 'Le ' + (items[0].dataIndex + 1); },
+          label: function(c) { return ' ' + c.dataset.label + ' : ' + fmt(c.parsed.y); }
+        } }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 11 } },
+        y: { ticks: { callback: function(v) { return chartShortNumber(v) + ' ' + unit; } } }
+      }
+    }
+  });
+  return { chart: chart, subtitle: monthName(prev) + ' vs ' + monthName(cur) + (opts.what ? ' · ' + opts.what : '') };
+}
 
 // Debounce
 function debounce(fn, delay) {

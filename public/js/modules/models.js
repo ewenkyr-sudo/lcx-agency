@@ -229,7 +229,8 @@ async function renderModelCockpit(modelId) {
       <!-- Charts -->
       <div class="cockpit-charts">
         <div class="cockpit-panel">
-          <div class="cockpit-panel-title">${t('models.revenue_30d')}</div>
+          <div class="cockpit-panel-title">Revenu journalier</div>
+          <div id="cockpit-revenue-sub" style="font-size:12px;color:var(--text-tertiary);margin:-6px 0 8px"></div>
           <div style="position:relative;height:260px"><canvas id="cockpit-chart-revenue"></canvas></div>
         </div>
         <div class="cockpit-panel">
@@ -335,42 +336,11 @@ async function renderModelCockpit(modelId) {
 function renderCockpitCharts(d) {
   var chartDefaults = { color: '#A1A1AA', borderColor: '#1E1E22' };
 
-  // Revenue 30 days line chart
+  // Revenu journalier : mois en cours vs mois dernier (style Reveal)
   var ctx1 = document.getElementById('cockpit-chart-revenue');
   if (ctx1) {
-    cockpitCharts.revenue = new Chart(ctx1, {
-      type: 'line',
-      data: {
-        labels: d.rev30.map(function(r) { return new Date(r.date).toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}); }),
-        datasets: [{
-          label: 'PPV',
-          data: d.rev30.map(function(r) { return parseFloat(r.ppv); }),
-          borderColor: '#3B82F6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
-          fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
-        }, {
-          label: 'Tips',
-          data: d.rev30.map(function(r) { return parseFloat(r.tips); }),
-          borderColor: '#8B5CF6',
-          backgroundColor: 'rgba(236,72,153,0.1)',
-          fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
-        }].concat(d.source === 'reveal' ? [{
-          label: 'Abonnements & autres',
-          data: d.rev30.map(function(r) { return Math.max(0, (r.net || 0) - r.ppv - r.tips); }),
-          borderColor: '#22D3EE',
-          backgroundColor: 'rgba(34,211,238,0.08)',
-          fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
-        }] : [])
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
-        scales: {
-          x: { ticks: chartDarkTicks, grid: chartDarkGrid },
-          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '' + cockpitCur + v; } }), grid: chartDarkGrid }
-        }
-      }
-    });
+    var mc = monthCompareChart(ctx1, d.daily || [], d.today || new Date().toISOString().slice(0, 10), { unit: cockpitCur, what: d.source === 'reveal' ? 'net Reveal' : 'PPV + tips' });
+    if (mc) { cockpitCharts.revenue = mc.chart; var sub = document.getElementById('cockpit-revenue-sub'); if (sub) sub.textContent = mc.subtitle; }
   }
 
   // Donut chart

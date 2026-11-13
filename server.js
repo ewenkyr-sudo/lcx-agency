@@ -2816,6 +2816,8 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
           revenueToday: sum(td, 'net'), ppvToday: sum(td, 'ppv'), tipsToday: sum(td, 'tips'),
           revenueMonth: sum(mo, 'net'), ppvMonth: sum(mo, 'ppv'), tipsMonth: sum(mo, 'tips'),
           rev30: d30.map(r => ({ date: r.date, ppv: Number(r.ppv), tips: Number(r.tips), net: Number(r.net) })),
+          daily: days.map(r => ({ d: r.date, v: Number(r.net) })),
+          today,
           revWeekly: weeks.map(r => ({ week: r.week, ppv: Number(r.ppv), tips: Number(r.tips) })),
         };
       }
@@ -2839,6 +2841,10 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
       revenueMonth, ppvMonth, tipsMonth,
       objective: { target: parseFloat(objective.target), current: parseFloat(objective.current) },
       rev30, revWeekly,
+      daily: (await pool.query(
+        `SELECT date AS d, SUM(ppv_total + tips_total) AS v FROM chatter_shifts WHERE model_name = $1
+         AND date >= to_char(date_trunc('month', CURRENT_DATE) - INTERVAL '1 month', 'YYYY-MM-DD') GROUP BY date`, [model.name])).rows,
+      today: todayStr,
       ...(revealSource ? { ...revealSource, source: 'reveal', currency: '€' } : { currency: '$' }),
       assignedTeam: assignedTeam.map(t => ({
         ...t,

@@ -157,7 +157,7 @@ function rvOverview(b) {
       + rvStat('Pourboires', rvNum(t.tips), rvEur(t.tips_net) + ' net')
       + (Number(t.messages_sent) || Number(t.messages_received) ? rvStat('Messages', rvNum(t.messages_sent), rvNum(t.messages_received) + ' reçus des fans') : '')
       + '</div>'
-      + rvBars(o.daily)
+      + '<div class="panel" style="padding:16px;margin:14px 0"><div style="font-weight:700;font-size:15px">Revenu journalier</div><div id="rv-daily-sub" style="font-size:12px;color:var(--text-tertiary);margin:2px 0 8px"></div><div style="position:relative;height:240px"><canvas id="rv-daily-chart"></canvas></div></div>'
       + (mix.length ? '<div class="panel" style="padding:16px;margin-bottom:14px"><div style="font-weight:600;margin-bottom:10px">D\'où vient le CA net</div>' + mix.map(function(x) {
           var pct = net ? Math.round(x[1] / net * 100) : 0;
           return '<div style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:6px"><div style="width:130px;color:var(--text-secondary)">' + x[0] + '</div>'
@@ -170,7 +170,17 @@ function rvOverview(b) {
           + '<div><div style="font-weight:600">' + rvEsc(m.display_name || m.user_name) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + (m.crm_name ? 'CRM : ' + rvEsc(m.crm_name) : '<span style="color:var(--accent-yellow)">pas reliée au CRM</span>') + '</div></div></div></td>'
           + '<td>' + rvEur(m.ttc) + '</td><td>' + rvEur(m.net) + '</td><td style="color:var(--accent-green)">' + rvEur(m.agency) + '</td><td>' + rvNum(m.new_subs) + '</td><td>' + rvNum(m.subscribers_count) + '</td><td>' + rvNum(m.ppv_purchased) + '</td><td>' + rvNum(m.tips) + '</td></tr>';
       }).join('') + '</tbody></table><div style="font-size:12px;color:var(--text-tertiary);padding:10px 14px">Clique sur une modèle pour voir ses stats en détail.</div></div>');
+    rvDailyCompare();
   }).catch(function(e) { b.innerHTML = '<div class="empty-state"><div class="empty-state-title">' + rvEsc(e.message) + '</div></div>'; });
+}
+
+function rvDailyCompare() {
+  var today = rvParis(0);
+  var pd = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 2, 1)).toISOString().slice(0, 10);
+  rvApi('GET', '/overview?from=' + pd + '&to=' + today + (rv.model ? '&model=' + encodeURIComponent(rv.model) : '')).then(function(o) {
+    var mc = monthCompareChart(document.getElementById('rv-daily-chart'), o.daily.map(function(x) { return { d: x.d, v: Number(x.net) / 100 }; }), today, { what: 'CA net' });
+    var sub = document.getElementById('rv-daily-sub'); if (mc && sub) sub.textContent = mc.subtitle;
+  }).catch(function() {});
 }
 
 // ---------- chatteurs ----------
