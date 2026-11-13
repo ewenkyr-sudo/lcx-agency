@@ -84,9 +84,9 @@ function renderModels() {
   const container = document.getElementById('models-content');
   const actions = document.getElementById('models-actions');
 
-  if (isAdmin()) {
+  if (isAdmin() && !isPartner()) {
     actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-model')">${t('common.new_model')}</button>`;
-  }
+  } else if (actions) actions.innerHTML = '';
 
   container.innerHTML = `
     <div class="panel">
@@ -132,7 +132,7 @@ function renderModels() {
                 ${m.drive_contract ? '<a href="' + m.drive_contract + '" target="_blank" style="padding:6px 10px;background:var(--accent-glow);color:var(--accent);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap">' + t('models.drive_contract') + '</a>' : ''}
               </div>
             </div>
-            <button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">${t('common.delete')}</button>
+            ${isPartner() ? '' : `<button class="btn-delete-small" onclick="deleteModel(${m.id})" style="margin-top:10px;width:100%">${t('common.delete')}</button>`}
             ` : ''}
           </div>
         `).join('')}

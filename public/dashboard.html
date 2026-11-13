@@ -1230,6 +1230,9 @@
 <script>
 // ========== HELPERS ==========
 function isAdmin() { return currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'platform_admin'); }
+// Associé : admin limité à certaines modèles (Paramètres > Équipe)
+function isPartner() { return isAdmin() && Array.isArray(currentUser.model_scope); }
+var PARTNER_SECTIONS = ['models', 'chatters', 'reveal', 'autopost', 'finance'];
 
 // ========== GLOBAL STATE ==========
 let currentUser = null;
@@ -1424,6 +1427,19 @@ function applyRoleBasedAccess() {
     item.style.display = visibleSections[role]?.includes(section) ? '' : 'none';
   });
 
+  // Associé : seulement ses modèles et les pages qui les concernent
+  if (isPartner()) {
+    ['nav-principal', 'nav-teams', 'nav-tools', 'nav-accounts', 'nav-student', 'nav-admin', 'nav-platform'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === 'nav-teams' || id === 'nav-tools') ? '' : 'none';
+    });
+    document.querySelectorAll('[data-section]').forEach(item => {
+      item.style.display = PARTNER_SECTIONS.includes(item.getAttribute('data-section')) ? '' : 'none';
+    });
+    const first = document.querySelector('.nav-item[data-section="models"]');
+    if (first) setTimeout(() => first.click(), 0);
+  }
+
   // Hide action buttons for non-admin
   if (!isAdmin()) {
     document.querySelectorAll('[id*="-actions"]').forEach(el => {
@@ -1609,6 +1625,7 @@ async function submitForm(formName) {
 
 // ========== RENDERING SECTIONS ==========
 function renderAllSections() {
+  if (isPartner()) { renderModels(); return; }
   renderDashboard();
   renderTasks();
   renderModels();

@@ -34,14 +34,15 @@ function renderReveal() {
     c.dataset.ready = '1';
     c.innerHTML = '<div id="rv-status"></div><div id="rv-models" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"></div>'
       + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:16px 0">'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap" id="rv-tabs">' + [['overview', 'Vue d\'ensemble'], ['chatters', 'Chatteurs'], ['tracking', 'Liens de suivi'], ['sales', 'Ventes'], ['settings', 'Réglages']].map(function(t) {
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap" id="rv-tabs">' + [['overview', 'Vue d\'ensemble'], ['chatters', 'Chatteurs'], ['tracking', 'Liens de suivi'], ['sales', 'Ventes'], ['settings', 'Réglages']].filter(function(t) { return !(isPartner() && t[0] === 'settings'); }).map(function(t) {
         return '<button class="filter-chip' + (rv.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '" onclick="rvTab(\'' + t[0] + '\')">' + t[1] + '</button>';
       }).join('') + '</div>'
       + '<div id="rv-period">' + periodPickerHtml('rv-pp', rv.period, rv.from, rv.to, function(v, f, t) { rv.period = v; rv.from = f; rv.to = t; rvBody(); }) + '</div>'
       + '</div><div id="rv-body"><div class="skeleton-card" style="height:180px"></div></div>';
   }
   rvLoadStatus().then(function() {
-    if (!rv.status.connected && rv.tab !== 'settings') rv.tab = 'settings';
+    if (!rv.status.connected && rv.tab !== 'settings') rv.tab = isPartner() ? 'overview' : 'settings';
+    if (isPartner() && rv.tab === 'settings') rv.tab = 'overview';
     rvTab(rv.tab);
     if (rv.status.connected) rvLoadModels();
   });
@@ -87,6 +88,7 @@ function rvLoadStatus() {
     if (!el) return;
     if (!s.connected) { el.innerHTML = ''; return; }
     var warn = [];
+    if (isPartner()) { el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary)">Stats à jour ' + rvAgo(s.last_sync_at) + '</div>'; return; }
     if (s.last_error) warn.push('<span style="color:var(--accent-red)">⚠️ ' + rvEsc(s.last_error) + '</span> <span style="color:var(--text-tertiary)">(' + rvAgo(s.last_error_at) + ')</span>');
     if (s.counts.models_unmapped) warn.push(s.counts.models_unmapped + ' modèle(s) Reveal pas reliée(s) au CRM → onglet Réglages');
     if (s.counts.chatters_unmapped) warn.push(s.counts.chatters_unmapped + ' chatteur(s) qui vendent sur Reveal pas relié(s) à un compte CRM → onglet Chatteurs');

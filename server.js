@@ -249,6 +249,7 @@ const pool = require('./db/pool');
 const { initDB, seedData, migrateToMultiAgency, migrateToMultiMembership } = require('./db/init');
 const { sensitiveRL, passwordRL, loginLimiter, forgotPasswordRL } = require('./middlewares/rateLimit');
 const { createNotification, notifyAdmins, setBroadcast: setNotifBroadcast } = require('./services/notifications');
+const modelScope = require('./services/scope');
 
 const { authMiddleware, adminOnly, platformAdminOnly } = require('./middlewares/auth');
 const { sendWhatsApp, getNotifSetting, isNotifEnabled } = require('./services/whatsapp');
@@ -525,6 +526,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 
   // Get role from membership for active agency
   user.role = req.user.role;
+  user.model_scope = req.modelScope || null;
   user.agency_id = activeAgencyId;
 
   // Get all agencies this user belongs to
@@ -589,8 +591,24 @@ app.patch('/api/agency/language', authMiddleware, async (req, res) => {
 
 // ============ USERS CRUD (Admin only) ============
 app.get('/api/users', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, email, created_at FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.agencyId]);
+  const { rows } = await pool.query('SELECT id, username, display_name, role, avatar_url, read_only, expires_at, agency_id, email, created_at, model_scope FROM users WHERE (agency_id = $1 OR agency_id IS NULL) ORDER BY role, display_name', [req.agencyId]);
   res.json(rows);
+});
+
+// Associé : modèles visibles par un admin (null = toutes)
+app.put('/api/users/:id/model-scope', authMiddleware, adminOnly, async (req, res) => {
+  if (req.modelScope) return res.status(403).json({ error: 'Accès refusé' });
+  const ids = req.body?.model_ids;
+  let val = null;
+  if (Array.isArray(ids)) {
+    const clean = ids.map(Number).filter(n => Number.isInteger(n));
+    const { rows } = await pool.query('SELECT id FROM models WHERE id = ANY($1::int[]) AND (agency_id = $2 OR agency_id IS NULL)', [clean, req.agencyId]);
+    val = JSON.stringify(rows.map(r => r.id));
+  }
+  if (Number(req.params.id) === req.user.id && val) return res.status(400).json({ error: 'Tu ne peux pas limiter ton propre compte' });
+  const { rowCount } = await pool.query('UPDATE users SET model_scope = $1::jsonb WHERE id = $2 AND (agency_id = $3 OR agency_id IS NULL)', [val, req.params.id, req.agencyId]);
+  if (!rowCount) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  res.json({ ok: true });
 });
 
 app.post('/api/users', authMiddleware, adminOnly, sensitiveRL, async (req, res) => {
@@ -733,7 +751,7 @@ app.get('/api/models', authMiddleware, async (req, res) => {
             (SELECT rm.avatar_url FROM reveal_models rm WHERE rm.crm_model_id = m.id AND rm.avatar_url IS NOT NULL LIMIT 1) AS reveal_avatar_url
      FROM models m
      LEFT JOIN autopost_settings s ON s.model_id = m.id
-     WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name`, [req.agencyId]);
+     WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND ($2::int[] IS NULL OR m.id = ANY($2::int[])) ORDER BY m.name`, [req.agencyId, req.modelScope || null]);
   res.json(rows.map(m => ({ ...m, platforms: JSON.parse(m.platforms || '[]') })));
 });
 
@@ -850,8 +868,8 @@ app.delete('/api/models/:id', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/accounts', authMiddleware, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT a.*, m.name as model_name FROM accounts a
-    JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) ORDER BY m.name, a.platform
-  `, [req.agencyId]);
+    JOIN models m ON a.model_id = m.id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND ($2::int[] IS NULL OR m.id = ANY($2::int[])) ORDER BY m.name, a.platform
+  `, [req.agencyId, req.modelScope || null]);
   res.json(rows);
 });
 
@@ -1222,13 +1240,14 @@ app.get('/api/shifts', authMiddleware, async (req, res) => {
     return res.json({ data: rows, page, limit, total, totalPages: Math.ceil(total / limit) });
   }
   if (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'platform_admin' || req.user.role === 'platform_admin') {
-    const { rows: countRows } = await pool.query('SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL)', [req.agencyId]);
+    const sc = await finScope(req);
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*) as total FROM chatter_shifts WHERE (agency_id = $1 OR agency_id IS NULL) AND ${sc.shifts}`, [req.agencyId]);
     const total = parseInt(countRows[0].total);
     const { rows } = await pool.query(`
       SELECT cs.*, u.display_name as chatter_name
       FROM chatter_shifts cs
       JOIN users u ON cs.user_id = u.id
-      WHERE (cs.agency_id = $3 OR cs.agency_id IS NULL)
+      WHERE (cs.agency_id = $3 OR cs.agency_id IS NULL) AND ${sc.shifts.replace(/model_name/g, 'cs.model_name')}
       ORDER BY cs.date DESC, cs.created_at DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset, req.agencyId]);
@@ -1284,6 +1303,7 @@ app.get('/api/shifts/my-stats', authMiddleware, async (req, res) => {
 
 // Stats admin globales chatters
 app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) => {
+  const sc = await finScope(req);
   const { rows } = await pool.query(`
     SELECT
       u.id as user_id,
@@ -1297,9 +1317,10 @@ app.get('/api/shifts/admin-stats', authMiddleware, adminOnly, async (req, res) =
       COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.ppv_total ELSE 0 END), 0) as week_ppv,
       COALESCE(SUM(CASE WHEN cs.date >= (CURRENT_DATE - INTERVAL '7 days')::date::text THEN cs.tips_total ELSE 0 END), 0) as week_tips
     FROM users u
-    LEFT JOIN chatter_shifts cs ON cs.user_id = u.id
+    LEFT JOIN chatter_shifts cs ON cs.user_id = u.id AND ${sc.shifts.replace(/model_name/g, 'cs.model_name')}
     WHERE u.role = 'chatter' AND (u.agency_id = $1 OR u.agency_id IS NULL)
     GROUP BY u.id, u.display_name
+    ${req.modelScope ? 'HAVING COUNT(cs.id) > 0' : ''}
     ORDER BY total_revenue DESC
   `, [req.agencyId]);
   res.json(rows);
@@ -1547,10 +1568,11 @@ app.post('/api/chatter-shifts/:id/end', authMiddleware, async (req, res) => {
 // Get all active shifts (admin dashboard)
 app.get('/api/chatter-shifts/active', authMiddleware, async (req, res) => {
   try {
+    var sc = await finScope(req);
     var result = await pool.query(
       `SELECT cs.*, u.display_name as chatter_name, u.avatar_url
        FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id
-       WHERE cs.shift_status = 'active' AND (cs.agency_id = $1 OR cs.agency_id IS NULL)
+       WHERE cs.shift_status = 'active' AND (cs.agency_id = $1 OR cs.agency_id IS NULL) AND ${sc.shifts.replace(/model_name/g, 'cs.model_name')}
        ORDER BY cs.start_time ASC`,
       [req.agencyId]
     );
@@ -2728,7 +2750,7 @@ app.get('/api/shift-clock/status', authMiddleware, async (req, res) => {
 
 // ============ MODEL REVENUE OBJECTIVES ============
 app.get('/api/model-revenue-objectives', authMiddleware, async (req, res) => {
-  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE (mro.agency_id = $1 OR mro.agency_id IS NULL) ORDER BY mro.month DESC, m.name', [req.agencyId]);
+  const { rows } = await pool.query('SELECT mro.*, m.name as model_name FROM model_revenue_objectives mro JOIN models m ON mro.model_id = m.id WHERE (mro.agency_id = $1 OR mro.agency_id IS NULL) AND ($2::int[] IS NULL OR m.id = ANY($2::int[])) ORDER BY mro.month DESC, m.name', [req.agencyId, req.modelScope || null]);
   res.json(rows);
 });
 
@@ -2886,7 +2908,7 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
 
 // ============ PAYMENTS ============
 app.get('/api/payments', authMiddleware, adminOnly, async (req, res) => {
-  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE (p.agency_id = $1 OR p.agency_id IS NULL) ORDER BY p.month DESC, m.name', [req.agencyId]);
+  const { rows } = await pool.query('SELECT p.*, m.name as model_name FROM payments p JOIN models m ON p.model_id = m.id WHERE (p.agency_id = $1 OR p.agency_id IS NULL) AND ($2::int[] IS NULL OR m.id = ANY($2::int[])) ORDER BY p.month DESC, m.name', [req.agencyId, req.modelScope || null]);
   res.json(rows);
 });
 
@@ -2910,6 +2932,21 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ FINANCE V2 ============
 
+// Filtres SQL pour un associé (accès limité à certaines modèles). Valeurs échappées : ids entiers, textes entre quotes doublées.
+async function finScope(req) {
+  if (!req.modelScope) return { rv: 'TRUE', shifts: 'TRUE', model: () => 'TRUE' };
+  const q = v => "'" + String(v).replace(/'/g, "''") + "'";
+  const like = v => q('%' + String(v).replace(/[%_\\]/g, ch => '\\' + ch) + '%');
+  const ids = req.modelScope.length ? req.modelScope.join(',') : 'NULL';
+  const rvIds = await modelScope.scopeRevealIds(req);
+  const names = await modelScope.scopeNames(req);
+  return {
+    rv: rvIds.length ? `s.reveal_model_id IN (${rvIds.map(q).join(',')})` : 'FALSE',
+    shifts: names.length ? '(' + names.map(n => `model_name ILIKE ${like(n)}`).join(' OR ') + ')' : 'FALSE',
+    model: col => `${col} IN (${ids})`,
+  };
+}
+
 // L'agence a-t-elle les chiffres officiels Reveal ? (dans ce cas Finances les utilise, en € nets)
 async function revealFinance(agencyId) {
   try {
@@ -2925,6 +2962,7 @@ const RV_NET = '(s.agency_revenue + s.model_revenue)';
 app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const sc = await finScope(req);
     const rv = await revealFinance(aid);
     if (rv) {
       const curMonth = rv.today.slice(0, 7);
@@ -2932,16 +2970,16 @@ app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
       const prevMonth = p.toISOString().slice(0, 7);
       const { rows } = await pool.query(
         `SELECT to_char(s.date,'YYYY-MM') AS m, SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
-         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') IN ($2, $3) GROUP BY m`, [aid, curMonth, prevMonth]);
+         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND ${sc.rv} AND to_char(s.date,'YYYY-MM') IN ($2, $3) GROUP BY m`, [aid, curMonth, prevMonth]);
       const c = rows.find(r => r.m === curMonth) || {}, pr = rows.find(r => r.m === prevMonth) || {};
       // mois précédent comparé à la même date pour ne pas comparer un mois entamé à un mois complet
       const day = +rv.today.slice(8, 10);
       const { rows: prevSame } = await pool.query(
-        `SELECT SUM(${RV_NET})/100.0 AS revenue FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2 AND EXTRACT(DAY FROM s.date) <= $3`,
+        `SELECT SUM(${RV_NET})/100.0 AS revenue FROM reveal_stats_daily s WHERE s.agency_id = $1 AND ${sc.rv} AND to_char(s.date,'YYYY-MM') = $2 AND EXTRACT(DAY FROM s.date) <= $3`,
         [aid, prevMonth, day]);
       const [objective, dueCount] = await Promise.all([
-        pool.query(`SELECT COALESCE(SUM(target), 0) as target, COALESCE(SUM(current), 0) as current FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
-        pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+        pool.query(`SELECT COALESCE(SUM(target), 0) as target, COALESCE(SUM(current), 0) as current FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth, aid]),
+        pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth, aid]),
       ]);
       const cur = Number(c.revenue || 0), prevSameVal = Number(prevSame[0]?.revenue || 0);
       const variation = prevSameVal > 0 ? ((cur - prevSameVal) / prevSameVal * 100) : (cur > 0 ? 100 : 0);
@@ -2964,13 +3002,13 @@ app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
     const [curRev, prevRev, objective, dueCount] = await Promise.all([
       pool.query(`SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue,
         COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips
-        FROM chatter_shifts WHERE date >= $1 AND (agency_id = $2 OR agency_id IS NULL)`, [monthStart, aid]),
+        FROM chatter_shifts WHERE date >= $1 AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.shifts}`, [monthStart, aid]),
       pool.query(`SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue
-        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)`, [prevMonthStart, monthStart, aid]),
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL) AND ${sc.shifts}`, [prevMonthStart, monthStart, aid]),
       pool.query(`SELECT COALESCE(SUM(target), 0) as target, COALESCE(SUM(current), 0) as current
-        FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+        FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth, aid]),
       pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
-        FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid])
+        FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth, aid])
     ]);
 
     const cur = parseFloat(curRev.rows[0].revenue);
@@ -2991,6 +3029,7 @@ app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const sc = await finScope(req);
     const rv = await revealFinance(aid);
     if (rv) {
       // mois couverts par Reveal : chiffres officiels ; mois plus anciens : shifts saisis à la main
@@ -2999,12 +3038,12 @@ app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
         `SELECT to_char(s.date,'YYYY-MM') AS month, COALESCE(m.name, rm.display_name) AS model_name,
                 SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
          FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
-         WHERE s.agency_id = $1 AND s.date > $2::date - 366
+         WHERE s.agency_id = $1 AND ${sc.rv} AND s.date > $2::date - 366
          GROUP BY 1, 2 HAVING SUM(${RV_NET}) > 0 ORDER BY 1`, [aid, rv.today]);
       const { rows: old } = await pool.query(`
         SELECT TO_CHAR(date::date, 'YYYY-MM') as month, model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
         FROM chatter_shifts WHERE date >= (CURRENT_DATE - INTERVAL '12 months')::date::text AND TO_CHAR(date::date, 'YYYY-MM') < $2
-          AND reveal_key IS NULL AND (agency_id = $1 OR agency_id IS NULL)
+          AND reveal_key IS NULL AND (agency_id = $1 OR agency_id IS NULL) AND ${sc.shifts}
         GROUP BY month, model_name`, [aid, firstMonth]);
       return res.json(old.concat(rvRows).sort((a, b) => a.month.localeCompare(b.month)));
     }
@@ -3013,7 +3052,7 @@ app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
         SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
       FROM chatter_shifts
       WHERE date >= (CURRENT_DATE - INTERVAL '12 months')::date::text
-        AND (agency_id = $1 OR agency_id IS NULL)
+        AND (agency_id = $1 OR agency_id IS NULL) AND ${sc.shifts}
       GROUP BY month, model_name ORDER BY month ASC
     `, [aid]);
     res.json(result.rows);
@@ -3024,18 +3063,19 @@ app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const sc = await finScope(req);
     const rv = await revealFinance(aid);
     if (rv) {
       const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : rv.today.slice(0, 7);
       const { rows: byModel } = await pool.query(
         `SELECT COALESCE(m.name, rm.display_name) AS model_name, SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
          FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
-         WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2 GROUP BY 1 HAVING SUM(${RV_NET}) > 0 ORDER BY revenue DESC`, [aid, month]);
+         WHERE s.agency_id = $1 AND ${sc.rv} AND to_char(s.date,'YYYY-MM') = $2 GROUP BY 1 HAVING SUM(${RV_NET}) > 0 ORDER BY revenue DESC`, [aid, month]);
       const { rows: src } = await pool.query(
         `SELECT COALESCE(SUM(ppv_net),0)/100.0 AS ppv, COALESCE(SUM(tips_net),0)/100.0 AS tips,
                 COALESCE(SUM(subscriptions_net + renewals_net),0)/100.0 AS subs,
                 COALESCE(SUM(payment_links_net + boudoir_net + paid_messages_net + other_net),0)/100.0 AS other
-         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2`, [aid, month]);
+         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND ${sc.rv} AND to_char(s.date,'YYYY-MM') = $2`, [aid, month]);
       return res.json({ source: 'reveal', byModel, bySource: src[0] });
     }
     const month = req.query.month || new Date().toISOString().slice(0, 7);
@@ -3044,10 +3084,10 @@ app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) =>
 
     const [byModel, bySource] = await Promise.all([
       pool.query(`SELECT model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
-        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL) AND ${sc.shifts}
         GROUP BY model_name ORDER BY revenue DESC`, [monthStart, nextMonth, aid]),
       pool.query(`SELECT COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips
-        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL)`, [monthStart, nextMonth, aid])
+        FROM chatter_shifts WHERE date >= $1 AND date < $2 AND (agency_id = $3 OR agency_id IS NULL) AND ${sc.shifts}`, [monthStart, nextMonth, aid])
     ]);
 
     res.json({ byModel: byModel.rows, bySource: bySource.rows[0] });
@@ -3058,12 +3098,13 @@ app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) =>
 app.get('/api/finance/due', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const sc = await finScope(req);
     const month = req.query.month || new Date().toISOString().slice(0, 7);
 
     const result = await pool.query(`
       SELECT p.id, p.model_id, m.name as model_name, p.amount, p.commission_rate, p.commission_amount, p.net_amount, p.notes, p.status
       FROM payments p JOIN models m ON p.model_id = m.id
-      WHERE p.month = $1 AND p.status = 'pending' AND (p.agency_id = $2 OR p.agency_id IS NULL)
+      WHERE p.month = $1 AND p.status = 'pending' AND (p.agency_id = $2 OR p.agency_id IS NULL) AND ${sc.model('p.model_id')}
       ORDER BY m.name
     `, [month, aid]);
     res.json(result.rows);
@@ -3074,17 +3115,18 @@ app.get('/api/finance/due', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/finance/commissions', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const sc = await finScope(req);
     const curMonth = new Date().toISOString().slice(0, 7);
     const yearStart = new Date().getFullYear() + '-01-01';
 
     const [monthly, yearly, byModel] = await Promise.all([
       pool.query(`SELECT COALESCE(SUM(commission_amount), 0) as total
-        FROM payments WHERE month = $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+        FROM payments WHERE month = $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth, aid]),
       pool.query(`SELECT COALESCE(SUM(commission_amount), 0) as total
-        FROM payments WHERE month >= $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth.slice(0,4) + '-01', aid]),
+        FROM payments WHERE month >= $1 AND status = 'paid' AND (agency_id = $2 OR agency_id IS NULL) AND ${sc.model('model_id')}`, [curMonth.slice(0,4) + '-01', aid]),
       pool.query(`SELECT m.name as model_name, COALESCE(SUM(p.commission_amount), 0) as commission, COALESCE(SUM(p.amount), 0) as revenue
         FROM payments p JOIN models m ON p.model_id = m.id
-        WHERE p.month >= $1 AND p.status = 'paid' AND (p.agency_id = $2 OR p.agency_id IS NULL)
+        WHERE p.month >= $1 AND p.status = 'paid' AND (p.agency_id = $2 OR p.agency_id IS NULL) AND ${sc.model('p.model_id')}
         GROUP BY m.name ORDER BY commission DESC`, [curMonth.slice(0,4) + '-01', aid])
     ]);
 
@@ -4286,6 +4328,7 @@ app.get('/api/fans', authMiddleware, async (req, res) => {
     var off = parseInt(offset) || 0;
     var params = [req.agencyId];
     var where = 'f.agency_id = $1';
+    if (req.modelScope) { params.push(req.modelScope); where += ' AND f.model_id = ANY($' + params.length + '::int[])'; }
     if (model_id) { params.push(model_id); where += ' AND f.model_id = $' + params.length; }
     if (platform) { params.push(platform); where += ' AND f.platform = $' + params.length; }
     if (is_important === 'true') where += ' AND f.is_important = true';
@@ -4478,6 +4521,7 @@ app.get('/api/content-posts', authMiddleware, async (req, res) => {
       LEFT JOIN users c ON cp.created_by = c.id
       WHERE cp.agency_id = $1`;
     const params = [req.agencyId];
+    if (req.modelScope) { params.push(req.modelScope); query += ' AND cp.model_id = ANY($' + params.length + '::int[])'; }
     if (start_date) { params.push(start_date); query += ' AND cp.scheduled_at >= $' + params.length; }
     if (end_date) { params.push(end_date); query += ' AND cp.scheduled_at <= $' + params.length; }
     if (model_id) { params.push(model_id); query += ' AND cp.model_id = $' + params.length; }

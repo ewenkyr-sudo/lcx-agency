@@ -6,7 +6,7 @@ let allUsers = [];
 let agencySettings = {};
 
 async function loadSettings() {
-  if (!isAdmin()) return;
+  if (!isAdmin() || isPartner()) return;
   try {
     const [usersRes, settingsRes] = await Promise.all([
       fetch('/api/users', { credentials: 'include' }),
@@ -67,6 +67,7 @@ function renderSettings() {
         <select onchange="changeUserRole(${u.id}, this.value)" class="form-input" style="padding:6px 10px;font-size:12px;width:100%;background:var(--bg-elevated)" ${u.id === currentUser.id ? 'disabled' : ''}>
           ${Object.entries(roleLabels).map(([k,v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
+        ${['admin', 'super_admin'].includes(u.role) && u.id !== currentUser.id && !isPartner() ? `<button class="btn btn-secondary" style="margin-top:6px;padding:4px 8px;font-size:11px;width:100%" onclick="openModelScope(${u.id})" title="Associé : ne voit que certaines modèles">${Array.isArray(u.model_scope) ? '🔒 ' + u.model_scope.length + ' modèle(s)' : 'Modèles : toutes'}</button>` : ''}
       </td>
       <td data-label="${t('settings.email_col')}" class="mc-half">
         <div style="display:flex;gap:4px;align-items:center;width:100%">
@@ -411,4 +412,43 @@ async function loadDbSize() {
   });
   html += '</div>';
   document.getElementById('db-size-info').innerHTML = html;
+}
+
+
+// ========== ASSOCIÉS : modèles visibles par un admin ==========
+function openModelScope(userId) {
+  var u = (allUsers || []).find(function(x) { return x.id === userId; });
+  if (!u) return;
+  var scope = Array.isArray(u.model_scope) ? u.model_scope.map(Number) : null;
+  var old = document.getElementById('scope-modal'); if (old) old.remove();
+  var esc = function(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var div = document.createElement('div');
+  div.id = 'scope-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px';
+  div.innerHTML = '<div class="panel" style="max-width:420px;width:100%;padding:20px">'
+    + '<div style="font-weight:700;font-size:16px;margin-bottom:4px">Accès de ' + esc(u.display_name) + '</div>'
+    + '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Associé : il ne verra que ces modèles (fiche, cockpit, Stats Reveal, Finances, Auto-post, shifts). Il n\'aura pas accès aux réglages de l\'agence ni à l\'équipe.</div>'
+    + '<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-weight:600"><input type="radio" name="scope-mode" value="all"' + (scope ? '' : ' checked') + '> Toutes les modèles (admin complet)</label>'
+    + '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-weight:600"><input type="radio" name="scope-mode" value="some"' + (scope ? ' checked' : '') + '> Seulement :</label>'
+    + '<div style="display:grid;gap:6px;padding-left:24px;margin-bottom:16px">' + allModels.map(function(m) {
+        return '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="scope-model" value="' + m.id + '"' + (scope && scope.indexOf(m.id) >= 0 ? ' checked' : '') + ' onchange="document.querySelector(\'input[name=scope-mode][value=some]\').checked=true"> ' + esc(m.name) + '</label>';
+      }).join('') + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="document.getElementById(\'scope-modal\').remove()">Annuler</button>'
+    + '<button class="btn btn-primary" onclick="saveModelScope(' + userId + ')">Enregistrer</button></div></div>';
+  div.addEventListener('click', function(e) { if (e.target === div) div.remove(); });
+  document.body.appendChild(div);
+}
+
+async function saveModelScope(userId) {
+  var mode = document.querySelector('input[name=scope-mode]:checked').value;
+  var ids = Array.from(document.querySelectorAll('.scope-model:checked')).map(function(c) { return Number(c.value); });
+  if (mode === 'some' && !ids.length) return showToast('Coche au moins une modèle', 'error');
+  var res = await fetch('/api/users/' + userId + '/model-scope', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model_ids: mode === 'all' ? null : ids }) });
+  var j = await res.json().catch(function() { return {}; });
+  if (!res.ok) return showToast(j.error || 'Erreur', 'error');
+  document.getElementById('scope-modal').remove();
+  showToast(mode === 'all' ? 'Accès complet rétabli' : 'Accès limité à ' + ids.length + ' modèle(s)', 'success');
+  await loadSettings();
+  renderSettings();
 }

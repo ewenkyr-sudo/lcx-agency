@@ -24,6 +24,9 @@ async function initRevealApiDB() {
     ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_from DATE;
     ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_done BOOLEAN DEFAULT false;
 
+    -- associés : liste des modèles visibles (NULL = toutes)
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS model_scope JSONB;
+
     -- couleur de chaque modèle dans les graphiques (choisie dans Modèles)
     ALTER TABLE models ADD COLUMN IF NOT EXISTS chart_color TEXT;
 
@@ -128,6 +131,25 @@ async function initRevealApiDB() {
     FROM (VALUES ('chloe', '#DC2626'), ('lena', '#1449E6'), ('candice', '#7C3AED'), ('lexie', '#CA8A04'), ('elena', '#16A34A')) AS c(n, color)
     WHERE m.chart_color IS NULL AND lower(translate(m.name, 'éèêëÉÈàâäïîôöùûüç', 'eeeeeeaaaiioouuuc')) = c.n
       AND (m.agency_id IS NULL OR m.agency_id IN (SELECT id FROM agencies WHERE name ILIKE 'LCX%'))`).catch(e => console.log('[models] couleurs :', e.message));
+
+  // Associés de LCX Agency (une seule fois) : Lucas -> Candice ; Nathan -> Ines, Lexie, Léna
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT NOW())`);
+    const { rowCount } = await pool.query(`INSERT INTO app_migrations (name) VALUES ('lcx_partners_2026_11') ON CONFLICT DO NOTHING`);
+    if (rowCount) {
+      const plan = { lucas: ['candice'], nathan: ['ines', 'lexie', 'lena'] };
+      for (const [who, names] of Object.entries(plan)) {
+        const r = await pool.query(`
+          UPDATE users u SET model_scope = (
+            SELECT COALESCE(jsonb_agg(m.id ORDER BY m.id), '[]'::jsonb) FROM models m
+            WHERE m.agency_id = u.agency_id AND lower(translate(m.name, 'éèêëÉÈàâäïîôöùûüç', 'eeeeeeaaaiioouuuc')) = ANY($2::text[]))
+          WHERE u.role IN ('admin', 'super_admin') AND u.model_scope IS NULL
+            AND (lower(u.username) LIKE $1 || '%' OR lower(u.display_name) LIKE $1 || '%')
+            AND u.agency_id IN (SELECT id FROM agencies WHERE name ILIKE 'LCX%')`, [who, names]);
+        console.log(`[associés] ${who} : ${r.rowCount} compte(s) limité(s)`);
+      }
+    }
+  } catch (e) { console.log('[associés]', e.message); }
 }
 
 module.exports = { initRevealApiDB };
