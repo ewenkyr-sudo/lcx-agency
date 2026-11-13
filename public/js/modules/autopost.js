@@ -10,6 +10,10 @@ var AP_STATUS = {
 };
 var AP_AUD = { subscribers: 'Abonnés', public: 'Public', video: 'Feed vidéo' };
 
+function apAvatar(m) {
+  var full = (typeof allModels !== 'undefined' && allModels.find(function(x) { return x.id === m.id; })) || m;
+  return typeof modelAvatarHtml === 'function' ? modelAvatarHtml(full, 34, false) : '';
+}
 function apEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function apApi(method, url, body) {
   return fetch('/api/autopost' + url, {
@@ -142,7 +146,7 @@ function apRenderModels(b) {
     var t = m.today || {};
     return '<div class="panel" style="padding:16px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-        '<div style="font-size:16px;font-weight:700">' + apEsc(m.name) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;min-width:0">' + apAvatar(m) + '<div style="font-size:16px;font-weight:700">' + apEsc(m.name) + '</div></div>' +
         '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--text-tertiary)">' + (s.enabled ? 'Actif' : 'Off') + '</span>' +
         apToggle('ap-en-' + m.id, s.enabled, 'apSetEnabled(' + m.id + ', this.checked, this)') + '</div></div>' +
       '<div style="font-size:12px;color:var(--text-tertiary);margin:4px 0 10px">' +
