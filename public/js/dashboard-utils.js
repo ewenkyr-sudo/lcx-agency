@@ -7,6 +7,8 @@
 // Palette catégorielle validée (daltonisme + contraste sur fond sombre), toujours dans le même ordre
 var CHART_PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 var CHART_SURFACE = '#131316';
+// Style « Reveal » : une couleur vive pour la série principale, un gris pour la série de comparaison
+var CHART_ACCENT = '#3B82F6', CHART_SECOND = '#5B5B63';
 var CHART_TEXT = '#A1A1AA', CHART_MUTED = '#71717A';
 
 var chartDarkTooltip = {
@@ -52,12 +54,16 @@ function chartShortNumber(v) {
   d.borderColor = 'rgba(255,255,255,0.05)';
   d.animation.duration = 500;
   Object.assign(d.plugins.legend.labels, chartDarkLegend);
-  d.plugins.legend.align = 'start';
+  d.plugins.legend.position = 'top';
+  d.plugins.legend.align = 'end';
   Object.assign(d.plugins.tooltip, chartDarkTooltip);
-  d.layout.padding = { top: 4, right: 8, bottom: 0, left: 0 };
+  d.layout.padding = { top: 18, right: 8, bottom: 0, left: 0 };
 
   function isRound(type) { return type === 'doughnut' || type === 'pie' || type === 'polarArea'; }
-  function dsColor(ds, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; }
+  function dsColor(ds, i, n) {
+    if (n <= 2) return [CHART_ACCENT, CHART_SECOND][i];
+    return CHART_PALETTE[i % CHART_PALETTE.length];
+  }
 
   function styleDatasets(chart) {
     var type = chart.config.type;
@@ -68,13 +74,13 @@ function chartShortNumber(v) {
       if (ds._themed || ds.keepColor) return;
       ds._themed = true;
       var t = ds.type || type;
-      var c = dsColor(ds, i);
+      var c = dsColor(ds, i, sets.length);
       if (isRound(t)) {
         var n = (chart.config.data.labels || []).length || (ds.data || []).length;
         ds.backgroundColor = CHART_PALETTE.slice(0, Math.max(n, 1)).concat(CHART_PALETTE).slice(0, n);
         ds.borderColor = CHART_SURFACE;
-        ds.borderWidth = 2;
-        ds.hoverOffset = 6;
+        ds.borderWidth = 3;
+        ds.hoverOffset = 4;
         ds.borderRadius = 4;
       } else if (t === 'line') {
         ds.borderColor = c;
@@ -92,7 +98,7 @@ function chartShortNumber(v) {
             var area = ctx.chart.chartArea;
             if (!area) return chartHexA(c, 0.12);
             var g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-            g.addColorStop(0, chartHexA(c, sets.length > 1 ? 0.18 : 0.28));
+            g.addColorStop(0, chartHexA(c, sets.length > 1 ? 0.10 : 0.16));
             g.addColorStop(1, chartHexA(c, 0));
             return g;
           };
@@ -104,18 +110,20 @@ function chartShortNumber(v) {
         if (!Array.isArray(ds.backgroundColor)) ds.backgroundColor = c;
         ds.hoverBackgroundColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : chartHexA(c, 0.85);
         ds.borderWidth = 0;
-        ds.maxBarThickness = 40;
-        ds.categoryPercentage = 0.72;
-        ds.barPercentage = 0.88;
+        // barres fines façon « aiguilles »
+        var nPts = (chart.config.data.labels || ds.data || []).length;
+        ds.maxBarThickness = nPts <= 8 ? (stacked ? 26 : 16) : (stacked ? 10 : 7);
+        ds.categoryPercentage = 0.8;
+        ds.barPercentage = 0.9;
         // empilé : seul le segment du haut est arrondi, avec un fin espace entre segments
         if (stacked) {
-          ds.borderRadius = i === sets.length - 1 ? { topLeft: 4, topRight: 4 } : 0;
+          ds.borderRadius = i === sets.length - 1 ? { topLeft: 5, topRight: 5 } : 0;
           ds.borderSkipped = false;
           ds.borderColor = CHART_SURFACE;
           ds.borderWidth = i === 0 ? 0 : { top: 2, right: 0, bottom: 0, left: 0 };
         } else {
           ds.borderRadius = 4;
-          ds.borderSkipped = 'start';
+          ds.borderSkipped = false;
         }
       }
     });
@@ -124,7 +132,7 @@ function chartShortNumber(v) {
   function styleScales(chart) {
     var opts = chart.config.options = chart.config.options || {};
     if (isRound(chart.config.type)) {
-      if (chart.config.type === 'doughnut' && !opts.cutout) opts.cutout = '72%';
+      if (chart.config.type === 'doughnut') opts.cutout = '76%';
       opts.plugins = opts.plugins || {};
       opts.plugins.legend = opts.plugins.legend || {};
       if (!opts.plugins.legend.position) opts.plugins.legend.position = 'bottom';
@@ -145,7 +153,9 @@ function chartShortNumber(v) {
       tk.font = Object.assign({ size: 11 }, tk.font);
       tk.padding = 8;
       if (isValue) {
-        if (sc.beginAtZero === undefined && sc.min === undefined) sc.beginAtZero = true;
+        if (sc.min === undefined) sc.beginAtZero = true;
+        // pas de titre d'axe vertical : le titre du graphique suffit
+        if (sc.title) sc.title = Object.assign({}, sc.title, { display: false });
         tk.maxTicksLimit = tk.maxTicksLimit || 5;
         var orig = tk.callback;
         tk.callback = function(v, i, all) {
@@ -172,8 +182,32 @@ function chartShortNumber(v) {
     });
   }
 
+  // valeur la plus haute affichée au-dessus (ex. « 327 € »), comme sur Reveal
+  function drawPeak(chart) {
+    var opts = chart.options || {};
+    if (isRound(chart.config.type) || opts.indexAxis === 'y') return;
+    var y = chart.scales.y; if (!y || (y.options && y.options.stacked)) return;
+    var meta = chart.getDatasetMeta(0), ds = chart.data.datasets[0];
+    if (!meta || meta.hidden || !ds || !meta.data.length) return;
+    var best = -1, bestV = -Infinity;
+    (ds.data || []).forEach(function(v, i) { var n = Number(v && typeof v === 'object' ? v.y : v); if (isFinite(n) && n > bestV) { bestV = n; best = i; } });
+    if (best < 0 || bestV <= 0) return;
+    var el = meta.data[best]; if (!el) return;
+    var cb = y.options.ticks && y.options.ticks.callback;
+    var label = cb ? cb.call(y, bestV, 0, []) : chartShortNumber(bestV);
+    var c = chart.ctx;
+    c.save();
+    c.font = '700 12px ' + Chart.defaults.font.family;
+    c.fillStyle = '#FAFAFA';
+    c.textAlign = 'center'; c.textBaseline = 'bottom';
+    var x = Math.min(Math.max(el.x, chart.chartArea.left + 20), chart.chartArea.right - 20);
+    c.fillText(String(label), x, Math.max(el.y - 6, chart.chartArea.top + 12));
+    c.restore();
+  }
+
   Chart.register({
     id: 'fuzionTheme',
+    afterDatasetsDraw: function(chart) { try { if (!isEmpty(chart)) drawPeak(chart); } catch (e) {} },
     beforeInit: function(chart) { styleScales(chart); styleDatasets(chart); },
     beforeUpdate: function(chart) { styleDatasets(chart); },
     // graphique sans aucune donnée : message au lieu d'un cadre vide

@@ -1332,3 +1332,10 @@
     .main { padding: 64px 10px 20px; }
     .stat-card { padding: 14px; }
   }
+
+/* Titres des panneaux de graphiques : blanc sobre (style Reveal) */
+.panel:has(canvas) h3, .panel:has(canvas) .panel-title, .cockpit-panel-title {
+  color: var(--text-primary, #FAFAFA) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
