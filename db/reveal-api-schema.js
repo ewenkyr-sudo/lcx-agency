@@ -24,6 +24,9 @@ async function initRevealApiDB() {
     ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_from DATE;
     ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_done BOOLEAN DEFAULT false;
 
+    -- couleur de chaque modèle dans les graphiques (choisie dans Modèles)
+    ALTER TABLE models ADD COLUMN IF NOT EXISTS chart_color TEXT;
+
     CREATE TABLE IF NOT EXISTS reveal_models (
       reveal_model_id TEXT PRIMARY KEY,
       agency_id INTEGER,
@@ -120,6 +123,11 @@ async function initRevealApiDB() {
     ALTER TABLE chatter_shifts ADD COLUMN IF NOT EXISTS reveal_key TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_chatter_shifts_reveal_key ON chatter_shifts(reveal_key);
   `);
+  await pool.query(`
+    UPDATE models m SET chart_color = c.color
+    FROM (VALUES ('chloe', '#DC2626'), ('lena', '#1449E6'), ('candice', '#7C3AED'), ('lexie', '#CA8A04'), ('elena', '#16A34A')) AS c(n, color)
+    WHERE m.chart_color IS NULL AND lower(translate(m.name, 'éèêëÉÈàâäïîôöùûüç', 'eeeeeeaaaiioouuuc')) = c.n
+      AND (m.agency_id IS NULL OR m.agency_id IN (SELECT id FROM agencies WHERE name ILIKE 'LCX%'))`).catch(e => console.log('[models] couleurs :', e.message));
 }
 
 module.exports = { initRevealApiDB };
