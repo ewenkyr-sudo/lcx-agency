@@ -93,7 +93,7 @@ router.get('/daily-by-model', wrap(async (req, res) => {
   const { from, to } = range(req);
   const { rows } = await pool.query(
     `SELECT to_char(s.date,'YYYY-MM-DD') AS d, s.reveal_model_id, rm.crm_model_id, COALESCE(m.name, rm.display_name) AS name,
-            SUM(s.agency_revenue + s.model_revenue)::bigint AS net
+            SUM(s.agency_revenue + s.model_revenue)::bigint AS net, SUM(s.revenue_ht)::bigint AS ht
      FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
      WHERE s.agency_id = $1 AND s.date BETWEEN $2 AND $3
      GROUP BY 1, 2, 3, 4 ORDER BY 1`, [req.agencyId, from, to]);
@@ -113,7 +113,7 @@ router.get('/overview', wrap(async (req, res) => {
             COALESCE(SUM(messages_sent),0)::int messages_sent, COALESCE(SUM(messages_received),0)::int messages_received
      FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3 AND ($4::text IS NULL OR reveal_model_id = $4)`, [a, from, to, mid])).rows[0];
   const daily = (await pool.query(
-    `SELECT to_char(date,'YYYY-MM-DD') d, SUM(revenue_ttc)::bigint ttc, SUM(agency_revenue)::bigint agency, SUM(agency_revenue + model_revenue)::bigint net,
+    `SELECT to_char(date,'YYYY-MM-DD') d, SUM(revenue_ttc)::bigint ttc, SUM(revenue_ht)::bigint ht, SUM(agency_revenue)::bigint agency, SUM(agency_revenue + model_revenue)::bigint net,
             SUM(new_subscribers)::int new_subs
      FROM reveal_stats_daily WHERE agency_id = $1 AND date BETWEEN $2 AND $3 AND ($4::text IS NULL OR reveal_model_id = $4) GROUP BY date ORDER BY date`, [a, from, to, mid])).rows;
   const models = (await pool.query(

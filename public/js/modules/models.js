@@ -349,7 +349,7 @@ function renderCockpitCharts(d) {
   // Revenu journalier : mois en cours vs mois dernier (style Reveal)
   var ctx1 = document.getElementById('cockpit-chart-revenue');
   if (ctx1) {
-    var mc = monthCompareChart(ctx1, d.daily || [], d.today || new Date().toISOString().slice(0, 10), { unit: cockpitCur, what: d.source === 'reveal' ? 'net Reveal' : 'PPV + tips' });
+    var mc = monthCompareChart(ctx1, d.daily || [], d.today || new Date().toISOString().slice(0, 10), { unit: cockpitCur, what: d.source === 'reveal' ? 'CA HT Reveal' : 'PPV + tips' });
     if (mc) { cockpitCharts.revenue = mc.chart; var sub = document.getElementById('cockpit-revenue-sub'); if (sub) sub.textContent = mc.subtitle; }
   }
 

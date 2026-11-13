@@ -2827,7 +2827,7 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
         const ids = rvIds.map(r => r.reveal_model_id);
         const today = require('./services/reveal-api/sync').parisDate(0);
         const { rows: days } = await pool.query(
-          `SELECT to_char(date,'YYYY-MM-DD') AS date, SUM(ppv_net)/100.0 AS ppv, SUM(tips_net)/100.0 AS tips, SUM(agency_revenue + model_revenue)/100.0 AS net
+          `SELECT to_char(date,'YYYY-MM-DD') AS date, SUM(ppv_net)/100.0 AS ppv, SUM(tips_net)/100.0 AS tips, SUM(agency_revenue + model_revenue)/100.0 AS net, SUM(revenue_ht)/100.0 AS ht
            FROM reveal_stats_daily WHERE reveal_model_id = ANY($1) AND date > $2::date - 92 GROUP BY date ORDER BY date`, [ids, today]);
         const { rows: weeks } = await pool.query(
           `SELECT date_trunc('week', date)::date::text AS week, SUM(ppv_net)/100.0 AS ppv, SUM(tips_net)/100.0 AS tips
@@ -2839,7 +2839,7 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
           revenueToday: sum(td, 'net'), ppvToday: sum(td, 'ppv'), tipsToday: sum(td, 'tips'),
           revenueMonth: sum(mo, 'net'), ppvMonth: sum(mo, 'ppv'), tipsMonth: sum(mo, 'tips'),
           rev30: d30.map(r => ({ date: r.date, ppv: Number(r.ppv), tips: Number(r.tips), net: Number(r.net) })),
-          daily: days.map(r => ({ d: r.date, v: Number(r.net) })),
+          daily: days.map(r => ({ d: r.date, v: Number(r.ht) })),
           today,
           revWeekly: weeks.map(r => ({ week: r.week, ppv: Number(r.ppv), tips: Number(r.tips) })),
         };

@@ -168,14 +168,14 @@ function rvDailyCompare() {
   if (!rv.model) {
     // toutes les modèles : une barre par modèle et par jour, chacune sa couleur
     rvApi('GET', '/daily-by-model?from=' + today.slice(0, 8) + '01&to=' + today).then(function(o) {
-      var mc = modelDailyChart(canvas, o.rows.map(function(r) { return { d: r.d, key: r.reveal_model_id, name: r.name, crmId: r.crm_model_id, v: Number(r.net) / 100 }; }), today, { what: 'CA net par modèle' });
+      var mc = modelDailyChart(canvas, o.rows.map(function(r) { return { d: r.d, key: r.reveal_model_id, name: r.name, crmId: r.crm_model_id, v: Number(r.ht) / 100 }; }), today, { what: 'CA HT par modèle' });
       if (mc && sub) sub.textContent = mc.subtitle;
     }).catch(function() {});
     return;
   }
   var pd = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 2, 1)).toISOString().slice(0, 10);
   rvApi('GET', '/overview?from=' + pd + '&to=' + today + '&model=' + encodeURIComponent(rv.model)).then(function(o) {
-    var mc = monthCompareChart(canvas, o.daily.map(function(x) { return { d: x.d, v: Number(x.net) / 100 }; }), today, { what: 'CA net' });
+    var mc = monthCompareChart(canvas, o.daily.map(function(x) { return { d: x.d, v: Number(x.ht) / 100 }; }), today, { what: 'CA HT' });
     if (mc && sub) sub.textContent = mc.subtitle;
   }).catch(function() {});
 }
