@@ -2794,6 +2794,33 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
       "SELECT user_id, clock_in, clock_out, duration_minutes FROM shift_clocks WHERE clock_in::date = CURRENT_DATE ORDER BY clock_in"
     );
 
+    // Chiffres officiels Reveal (nets, en €) quand la modèle est reliée à l'API Reveal
+    let revealSource = null;
+    try {
+      const { rows: rvIds } = await pool.query(
+        `SELECT rm.reveal_model_id FROM reveal_models rm JOIN reveal_api_state st ON st.agency_id = rm.agency_id AND st.key_enc IS NOT NULL
+         WHERE rm.crm_model_id = $1`, [modelId]);
+      if (rvIds.length) {
+        const ids = rvIds.map(r => r.reveal_model_id);
+        const today = require('./services/reveal-api/sync').parisDate(0);
+        const { rows: days } = await pool.query(
+          `SELECT to_char(date,'YYYY-MM-DD') AS date, SUM(ppv_net)/100.0 AS ppv, SUM(tips_net)/100.0 AS tips, SUM(agency_revenue + model_revenue)/100.0 AS net
+           FROM reveal_stats_daily WHERE reveal_model_id = ANY($1) AND date > $2::date - 92 GROUP BY date ORDER BY date`, [ids, today]);
+        const { rows: weeks } = await pool.query(
+          `SELECT date_trunc('week', date)::date::text AS week, SUM(ppv_net)/100.0 AS ppv, SUM(tips_net)/100.0 AS tips
+           FROM reveal_stats_daily WHERE reveal_model_id = ANY($1) AND date > $2::date - 92 GROUP BY week ORDER BY week`, [ids, today]);
+        const sum = (list, k) => list.reduce((s, r) => s + Number(r[k] || 0), 0);
+        const td = days.filter(r => r.date === today), mo = days.filter(r => r.date.slice(0, 7) === today.slice(0, 7));
+        const d30 = days.filter(r => r.date > new Date(Date.parse(today) - 30 * 86400000).toISOString().slice(0, 10));
+        revealSource = {
+          revenueToday: sum(td, 'net'), ppvToday: sum(td, 'ppv'), tipsToday: sum(td, 'tips'),
+          revenueMonth: sum(mo, 'net'), ppvMonth: sum(mo, 'ppv'), tipsMonth: sum(mo, 'tips'),
+          rev30: d30.map(r => ({ date: r.date, ppv: Number(r.ppv), tips: Number(r.tips), net: Number(r.net) })),
+          revWeekly: weeks.map(r => ({ week: r.week, ppv: Number(r.ppv), tips: Number(r.tips) })),
+        };
+      }
+    } catch (e) { revealSource = null; }
+
     // Recent activity (last 20 related to this model)
     const { rows: activity } = await pool.query(
       "SELECT * FROM activity_log WHERE details ILIKE $1 ORDER BY created_at DESC LIMIT 20",
@@ -2812,6 +2839,7 @@ app.get('/api/model-cockpit/:id', authMiddleware, async (req, res) => {
       revenueMonth, ppvMonth, tipsMonth,
       objective: { target: parseFloat(objective.target), current: parseFloat(objective.current) },
       rev30, revWeekly,
+      ...(revealSource ? { ...revealSource, source: 'reveal', currency: '€' } : { currency: '$' }),
       assignedTeam: assignedTeam.map(t => ({
         ...t,
         online: onlineIds.includes(t.user_id),
@@ -2853,10 +2881,50 @@ app.delete('/api/payments/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ============ FINANCE V2 ============
 
+// L'agence a-t-elle les chiffres officiels Reveal ? (dans ce cas Finances les utilise, en € nets)
+async function revealFinance(agencyId) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT to_char(MIN(s.date),'YYYY-MM-DD') AS first_day FROM reveal_stats_daily s JOIN reveal_api_state st ON st.agency_id = s.agency_id
+       WHERE s.agency_id = $1 AND st.key_enc IS NOT NULL`, [agencyId]);
+    return rows[0]?.first_day ? { firstDay: rows[0].first_day, today: require('./services/reveal-api/sync').parisDate(0) } : null;
+  } catch (e) { return null; }
+}
+const RV_NET = '(s.agency_revenue + s.model_revenue)';
+
 // Finance summary — KPIs for current month vs previous
 app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const rv = await revealFinance(aid);
+    if (rv) {
+      const curMonth = rv.today.slice(0, 7);
+      const p = new Date(Date.UTC(+curMonth.slice(0, 4), +curMonth.slice(5, 7) - 2, 1));
+      const prevMonth = p.toISOString().slice(0, 7);
+      const { rows } = await pool.query(
+        `SELECT to_char(s.date,'YYYY-MM') AS m, SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
+         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') IN ($2, $3) GROUP BY m`, [aid, curMonth, prevMonth]);
+      const c = rows.find(r => r.m === curMonth) || {}, pr = rows.find(r => r.m === prevMonth) || {};
+      // mois précédent comparé à la même date pour ne pas comparer un mois entamé à un mois complet
+      const day = +rv.today.slice(8, 10);
+      const { rows: prevSame } = await pool.query(
+        `SELECT SUM(${RV_NET})/100.0 AS revenue FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2 AND EXTRACT(DAY FROM s.date) <= $3`,
+        [aid, prevMonth, day]);
+      const [objective, dueCount] = await Promise.all([
+        pool.query(`SELECT COALESCE(SUM(target), 0) as target, COALESCE(SUM(current), 0) as current FROM model_revenue_objectives WHERE month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+        pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'pending' AND month = $1 AND (agency_id = $2 OR agency_id IS NULL)`, [curMonth, aid]),
+      ]);
+      const cur = Number(c.revenue || 0), prevSameVal = Number(prevSame[0]?.revenue || 0);
+      const variation = prevSameVal > 0 ? ((cur - prevSameVal) / prevSameVal * 100) : (cur > 0 ? 100 : 0);
+      return res.json({
+        source: 'reveal', currency: '€',
+        currentMonth: { revenue: cur, ppv: Number(c.ppv || 0), tips: Number(c.tips || 0), month: curMonth },
+        previousMonth: { revenue: Number(pr.revenue || 0), month: prevMonth, complete: rv.firstDay <= prevMonth + '-01' },
+        variation: Math.round(variation * 10) / 10,
+        objective: { target: parseFloat(objective.rows[0].target), current: parseFloat(objective.rows[0].current) },
+        due: { count: parseInt(dueCount.rows[0].count), total: parseFloat(dueCount.rows[0].total) }
+      });
+    }
     const now = new Date();
     const curMonth = now.toISOString().slice(0, 7);
     const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -2894,6 +2962,23 @@ app.get('/api/finance/summary', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const rv = await revealFinance(aid);
+    if (rv) {
+      // mois couverts par Reveal : chiffres officiels ; mois plus anciens : shifts saisis à la main
+      const firstMonth = rv.firstDay.slice(0, 7);
+      const { rows: rvRows } = await pool.query(
+        `SELECT to_char(s.date,'YYYY-MM') AS month, COALESCE(m.name, rm.display_name) AS model_name,
+                SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
+         FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
+         WHERE s.agency_id = $1 AND s.date > $2::date - 366
+         GROUP BY 1, 2 HAVING SUM(${RV_NET}) > 0 ORDER BY 1`, [aid, rv.today]);
+      const { rows: old } = await pool.query(`
+        SELECT TO_CHAR(date::date, 'YYYY-MM') as month, model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
+        FROM chatter_shifts WHERE date >= (CURRENT_DATE - INTERVAL '12 months')::date::text AND TO_CHAR(date::date, 'YYYY-MM') < $2
+          AND reveal_key IS NULL AND (agency_id = $1 OR agency_id IS NULL)
+        GROUP BY month, model_name`, [aid, firstMonth]);
+      return res.json(old.concat(rvRows).sort((a, b) => a.month.localeCompare(b.month)));
+    }
     const result = await pool.query(`
       SELECT TO_CHAR(date::date, 'YYYY-MM') as month, model_name,
         SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips
@@ -2910,6 +2995,20 @@ app.get('/api/finance/monthly', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/finance/breakdown', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
+    const rv = await revealFinance(aid);
+    if (rv) {
+      const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : rv.today.slice(0, 7);
+      const { rows: byModel } = await pool.query(
+        `SELECT COALESCE(m.name, rm.display_name) AS model_name, SUM(${RV_NET})/100.0 AS revenue, SUM(s.ppv_net)/100.0 AS ppv, SUM(s.tips_net)/100.0 AS tips
+         FROM reveal_stats_daily s JOIN reveal_models rm ON rm.reveal_model_id = s.reveal_model_id LEFT JOIN models m ON m.id = rm.crm_model_id
+         WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2 GROUP BY 1 HAVING SUM(${RV_NET}) > 0 ORDER BY revenue DESC`, [aid, month]);
+      const { rows: src } = await pool.query(
+        `SELECT COALESCE(SUM(ppv_net),0)/100.0 AS ppv, COALESCE(SUM(tips_net),0)/100.0 AS tips,
+                COALESCE(SUM(subscriptions_net + renewals_net),0)/100.0 AS subs,
+                COALESCE(SUM(payment_links_net + boudoir_net + paid_messages_net + other_net),0)/100.0 AS other
+         FROM reveal_stats_daily s WHERE s.agency_id = $1 AND to_char(s.date,'YYYY-MM') = $2`, [aid, month]);
+      return res.json({ source: 'reveal', byModel, bySource: src[0] });
+    }
     const month = req.query.month || new Date().toISOString().slice(0, 7);
     const monthStart = month + '-01';
     const nextMonth = new Date(parseInt(month.slice(0,4)), parseInt(month.slice(5,7)), 1).toISOString().slice(0,10);
