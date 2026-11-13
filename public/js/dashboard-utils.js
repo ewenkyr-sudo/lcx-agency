@@ -3,23 +3,194 @@
 // Shared helper functions used across all modules
 // ========================================
 
-// Chart.js dark theme defaults
+// ========== THÈME DES GRAPHIQUES (Chart.js) ==========
+// Palette catégorielle validée (daltonisme + contraste sur fond sombre), toujours dans le même ordre
+var CHART_PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+var CHART_SURFACE = '#131316';
+var CHART_TEXT = '#A1A1AA', CHART_MUTED = '#71717A';
+
 var chartDarkTooltip = {
-  backgroundColor: '#131316',
-  borderColor: 'rgba(255,255,255,0.06)',
+  backgroundColor: 'rgba(24,24,27,0.96)',
+  borderColor: 'rgba(255,255,255,0.08)',
   borderWidth: 1,
   titleColor: '#FAFAFA',
-  bodyColor: '#A1A1AA',
-  padding: 10,
+  bodyColor: '#D4D4D8',
+  padding: 12,
   titleFont: { size: 12, weight: '600' },
-  bodyFont: { size: 11 },
-  cornerRadius: 8,
+  bodyFont: { size: 12 },
+  cornerRadius: 10,
+  caretSize: 0,
   displayColors: true,
-  boxPadding: 4
+  usePointStyle: true,
+  boxWidth: 8, boxHeight: 8,
+  boxPadding: 6
 };
-var chartDarkGrid = { color: 'rgba(255,255,255,0.06)' };
-var chartDarkTicks = { color: '#52525B', font: { size: 10 } };
-var chartDarkLegend = { color: '#A1A1AA', font: { size: 11 }, boxWidth: 12, padding: 16, usePointStyle: true };
+var chartDarkGrid = { color: 'rgba(255,255,255,0.05)' };
+var chartDarkTicks = { color: CHART_MUTED, font: { size: 11 } };
+var chartDarkLegend = { color: CHART_TEXT, font: { size: 12 }, boxWidth: 8, boxHeight: 8, padding: 16, usePointStyle: true, pointStyle: 'circle' };
+
+function chartHexA(hex, a) {
+  var h = String(hex || '').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function(c) { return c + c; }).join('');
+  if (h.length !== 6) return hex;
+  return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')';
+}
+// 14000 -> « 14 k », 1500.5 -> « 1 501 »
+function chartShortNumber(v) {
+  var n = Number(v);
+  if (!isFinite(n)) return v;
+  if (Math.abs(n) >= 10000) return (n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' k';
+  return n.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(n) < 10 && n % 1 ? 1 : 0 });
+}
+
+(function setupChartTheme() {
+  if (typeof Chart === 'undefined') return;
+  var d = Chart.defaults;
+  d.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  d.font.size = 12;
+  d.color = CHART_TEXT;
+  d.borderColor = 'rgba(255,255,255,0.05)';
+  d.animation.duration = 500;
+  Object.assign(d.plugins.legend.labels, chartDarkLegend);
+  d.plugins.legend.align = 'start';
+  Object.assign(d.plugins.tooltip, chartDarkTooltip);
+  d.layout.padding = { top: 4, right: 8, bottom: 0, left: 0 };
+
+  function isRound(type) { return type === 'doughnut' || type === 'pie' || type === 'polarArea'; }
+  function dsColor(ds, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; }
+
+  function styleDatasets(chart) {
+    var type = chart.config.type;
+    var opts = chart.config.options || {};
+    var stacked = opts.scales && opts.scales.y && opts.scales.y.stacked;
+    var sets = (chart.config.data && chart.config.data.datasets) || [];
+    sets.forEach(function(ds, i) {
+      if (ds._themed || ds.keepColor) return;
+      ds._themed = true;
+      var t = ds.type || type;
+      var c = dsColor(ds, i);
+      if (isRound(t)) {
+        var n = (chart.config.data.labels || []).length || (ds.data || []).length;
+        ds.backgroundColor = CHART_PALETTE.slice(0, Math.max(n, 1)).concat(CHART_PALETTE).slice(0, n);
+        ds.borderColor = CHART_SURFACE;
+        ds.borderWidth = 2;
+        ds.hoverOffset = 6;
+        ds.borderRadius = 4;
+      } else if (t === 'line') {
+        ds.borderColor = c;
+        ds.borderWidth = 2;
+        ds.tension = 0.35;
+        ds.pointRadius = (ds.data || []).length <= 1 ? 3 : 0;
+        ds.pointHoverRadius = 5;
+        ds.pointBackgroundColor = c;
+        ds.pointBorderColor = CHART_SURFACE;
+        ds.pointHoverBorderColor = CHART_SURFACE;
+        ds.pointHoverBorderWidth = 2;
+        if (ds.fill) {
+          ds.fill = sets.length > 1 ? 'origin' : true;
+          ds.backgroundColor = function(ctx) {
+            var area = ctx.chart.chartArea;
+            if (!area) return chartHexA(c, 0.12);
+            var g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            g.addColorStop(0, chartHexA(c, sets.length > 1 ? 0.18 : 0.28));
+            g.addColorStop(1, chartHexA(c, 0));
+            return g;
+          };
+        } else {
+          ds.backgroundColor = c;
+        }
+      } else if (t === 'bar') {
+        // couleurs par barre voulues par le module (ex. rouge / vert) : on les garde
+        if (!Array.isArray(ds.backgroundColor)) ds.backgroundColor = c;
+        ds.hoverBackgroundColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : chartHexA(c, 0.85);
+        ds.borderWidth = 0;
+        ds.maxBarThickness = 40;
+        ds.categoryPercentage = 0.72;
+        ds.barPercentage = 0.88;
+        // empilé : seul le segment du haut est arrondi, avec un fin espace entre segments
+        if (stacked) {
+          ds.borderRadius = i === sets.length - 1 ? { topLeft: 4, topRight: 4 } : 0;
+          ds.borderSkipped = false;
+          ds.borderColor = CHART_SURFACE;
+          ds.borderWidth = i === 0 ? 0 : { top: 2, right: 0, bottom: 0, left: 0 };
+        } else {
+          ds.borderRadius = 4;
+          ds.borderSkipped = 'start';
+        }
+      }
+    });
+  }
+
+  function styleScales(chart) {
+    var opts = chart.config.options = chart.config.options || {};
+    if (isRound(chart.config.type)) {
+      if (chart.config.type === 'doughnut' && !opts.cutout) opts.cutout = '72%';
+      opts.plugins = opts.plugins || {};
+      opts.plugins.legend = opts.plugins.legend || {};
+      if (!opts.plugins.legend.position) opts.plugins.legend.position = 'bottom';
+      opts.plugins.legend.align = 'center';
+      return;
+    }
+    opts.interaction = opts.interaction || { mode: 'index', intersect: false };
+    opts.scales = opts.scales || {};
+    var horizontal = opts.indexAxis === 'y';
+    Object.keys(opts.scales).concat(opts.scales.x ? [] : ['x']).concat(opts.scales.y ? [] : ['y']).forEach(function(k) {
+      var sc = opts.scales[k] = opts.scales[k] || {};
+      if (sc.display === false) return;
+      var isValue = horizontal ? k.charAt(0) === 'x' : k.charAt(0) === 'y';
+      sc.border = Object.assign({}, sc.border, { display: false });
+      sc.grid = Object.assign({}, sc.grid, isValue ? { color: 'rgba(255,255,255,0.05)', drawTicks: false } : { display: false });
+      var tk = sc.ticks = Object.assign({}, sc.ticks);
+      tk.color = CHART_MUTED;
+      tk.font = Object.assign({ size: 11 }, tk.font);
+      tk.padding = 8;
+      if (isValue) {
+        if (sc.beginAtZero === undefined && sc.min === undefined) sc.beginAtZero = true;
+        tk.maxTicksLimit = tk.maxTicksLimit || 5;
+        var orig = tk.callback;
+        tk.callback = function(v, i, all) {
+          var out = orig ? orig.call(this, v, i, all) : v;
+          if (typeof out === 'number') return chartShortNumber(out);
+          // « $14000 » / « €14000 » -> « 14 k € »
+          var m = String(out).match(/^([^\d-]*)(-?\d+(?:\.\d+)?)([^\d]*)$/);
+          if (!m) return out;
+          var unit = (m[1] + m[3]).trim();
+          return chartShortNumber(m[2]) + (unit ? ' ' + unit : '');
+        };
+      } else {
+        tk.maxRotation = 0;
+        tk.autoSkip = true;
+        tk.maxTicksLimit = tk.maxTicksLimit || 8;
+      }
+    });
+  }
+
+  function isEmpty(chart) {
+    var sets = (chart.data && chart.data.datasets) || [];
+    return !sets.some(function(ds) {
+      return (ds.data || []).some(function(v) { var n = v && typeof v === 'object' ? (v.y != null ? v.y : v.r) : v; return Number(n) > 0 || Number(n) < 0; });
+    });
+  }
+
+  Chart.register({
+    id: 'fuzionTheme',
+    beforeInit: function(chart) { styleScales(chart); styleDatasets(chart); },
+    beforeUpdate: function(chart) { styleDatasets(chart); },
+    // graphique sans aucune donnée : message au lieu d'un cadre vide
+    afterDraw: function(chart) {
+      if (!isEmpty(chart)) return;
+      var c = chart.ctx, a = chart.chartArea || { left: 0, right: chart.width, top: 0, bottom: chart.height };
+      c.save();
+      c.fillStyle = CHART_SURFACE;
+      if (isRound(chart.config.type)) c.fillRect(0, 0, chart.width, chart.height);
+      c.fillStyle = CHART_MUTED;
+      c.font = '500 13px ' + Chart.defaults.font.family;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('Pas encore de données sur cette période', (a.left + a.right) / 2, (a.top + a.bottom) / 2);
+      c.restore();
+    }
+  });
+})();
 
 // Debounce
 function debounce(fn, delay) {
