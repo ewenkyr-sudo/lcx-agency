@@ -25,6 +25,51 @@ function switchModelsTab(tab, btn) {
   if (tab === 'fans') renderFanCRM();
 }
 
+// ---------- photo de profil des modèles ----------
+function modelPhoto(m) { return (m && (m.photo_url || m.reveal_avatar_url)) || ''; }
+function modelAvatarHtml(m, size, editable) {
+  var url = modelPhoto(m);
+  var inner = url ? '<img src="' + String(url).replace(/"/g, '&quot;') + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.remove()">' : String(m.name || '?').charAt(0).toUpperCase();
+  var base = '<div class="model-avatar" style="width:' + size + 'px;height:' + size + 'px;flex-shrink:0;position:relative;' + (url ? 'background:var(--bg);' : '') + (editable ? 'cursor:pointer' : '') + '"'
+    + (editable ? ' title="Changer la photo" onclick="event.stopPropagation();pickModelAvatar(' + m.id + ')"' : '') + '>' + inner;
+  if (editable) base += '<span style="position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;background:var(--accent-blue, #3B82F6);border:2px solid var(--bg-card, #111);display:flex;align-items:center;justify-content:center">'
+    + '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>';
+  return base + '</div>';
+}
+function pickModelAvatar(modelId) {
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = function() { uploadModelAvatar(modelId, input.files[0]); };
+  input.click();
+}
+function uploadModelAvatar(modelId, file) {
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) return showToast('Image trop lourde (15 Mo max)', 'error');
+  var reader = new FileReader();
+  reader.onload = function() {
+    var img = new Image();
+    img.onload = function() {
+      var size = 256, canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      var min = Math.min(img.width, img.height);
+      canvas.getContext('2d').drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size);
+      var data = canvas.toDataURL('image/jpeg', 0.85);
+      fetch('/api/models/' + modelId + '/avatar', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: data }) })
+        .then(function(r) { return r.json().then(function(j) { if (!r.ok) throw new Error(j.error || 'Erreur'); }); })
+        .then(function() {
+          var m = allModels.find(function(x) { return x.id === modelId; });
+          if (m) m.photo_url = data;
+          renderModels();
+          showToast('Photo mise à jour', 'success');
+        })
+        .catch(function(e) { showToast(e.message, 'error'); });
+    };
+    img.onerror = function() { showToast('Format d\'image non reconnu', 'error'); };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function renderModels() {
   const container = document.getElementById('models-content');
   const actions = document.getElementById('models-actions');
@@ -39,7 +84,7 @@ function renderModels() {
         ${allModels.map(m => `
           <div class="model-card">
             <div class="model-header">
-              <div class="model-avatar">${m.name.charAt(0)}</div>
+              ${modelAvatarHtml(m, 48, isAdmin())}
               <div>
                 <div class="model-name">${m.name}</div>
                 <div class="model-platform">${(m.platforms || []).join(' + ')}</div>
@@ -137,7 +182,7 @@ async function renderModelCockpit(modelId) {
         <button class="cockpit-nav-btn" onclick="navigateCockpit('prev')" title="Modèle précédent">‹</button>
         <button class="cockpit-nav-btn" onclick="navigateCockpit('next')" title="Modèle suivant">›</button>
         <div style="flex:1">
-          <div style="font-size:22px;font-weight:800">${model.name}</div>
+          <div style="display:flex;align-items:center;gap:12px">${modelAvatarHtml(model, 44, false)}<div style="font-size:22px;font-weight:800">${model.name}</div></div>
           <div style="font-size:13px;color:var(--text-tertiary)">${(model.platforms||[]).join(' · ')} · ${d.accounts.length} compte${d.accounts.length>1?'s':''}</div>
         </div>
         <div style="font-size:12px;color:var(--text-tertiary)">${modelIdx+1} / ${allModels.length}</div>

@@ -183,7 +183,8 @@ function saveMOStep() {
   if (moStep === 1) {
     moData.name = g('mo-name'); moData.stage_name = g('mo-stage-name');
     moData.birth_date = g('mo-birth') || null; moData.nationality = g('mo-nationality');
-    moData.city = g('mo-city'); moData.country = g('mo-country'); moData.photo_url = g('mo-photo');
+    moData.city = g('mo-city'); moData.country = g('mo-country');
+    var ph = g('mo-photo'); if (ph || String(moData.photo_url || '').indexOf('data:') !== 0) moData.photo_url = ph; // garde la photo importée
   } else if (moStep === 2) {
     moData.ig_handle = g('mo-ig'); moData.ig_followers = gn('mo-ig-followers');
     moData.tiktok_handle = g('mo-tiktok'); moData.tiktok_followers = gn('mo-tiktok-followers');
@@ -239,7 +240,7 @@ function restoreMOValues() {
     if (moStep === 1) {
       s('mo-name', moData.name); s('mo-stage-name', moData.stage_name);
       s('mo-birth', moData.birth_date); s('mo-nationality', moData.nationality);
-      s('mo-city', moData.city); s('mo-country', moData.country); s('mo-photo', moData.photo_url);
+      s('mo-city', moData.city); s('mo-country', moData.country); s('mo-photo', String(moData.photo_url || '').indexOf('data:') === 0 ? '' : moData.photo_url);
     } else if (moStep === 2) {
       s('mo-ig', moData.ig_handle); s('mo-ig-followers', moData.ig_followers);
       s('mo-tiktok', moData.tiktok_handle); s('mo-tiktok-followers', moData.tiktok_followers);
