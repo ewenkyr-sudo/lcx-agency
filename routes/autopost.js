@@ -22,12 +22,12 @@ const fail = (status, msg) => Object.assign(new Error(msg), { status });
 
 async function ownModel(req, modelId) {
   const { rows } = await pool.query('SELECT id, name FROM models WHERE id = $1 AND (agency_id = $2 OR agency_id IS NULL)', [modelId, req.agencyId]);
-  if (!rows[0]) throw fail(404, 'Modèle introuvable');
+  if (!rows[0] || (req.modelScope && !req.modelScope.includes(rows[0].id))) throw fail(404, 'Modèle introuvable');
   return rows[0];
 }
 async function ownMedia(req, id) {
   const { rows } = await pool.query('SELECT * FROM autopost_media WHERE id = $1 AND agency_id = $2', [id, req.agencyId]);
-  if (!rows[0]) throw fail(404, 'Média introuvable');
+  if (!rows[0] || (req.modelScope && !req.modelScope.includes(rows[0].model_id))) throw fail(404, 'Média introuvable');
   return rows[0];
 }
 async function agencyRow(agencyId) {
@@ -48,7 +48,8 @@ router.get('/overview', wrap(async (req, res) => {
     `SELECT m.id, m.name, s.* , m.id AS id FROM models m
      LEFT JOIN autopost_settings s ON s.model_id = m.id
      WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND COALESCE(m.status, 'active') <> 'archived'
-     ORDER BY m.name`, [req.agencyId]);
+       AND ($2::int[] IS NULL OR m.id = ANY($2::int[]))
+     ORDER BY m.name`, [req.agencyId, req.modelScope || null]);
   const today0 = planner.parisDate(planner.parisToday(0), 0);
   const today1 = planner.parisDate(planner.parisToday(0), 24 * 60);
   const out = [];
@@ -198,6 +199,7 @@ router.get('/media/:id/file', wrap(async (req, res) => {
 router.get('/jobs', wrap(async (req, res) => {
   const vals = [req.agencyId];
   let where = 'j.agency_id = $1';
+  if (req.modelScope) { vals.push(req.modelScope); where += ` AND j.model_id = ANY($${vals.length}::int[])`; }
   if (req.query.model_id) { vals.push(req.query.model_id); where += ` AND j.model_id = $${vals.length}`; }
   if (req.query.scope === 'upcoming') where += " AND j.status IN ('pending','running') AND j.scheduled_at >= NOW() - INTERVAL '1 hour'";
   else if (req.query.scope === 'history') where += " AND j.status IN ('done','failed','skipped')";
@@ -268,7 +270,8 @@ router.delete('/session', wrap(async (req, res) => {
 router.get('/reports', wrap(async (req, res) => {
   const vals = [req.agencyId];
   let where = 'r.agency_id = $1';
-  if (req.query.model_id) { vals.push(req.query.model_id); where += ' AND r.model_id = $2'; }
+  if (req.modelScope) { vals.push(req.modelScope); where += ` AND r.model_id = ANY($${vals.length}::int[])`; }
+  if (req.query.model_id) { vals.push(req.query.model_id); where += ` AND r.model_id = $${vals.length}`; }
   const { rows } = await pool.query(
     `SELECT r.*, m.name AS model_name FROM autopost_reports r LEFT JOIN models m ON m.id = r.model_id
      WHERE ${where} ORDER BY r.created_at DESC LIMIT 30`, vals);

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
+const scope = require('../services/scope');
 const JWT_SECRET = process.env.JWT_SECRET;
 
 function authMiddleware(req, res, next) {
@@ -10,7 +11,7 @@ function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
 
-    pool.query('SELECT read_only, expires_at, agency_id, current_agency_id, role FROM users WHERE id = $1', [decoded.id]).then(async (result) => {
+    pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]).then(async (result) => {
       const user = result.rows[0];
       if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
       if (user.expires_at && new Date(user.expires_at) < new Date()) {
@@ -42,6 +43,13 @@ function authMiddleware(req, res, next) {
       req.agencyId = activeAgencyId; // convenience alias
       req.user.role = activeRole;
       req.user.home_agency_id = user.agency_id; // original agency (never changes)
+
+      // Associé : accès limité à certaines modèles (liste d'ids), uniquement pour les admins
+      req.modelScope = null;
+      if (Array.isArray(user.model_scope) && ['admin', 'super_admin'].includes(activeRole)) {
+        req.modelScope = user.model_scope.map(Number).filter(n => Number.isInteger(n));
+        req.user.model_scope = req.modelScope;
+      }
 
       // Check subscription status — platform_admin bypasses
       if (activeRole !== 'platform_admin' && activeAgencyId) {
@@ -78,13 +86,12 @@ function authMiddleware(req, res, next) {
         }
       }
 
+      if (!(await scope.guard(req, res))) return;
       next();
     }).catch((err) => {
       console.error('[AUTH] Erreur middleware:', err.message);
-      req.user.agency_id = decoded.agency_id || 1;
-      req.agencyId = req.user.agency_id;
-      req.user.role = decoded.role;
-      next();
+      // sans base on ne peut pas vérifier les accès (associés) : on refuse plutôt que d'ouvrir
+      if (!res.headersSent) res.status(503).json({ error: 'Service momentanément indisponible, réessaie' });
     });
   } catch {
     return res.status(401).json({ error: 'Token invalide' });

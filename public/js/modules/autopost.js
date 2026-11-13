@@ -71,7 +71,7 @@ function renderAutopost() {
     c.dataset.ready = '1';
     c.innerHTML = '<div id="ap-status"></div>' +
       '<div class="tabs" id="ap-tabs" style="display:flex;gap:6px;margin:16px 0;flex-wrap:wrap">' +
-      [['models', 'Modèles'], ['planning', 'Planning'], ['history', 'Historique'], ['reports', 'Rapports & analyse'], ['settings', 'Réglages']].map(function(t) {
+      [['models', 'Modèles'], ['planning', 'Planning'], ['history', 'Historique'], ['reports', 'Rapports & analyse'], ['settings', 'Réglages']].filter(function(t) { return !(isPartner() && t[0] === 'settings'); }).map(function(t) {
         return '<button class="filter-chip' + (ap.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '" onclick="apSwitchTab(\'' + t[0] + '\')">' + t[1] + '</button>';
       }).join('') + '</div><div id="ap-body"><div class="skeleton-card" style="height:160px"></div></div>';
   }
@@ -106,10 +106,11 @@ function apRenderStatus() {
       (w.online ? apPill(w.status === 'publishing' ? 'En train de publier' : 'En ligne', 'var(--accent-green)') : apPill('Hors ligne', 'var(--accent-red)')) +
       '</div><div style="font-size:12px;color:var(--text-tertiary);margin-top:6px">Dernier signe de vie : ' + apAgo(w.last_seen) + '</div></div>' +
     '<div class="stat-card"><div class="stat-label">Compte Reveal (agence)</div><div style="margin-top:6px">' + apPill(sess[0], sess[1]) + '</div>' +
-      '<button class="btn btn-secondary" style="margin-top:8px;padding:6px 10px;font-size:12px" onclick="apOpenSession()">' + (a.session_status === 'ok' ? 'Changer' : 'Connecter') + '</button></div>' +
+      (isPartner() ? '</div>' : '<button class="btn btn-secondary" style="margin-top:8px;padding:6px 10px;font-size:12px" onclick="apOpenSession()">' + (a.session_status === 'ok' ? 'Changer' : 'Connecter') + '</button></div>') +
+    (isPartner() ? '<div class="stat-card"><div class="stat-label">Publication automatique</div><div style="margin-top:6px">' + apPill(a.paused ? 'En pause' : 'Active', a.paused ? 'var(--accent-yellow)' : 'var(--accent-green)') + '</div></div>' :
     '<div class="stat-card"><div class="stat-label">Publication automatique</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px">' +
       apToggle('ap-global', !a.paused, 'apSetPaused(!this.checked)') + '<span style="font-weight:600">' + (a.paused ? 'En pause' : 'Active') + '</span></div>' +
-      '<div style="font-size:12px;color:var(--text-tertiary);margin-top:6px">Coupe tout d\'un coup, pour toutes les modèles</div></div>' +
+      '<div style="font-size:12px;color:var(--text-tertiary);margin-top:6px">Coupe tout d\'un coup, pour toutes les modèles</div></div>') +
   '</div>';
   var warn = [];
   if (d.storage === 'local') warn.push('Stockage local : les médias sont enregistrés sur le serveur du site. En production, configure le stockage cloud (R2) pour que le bot puisse les lire.');
