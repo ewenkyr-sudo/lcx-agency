@@ -169,7 +169,8 @@ async function renderModelCockpit(modelId) {
     const res = await fetch('/api/model-cockpit/' + modelId, { credentials: 'include' });
     if (!res.ok) throw new Error('API error');
     const d = await res.json();
-    const model = d.model;
+    // complète avec la liste des modèles (photo Reveal, etc.)
+    const model = Object.assign({}, allModels.find(m => m.id === modelId) || {}, d.model);
     if (typeof model.platforms === 'string') { try { model.platforms = JSON.parse(model.platforms); } catch(e2) { model.platforms = []; } }
     const modelIdx = allModels.findIndex(m => m.id === modelId);
     const objPct = d.objective.target > 0 ? Math.min(100, (d.revenueMonth / d.objective.target * 100)).toFixed(0) : 0;
