@@ -18,18 +18,7 @@ function rvAgo(d) {
   if (s < 86400) return 'il y a ' + Math.round(s / 3600) + ' h'; return 'il y a ' + Math.round(s / 86400) + ' j';
 }
 function rvParis(offset) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + (offset || 0) * 86400000)); }
-function rvRange() {
-  var today = rvParis(0);
-  if (rv.period === '7d') return { from: rvParis(-6), to: today };
-  if (rv.period === 'today') return { from: today, to: today };
-  if (rv.period === 'month') return { from: today.slice(0, 8) + '01', to: today };
-  if (rv.period === 'lastmonth') {
-    var d = new Date(today.slice(0, 8) + '01T12:00:00Z'); d.setUTCDate(0);
-    var last = d.toISOString().slice(0, 10);
-    return { from: last.slice(0, 8) + '01', to: last };
-  }
-  return { from: rvParis(-29), to: today };
-}
+function rvRange() { return periodRange(rv.period, rv.from, rv.to); }
 function rvQs() { var r = rvRange(); return '?from=' + r.from + '&to=' + r.to + (rv.model ? '&model=' + encodeURIComponent(rv.model) : ''); }
 function rvCurModel() { return rv.models.find(function(m) { return m.reveal_model_id === rv.model; }); }
 function rvAvatar(m, size) { size = size || 26; return m && m.avatar_url ? '<img src="' + rvEsc(m.avatar_url) + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex-shrink:0">' : '<span style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--bg-subtle);display:inline-flex;align-items:center;justify-content:center;font-size:' + Math.round(size * 0.45) + 'px;flex-shrink:0">' + rvEsc(((m && (m.display_name || m.user_name)) || '?').charAt(0).toUpperCase()) + '</span>'; }
@@ -48,9 +37,8 @@ function renderReveal() {
       + '<div style="display:flex;gap:6px;flex-wrap:wrap" id="rv-tabs">' + [['overview', 'Vue d\'ensemble'], ['chatters', 'Chatteurs'], ['tracking', 'Liens de suivi'], ['sales', 'Ventes'], ['settings', 'Réglages']].map(function(t) {
         return '<button class="filter-chip' + (rv.tab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '" onclick="rvTab(\'' + t[0] + '\')">' + t[1] + '</button>';
       }).join('') + '</div>'
-      + '<select class="form-input" id="rv-period" style="max-width:200px" onchange="rv.period=this.value;rvBody()">'
-      + [['today', 'Aujourd\'hui'], ['7d', '7 derniers jours'], ['30d', '30 derniers jours'], ['month', 'Ce mois-ci'], ['lastmonth', 'Mois dernier']].map(function(p) { return '<option value="' + p[0] + '"' + (rv.period === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('')
-      + '</select></div><div id="rv-body"><div class="skeleton-card" style="height:180px"></div></div>';
+      + '<div id="rv-period">' + periodPickerHtml('rv-pp', rv.period, rv.from, rv.to, function(v, f, t) { rv.period = v; rv.from = f; rv.to = t; rvBody(); }) + '</div>'
+      + '</div><div id="rv-body"><div class="skeleton-card" style="height:180px"></div></div>';
   }
   rvLoadStatus().then(function() {
     if (!rv.status.connected && rv.tab !== 'settings') rv.tab = 'settings';

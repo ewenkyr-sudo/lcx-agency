@@ -1702,64 +1702,78 @@ app.get('/api/leads/admin-stats', authMiddleware, adminOnly, async (req, res) =>
 // ============ PERFORMANCE CHARTS DATA ============
 
 // Followers evolution par jour
+// Période des pages Performances : ?from=YYYY-MM-DD&to=YYYY-MM-DD, ou ?days=N (N derniers jours)
+function perfRange(req) {
+  const isD = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+  const shift = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  let to = isD(req.query.to) ? req.query.to : today;
+  let from = isD(req.query.from) ? req.query.from : shift(to, -(parseInt(req.query.days) || 30));
+  if (from > to) [from, to] = [to, from];
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+  const prevFrom = shift(from, -days);
+  // dates validées par l'expression régulière : sûres à insérer dans le SQL
+  return { from, to, days, prevFrom, F: `'${from}'`, T: `'${to}'`, P: `'${prevFrom}'` };
+}
+
 app.get('/api/charts/followers', authMiddleware, async (req, res) => {
-  const days = parseInt(req.query.days) || 30;
+  const r = perfRange(req);
   const { rows } = await pool.query(`
     SELECT ds.date, m.name as model_name, a.platform, SUM(ds.new_followers) as new_followers
     FROM daily_stats ds
     JOIN accounts a ON ds.account_id = a.id
     JOIN models m ON a.model_id = m.id
-    WHERE ds.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (m.agency_id = $2 OR m.agency_id IS NULL)
+    WHERE ds.date >= $1 AND ds.date <= $3 AND (m.agency_id = $2 OR m.agency_id IS NULL)
     GROUP BY ds.date, m.name, a.platform
     ORDER BY ds.date ASC
-  `, [days, req.agencyId]);
+  `, [r.from, req.agencyId, r.to]);
   res.json(rows);
 });
 
 // Revenue chatters par jour
 app.get('/api/charts/revenue', authMiddleware, async (req, res) => {
-  const days = parseInt(req.query.days) || 30;
+  const r = perfRange(req);
   const { rows } = await pool.query(`
     SELECT cs.date,
       SUM(cs.ppv_total) as ppv,
       SUM(cs.tips_total) as tips,
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
+    WHERE cs.date >= $1 AND cs.date <= $3 AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date
     ORDER BY cs.date ASC
-  `, [days, req.agencyId]);
+  `, [r.from, req.agencyId, r.to]);
   res.json(rows);
 });
 
 // Revenue chatters par jour par chatter
 app.get('/api/charts/revenue-by-chatter', authMiddleware, async (req, res) => {
-  const days = parseInt(req.query.days) || 30;
+  const r = perfRange(req);
   const { rows } = await pool.query(`
     SELECT cs.date, u.display_name as chatter_name,
       SUM(cs.ppv_total) + SUM(cs.tips_total) as revenue
     FROM chatter_shifts cs
     JOIN users u ON cs.user_id = u.id
-    WHERE cs.date >= (CURRENT_DATE - $1 * INTERVAL '1 day')::date::text AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
+    WHERE cs.date >= $1 AND cs.date <= $3 AND (cs.agency_id = $2 OR cs.agency_id IS NULL)
     GROUP BY cs.date, u.display_name
     ORDER BY cs.date ASC
-  `, [days, req.agencyId]);
+  `, [r.from, req.agencyId, r.to]);
   res.json(rows);
 });
 
 // Leads outreach par jour
 app.get('/api/charts/leads', authMiddleware, async (req, res) => {
-  const days = parseInt(req.query.days) || 30;
+  const r = perfRange(req);
   const { rows } = await pool.query(`
     SELECT created_at::date::text as date,
       COUNT(*) as total,
       SUM(CASE WHEN status != 'to-send' THEN 1 ELSE 0 END) as dm_sent,
       SUM(CASE WHEN status IN ('talking-cold','talking-warm','call-booked','signed') THEN 1 ELSE 0 END) as replies
     FROM outreach_leads
-    WHERE created_at >= CURRENT_DATE - $1 * INTERVAL '1 day' AND (agency_id = $2 OR agency_id IS NULL)
+    WHERE created_at::date BETWEEN $1::date AND $3::date AND (agency_id = $2 OR agency_id IS NULL)
     GROUP BY created_at::date
     ORDER BY date ASC
-  `, [days, req.agencyId]);
+  `, [r.from, req.agencyId, r.to]);
   res.json(rows);
 });
 
@@ -3100,15 +3114,14 @@ app.get('/api/export/payments', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/performance/kpis', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
-    const days = parseInt(req.query.days) || 30;
-    const curStart = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
-    const prevStart = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
+    const r = perfRange(req);
+    const curStart = r.F, prevStart = r.P, curEnd = ' AND date <= ' + r.T;
 
     const [curRev, prevRev, ppvStats, fanStats] = await Promise.all([
-      pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue, COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE date >= ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
+      pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue, COALESCE(SUM(ppv_total), 0) as ppv, COALESCE(SUM(tips_total), 0) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE date >= ' + curStart + curEnd + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
       pool.query('SELECT COALESCE(SUM(ppv_total + tips_total), 0) as revenue FROM chatter_shifts WHERE date >= ' + prevStart + ' AND date < ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
-      pool.query('SELECT COALESCE(SUM(ppv_count), 0) as sent, COALESCE(SUM(ppv_sold), 0) as sold FROM chatter_shifts WHERE date >= ' + curStart + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
-      pool.query('SELECT COUNT(*) as total, COUNT(CASE WHEN first_seen_at >= (CURRENT_DATE - INTERVAL \'' + days + ' days\') THEN 1 END) as new_fans FROM fans WHERE (agency_id = $1 OR agency_id IS NULL)', [aid])
+      pool.query('SELECT COALESCE(SUM(ppv_count), 0) as sent, COALESCE(SUM(ppv_sold), 0) as sold FROM chatter_shifts WHERE date >= ' + curStart + curEnd + ' AND (agency_id = $1 OR agency_id IS NULL)', [aid]),
+      pool.query('SELECT COUNT(*) as total, COUNT(CASE WHEN first_seen_at >= ' + r.F + '::date AND first_seen_at < ' + r.T + '::date + 1 THEN 1 END) as new_fans FROM fans WHERE (agency_id = $1 OR agency_id IS NULL)', [aid])
     ]);
 
     const cur = parseFloat(curRev.rows[0].revenue);
@@ -3136,12 +3149,12 @@ app.get('/api/performance/kpis', authMiddleware, adminOnly, async (req, res) => 
 app.get('/api/performance/top', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
-    const days = parseInt(req.query.days) || 30;
-    const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
+    const r = perfRange(req);
+    const dateFilter = r.F + ' AND date <= ' + r.T;
 
     const [topModels, topChatters, topFans] = await Promise.all([
       pool.query('SELECT model_name, SUM(ppv_total + tips_total) as revenue, SUM(ppv_total) as ppv, SUM(tips_total) as tips, COUNT(*) as shifts FROM chatter_shifts WHERE date >= ' + dateFilter + ' AND (agency_id = $1 OR agency_id IS NULL) GROUP BY model_name ORDER BY revenue DESC LIMIT 5', [aid]),
-      pool.query('SELECT u.display_name, SUM(cs.ppv_total + cs.tips_total) as revenue, SUM(cs.ppv_total) as ppv, SUM(cs.tips_total) as tips, COUNT(*) as shifts FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id WHERE cs.date >= ' + dateFilter + ' AND (cs.agency_id = $1 OR cs.agency_id IS NULL) GROUP BY u.display_name ORDER BY revenue DESC LIMIT 5', [aid]),
+      pool.query('SELECT u.display_name, SUM(cs.ppv_total + cs.tips_total) as revenue, SUM(cs.ppv_total) as ppv, SUM(cs.tips_total) as tips, COUNT(*) as shifts FROM chatter_shifts cs JOIN users u ON cs.user_id = u.id WHERE cs.date >= ' + r.F + ' AND cs.date <= ' + r.T + ' AND (cs.agency_id = $1 OR cs.agency_id IS NULL) GROUP BY u.display_name ORDER BY revenue DESC LIMIT 5', [aid]),
       pool.query('SELECT f.display_name, f.username, f.total_spent, m.name as model_name FROM fans f LEFT JOIN models m ON f.model_id = m.id WHERE (f.agency_id = $1 OR f.agency_id IS NULL) ORDER BY f.total_spent DESC LIMIT 10', [aid])
     ]);
 
@@ -3157,13 +3170,13 @@ app.get('/api/performance/top', authMiddleware, adminOnly, async (req, res) => {
 app.get('/api/performance/heatmap', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
-    const days = parseInt(req.query.days) || 30;
+    const r = perfRange(req);
     // Use created_at for hourly resolution since date is just a date string
     const result = await pool.query(`
       SELECT EXTRACT(DOW FROM created_at) as dow, EXTRACT(HOUR FROM created_at) as hour,
         SUM(ppv_total + tips_total) as revenue, COUNT(*) as count
       FROM chatter_shifts
-      WHERE created_at >= (CURRENT_DATE - INTERVAL '` + days + ` days')
+      WHERE created_at >= ` + r.F + `::date AND created_at < ` + r.T + `::date + 1
         AND (agency_id = $1 OR agency_id IS NULL)
       GROUP BY dow, hour ORDER BY dow, hour
     `, [aid]);
@@ -3175,15 +3188,14 @@ app.get('/api/performance/heatmap', authMiddleware, adminOnly, async (req, res) 
 app.get('/api/performance/models', authMiddleware, adminOnly, async (req, res) => {
   try {
     const aid = req.agencyId;
-    const days = parseInt(req.query.days) || 30;
-    const dateFilter = '(CURRENT_DATE - INTERVAL \'' + days + ' days\')::date::text';
-    const prevFilter = '(CURRENT_DATE - INTERVAL \'' + (days * 2) + ' days\')::date::text';
+    const r = perfRange(req);
+    const dateFilter = r.F, prevFilter = r.P;
 
     const result = await pool.query(`
       SELECT m.id, m.name,
-        COALESCE(SUM(CASE WHEN cs.date >= ` + dateFilter + ` THEN cs.ppv_total + cs.tips_total ELSE 0 END), 0) as revenue,
+        COALESCE(SUM(CASE WHEN cs.date >= ` + dateFilter + ` AND cs.date <= ` + r.T + ` THEN cs.ppv_total + cs.tips_total ELSE 0 END), 0) as revenue,
         COALESCE(SUM(CASE WHEN cs.date >= ` + prevFilter + ` AND cs.date < ` + dateFilter + ` THEN cs.ppv_total + cs.tips_total ELSE 0 END), 0) as prev_revenue,
-        COUNT(CASE WHEN cs.date >= ` + dateFilter + ` THEN 1 END) as shifts,
+        COUNT(CASE WHEN cs.date >= ` + dateFilter + ` AND cs.date <= ` + r.T + ` THEN 1 END) as shifts,
         (SELECT COUNT(*) FROM fans f WHERE f.model_id = m.id) as fans
       FROM models m LEFT JOIN chatter_shifts cs ON cs.model_name = m.name
       WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND m.status = 'active'

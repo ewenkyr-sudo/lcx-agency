@@ -77,7 +77,7 @@ function chartShortNumber(v) {
       var c = dsColor(ds, i, sets.length);
       if (isRound(t)) {
         var n = (chart.config.data.labels || []).length || (ds.data || []).length;
-        ds.backgroundColor = CHART_PALETTE.slice(0, Math.max(n, 1)).concat(CHART_PALETTE).slice(0, n);
+        ds.backgroundColor = n === 2 ? [CHART_ACCENT, CHART_SECOND] : CHART_PALETTE.slice(0, Math.max(n, 1)).concat(CHART_PALETTE).slice(0, n);
         ds.borderColor = CHART_SURFACE;
         ds.borderWidth = 3;
         ds.hoverOffset = 4;
@@ -277,6 +277,47 @@ function monthCompareChart(canvas, rows, today, opts) {
     }
   });
   return { chart: chart, subtitle: monthName(prev) + ' vs ' + monthName(cur) + (opts.what ? ' · ' + opts.what : '') };
+}
+
+// ========== SÉLECTEUR DE PÉRIODE COMMUN ==========
+var PERIODS = [['today', "Aujourd'hui"], ['yesterday', 'Hier'], ['7d', '7 derniers jours'], ['30d', '30 derniers jours'],
+  ['60d', '60 derniers jours'], ['90d', '90 derniers jours'], ['month', 'Ce mois-ci'], ['lastmonth', 'Mois dernier'], ['365d', '12 derniers mois'], ['custom', 'Personnalisé…']];
+function parisDay(offset) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + (offset || 0) * 86400000)); }
+// { from, to, days } en dates de Paris
+function periodRange(p, from, to) {
+  var today = parisDay(0), r;
+  var n = { '7d': 7, '30d': 30, '60d': 60, '90d': 90, '365d': 365 }[p];
+  if (n) r = { from: parisDay(-(n - 1)), to: today };
+  else if (p === 'today') r = { from: today, to: today };
+  else if (p === 'yesterday') r = { from: parisDay(-1), to: parisDay(-1) };
+  else if (p === 'month') r = { from: today.slice(0, 8) + '01', to: today };
+  else if (p === 'lastmonth') {
+    var d = new Date(today.slice(0, 8) + '01T12:00:00Z'); d.setUTCDate(0);
+    var last = d.toISOString().slice(0, 10);
+    r = { from: last.slice(0, 8) + '01', to: last };
+  } else if (p === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '') && /^\d{4}-\d{2}-\d{2}$/.test(to || '')) r = from <= to ? { from: from, to: to } : { from: to, to: from };
+  else r = { from: parisDay(-29), to: today };
+  r.days = Math.round((Date.parse(r.to) - Date.parse(r.from)) / 86400000) + 1;
+  return r;
+}
+// sélecteur + deux dates (affichées pour « Personnalisé »). onchange(value, from, to)
+function periodPickerHtml(id, value, from, to, onchange) {
+  window['_pp_' + id] = onchange;
+  var r = periodRange(value, from, to);
+  return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" id="' + id + '">'
+    + '<select class="form-input" style="max-width:200px" onchange="periodPickerChange(\'' + id + '\')">'
+    + PERIODS.map(function(p) { return '<option value="' + p[0] + '"' + (value === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select>'
+    + '<span class="pp-custom" style="display:' + (value === 'custom' ? 'inline-flex' : 'none') + ';gap:6px;align-items:center">'
+    + '<input type="date" class="form-input" style="max-width:150px" value="' + r.from + '" max="' + parisDay(0) + '" onchange="periodPickerChange(\'' + id + '\')">'
+    + '<span style="color:var(--text-tertiary);font-size:12px">au</span>'
+    + '<input type="date" class="form-input" style="max-width:150px" value="' + r.to + '" max="' + parisDay(0) + '" onchange="periodPickerChange(\'' + id + '\')"></span></div>';
+}
+function periodPickerChange(id) {
+  var el = document.getElementById(id); if (!el) return;
+  var v = el.querySelector('select').value, ds = el.querySelectorAll('input[type=date]');
+  el.querySelector('.pp-custom').style.display = v === 'custom' ? 'inline-flex' : 'none';
+  if (v === 'custom' && (!ds[0].value || !ds[1].value)) return;
+  var cb = window['_pp_' + id]; if (cb) cb(v, ds[0].value, ds[1].value);
 }
 
 // Debounce
