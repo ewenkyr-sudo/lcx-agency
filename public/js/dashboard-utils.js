@@ -37,6 +37,39 @@ function chartHexA(hex, a) {
   if (h.length !== 6) return hex;
   return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')';
 }
+// mélange une couleur hex avec du blanc (t > 0) ou du noir (t < 0)
+function chartShade(hex, t) {
+  var h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return hex;
+  var f = function(i) { var v = parseInt(h.slice(i, i + 2), 16); v = t > 0 ? v + (255 - v) * t : v * (1 + t); return Math.round(v).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(2) + f(4);
+}
+// dégradé vertical pour une barre : un peu plus clair en haut, plus profond en bas
+function chartBarGradient(base) {
+  var light = chartShade(base, 0.12), deep = chartShade(base, -0.82);
+  return function(ctx) {
+    var ch = ctx.chart, area = ch.chartArea;
+    if (!area || ctx.type !== 'data') return base;
+    // dégradé sur la barre elle-même (du haut de la barre vers sa base) : marche aussi pour les barres empilées
+    var ys = ch.scales.y, v = ctx.parsed && ctx.parsed.y;
+    if (!ys || v == null || !isFinite(v)) return base;
+    var start = 0;
+    if (ys.options && ys.options.stacked) {
+      for (var k = 0; k < ctx.datasetIndex; k++) {
+        if (!ch.isDatasetVisible(k)) continue;
+        var pv = Number(ch.data.datasets[k].data[ctx.dataIndex]); if (isFinite(pv)) start += pv;
+      }
+    }
+    var top = ys.getPixelForValue(start + v), bottom = ys.getPixelForValue(start);
+    if (!(bottom - top > 1)) return base;
+    var g = ch.ctx.createLinearGradient(0, top, 0, bottom);
+    g.addColorStop(0, light);
+    g.addColorStop(0.3, base);
+    g.addColorStop(1, deep);
+    return g;
+  };
+}
+
 // 14000 -> « 14 k », 1500.5 -> « 1 501 »
 function chartShortNumber(v) {
   var n = Number(v);
@@ -71,7 +104,15 @@ function chartShortNumber(v) {
     var stacked = opts.scales && opts.scales.y && opts.scales.y.stacked;
     var sets = (chart.config.data && chart.config.data.datasets) || [];
     sets.forEach(function(ds, i) {
-      if (ds._themed || ds.keepColor) return;
+      // barres : couleur en dégradé (aussi pour les couleurs imposées par un module)
+      var applyGradient = function() {
+        if ((ds.type || type) !== 'bar' || ds._grad || typeof ds.backgroundColor !== 'string' || ds.backgroundColor.charAt(0) !== '#') return;
+        ds._grad = true;
+        var base = ds.backgroundColor;
+        ds.backgroundColor = chartBarGradient(base);
+        ds.hoverBackgroundColor = chartShade(base, 0.25);
+      };
+      if (ds._themed || ds.keepColor) { applyGradient(); return; }
       ds._themed = true;
       var t = ds.type || type;
       var c = dsColor(ds, i, sets.length);
@@ -125,6 +166,7 @@ function chartShortNumber(v) {
           ds.borderRadius = 4;
           ds.borderSkipped = false;
         }
+        applyGradient();
       }
     });
   }
