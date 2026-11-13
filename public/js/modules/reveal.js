@@ -61,7 +61,7 @@ function rvRenderModelChips() {
   if (!rv.status || !rv.status.connected || rv.models.length < 2) { el.innerHTML = ''; return; }
   var chip = function(id, label, m) {
     return '<button class="filter-chip' + (rv.model === id ? ' active' : '') + '" style="display:inline-flex;align-items:center;gap:6px" onclick="rvSetModel(\'' + id + '\')">'
-      + (m ? rvAvatar(m, 20) : '') + rvEsc(label) + '</button>';
+      + (m ? rvAvatar(m, 20) : '') + rvEsc(label) + (m ? '<span style="width:8px;height:8px;border-radius:50%;background:' + modelColor(m.crm_model_id, m.display_name) + '"></span>' : '') + '</button>';
   };
   el.innerHTML = chip('', 'Toutes les modèles') + rv.models.map(function(m) { return chip(m.reveal_model_id, m.display_name || m.user_name, m); }).join('');
 }
@@ -164,10 +164,19 @@ function rvOverview(b) {
 
 function rvDailyCompare() {
   var today = rvParis(0);
+  var canvas = document.getElementById('rv-daily-chart'), sub = document.getElementById('rv-daily-sub');
+  if (!rv.model) {
+    // toutes les modèles : une barre par modèle et par jour, chacune sa couleur
+    rvApi('GET', '/daily-by-model?from=' + today.slice(0, 8) + '01&to=' + today).then(function(o) {
+      var mc = modelDailyChart(canvas, o.rows.map(function(r) { return { d: r.d, key: r.reveal_model_id, name: r.name, crmId: r.crm_model_id, v: Number(r.net) / 100 }; }), today, { what: 'CA net par modèle' });
+      if (mc && sub) sub.textContent = mc.subtitle;
+    }).catch(function() {});
+    return;
+  }
   var pd = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 2, 1)).toISOString().slice(0, 10);
-  rvApi('GET', '/overview?from=' + pd + '&to=' + today + (rv.model ? '&model=' + encodeURIComponent(rv.model) : '')).then(function(o) {
-    var mc = monthCompareChart(document.getElementById('rv-daily-chart'), o.daily.map(function(x) { return { d: x.d, v: Number(x.net) / 100 }; }), today, { what: 'CA net' });
-    var sub = document.getElementById('rv-daily-sub'); if (mc && sub) sub.textContent = mc.subtitle;
+  rvApi('GET', '/overview?from=' + pd + '&to=' + today + '&model=' + encodeURIComponent(rv.model)).then(function(o) {
+    var mc = monthCompareChart(canvas, o.daily.map(function(x) { return { d: x.d, v: Number(x.net) / 100 }; }), today, { what: 'CA net' });
+    if (mc && sub) sub.textContent = mc.subtitle;
   }).catch(function() {});
 }
 
