@@ -185,6 +185,7 @@ function chartShortNumber(v) {
   // valeur la plus haute affichée au-dessus (ex. « 327 € »), comme sur Reveal
   function drawPeak(chart) {
     var opts = chart.options || {};
+    if (chart.config.options && chart.config.options.noPeak) return;
     if (isRound(chart.config.type) || opts.indexAxis === 'y') return;
     var y = chart.scales.y; if (!y || (y.options && y.options.stacked)) return;
     var idx = Math.max(0, chart.data.datasets.findIndex(function(x) { return x.peak; }));
@@ -318,6 +319,70 @@ function periodPickerChange(id) {
   el.querySelector('.pp-custom').style.display = v === 'custom' ? 'inline-flex' : 'none';
   if (v === 'custom' && (!ds[0].value || !ds[1].value)) return;
   var cb = window['_pp_' + id]; if (cb) cb(v, ds[0].value, ds[1].value);
+}
+
+// ========== UNE COULEUR PAR MODÈLE (foncée et électrique, fixe partout) ==========
+// Ordre validé : deux couleurs voisines restent distinctes, y compris pour les daltoniens
+var MODEL_COLORS = ['#1449E6', '#EA580C', '#0D9488', '#7C3AED', '#D97706', '#D61F8C', '#0284C7', '#DC2626'];
+// La couleur suit la modèle (ordre de création dans le CRM), jamais son classement
+function modelColor(crmId, name) {
+  var list = (typeof allModels !== 'undefined' ? allModels : []).slice().sort(function(a, b) { return a.id - b.id; });
+  var i = list.findIndex(function(m) { return (crmId != null && m.id === Number(crmId)) || (name && m.name === name); });
+  if (i < 0) { // modèle hors CRM : couleur dérivée du nom, après celles du CRM
+    var h = 0; String(name || crmId || '').split('').forEach(function(c) { h = (h * 31 + c.charCodeAt(0)) >>> 0; });
+    i = list.length + (h % MODEL_COLORS.length);
+  }
+  return MODEL_COLORS[i % MODEL_COLORS.length];
+}
+
+// Graphique : une barre par modèle et par jour, sur tout le mois en cours (jours à venir vides)
+// rows : [{ d: 'YYYY-MM-DD', key, name, crmId, v }]
+function modelDailyChart(canvas, rows, today, opts) {
+  opts = opts || {};
+  if (!canvas || typeof Chart === 'undefined') return null;
+  var old = Chart.getChart(canvas); if (old) old.destroy();
+  var cur = today.slice(0, 7);
+  var n = new Date(Date.UTC(+cur.slice(0, 4), +cur.slice(5, 7), 0)).getUTCDate();
+  var todayDay = +today.slice(8, 10);
+  var pad = function(i) { return (i < 10 ? '0' : '') + i; };
+  var models = {};
+  (rows || []).forEach(function(r) {
+    if (String(r.d).slice(0, 7) !== cur) return;
+    var m = models[r.key] = models[r.key] || { name: r.name, crmId: r.crmId, days: {}, total: 0 };
+    m.days[+String(r.d).slice(8, 10)] = (m.days[+String(r.d).slice(8, 10)] || 0) + (Number(r.v) || 0);
+    m.total += Number(r.v) || 0;
+  });
+  var list = Object.keys(models).map(function(k) { return models[k]; }).filter(function(m) { return m.total > 0; })
+    .sort(function(a, b) { return (a.crmId || 9e9) - (b.crmId || 9e9) || String(a.name).localeCompare(b.name); });
+  var unit = opts.unit || '€';
+  var fmt = function(v) { return (Number(v) || 0).toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0 }) + ' ' + unit; };
+  var chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: Array.from({ length: n }, function(_, i) { return pad(i + 1); }),
+      datasets: list.map(function(m) {
+        var c = modelColor(m.crmId, m.name);
+        return { label: m.name, keepColor: true, backgroundColor: c, hoverBackgroundColor: c, borderRadius: 3, borderSkipped: false,
+          maxBarThickness: 6, categoryPercentage: 0.82, barPercentage: 0.92,
+          data: Array.from({ length: n }, function(_, i) { return i + 1 <= todayDay ? (m.days[i + 1] || 0) : null; }) };
+      })
+    },
+    options: {
+      noPeak: true,
+      responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: {
+        filter: function(it) { return it.parsed.y > 0; },
+        itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
+        callbacks: {
+          title: function(items) { return items.length ? 'Le ' + (items[0].dataIndex + 1) : ''; },
+          label: function(c) { return ' ' + c.dataset.label + ' : ' + fmt(c.parsed.y); },
+          footer: function(items) { var t = items.reduce(function(s, x) { return s + (x.parsed.y || 0); }, 0); return items.length > 1 ? 'Total : ' + fmt(t) : ''; }
+        } } },
+      scales: { x: { ticks: { maxTicksLimit: 11 } }, y: { ticks: { callback: function(v) { return chartShortNumber(v) + ' ' + unit; } } } }
+    }
+  });
+  var monthName = new Date(cur + '-15T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  return { chart: chart, subtitle: monthName + ' · ' + (opts.what || 'par modèle') };
 }
 
 // Debounce
