@@ -6,32 +6,28 @@ let chartLeads = null;
 const chartColors = ['#3B82F6','#8B5CF6','#22D3EE','#A78BFA','#FBBF24','#EF4444','#22C55E','#84cc16'];
 var _perfDays = 7;
 
+var _perfPeriod = '7d', _perfFrom = '', _perfTo = '';
 function renderPerformances() {
-  loadPerformances(7);
+  var box = document.getElementById('perf-period-btns');
+  if (box) box.innerHTML = periodPickerHtml('perf-pp', _perfPeriod, _perfFrom, _perfTo, function(v, f, t) { _perfPeriod = v; _perfFrom = f; _perfTo = t; loadPerformances(); });
+  loadPerformances();
 }
 
-async function loadPerformances(days, btn) {
+async function loadPerformances() {
+  var rg = periodRange(_perfPeriod, _perfFrom, _perfTo);
+  var days = rg.days;
   _perfDays = days;
-  // Update active button
-  if (btn) {
-    document.querySelectorAll('.perf-period').forEach(b => {
-      b.style.background = 'var(--bg-elevated)';
-      b.style.color = 'var(--text-secondary)';
-    });
-    btn.style.background = 'var(--accent)';
-    btn.style.color = 'white';
-  }
-
+  var q = '?from=' + rg.from + '&to=' + rg.to;
   var f = function(url) { return fetch(url, { credentials: 'include' }).then(r => r.ok ? r.json() : null); };
 
   const [followersRes, revenueRes, leadsRes, kpis, top, heatmap, models] = await Promise.all([
-    f('/api/charts/followers?days=' + days),
-    f('/api/charts/revenue?days=' + days),
-    f('/api/charts/leads?days=' + days),
-    f('/api/performance/kpis?days=' + days),
-    f('/api/performance/top?days=' + days),
-    f('/api/performance/heatmap?days=' + days),
-    f('/api/performance/models?days=' + days)
+    f('/api/charts/followers' + q),
+    f('/api/charts/revenue' + q),
+    f('/api/charts/leads' + q),
+    f('/api/performance/kpis' + q),
+    f('/api/performance/top' + q),
+    f('/api/performance/heatmap' + q),
+    f('/api/performance/models' + q)
   ]);
 
   renderPerfKPIs(kpis);

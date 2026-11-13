@@ -121,6 +121,7 @@ async function renderAnalytics() {
     + '<button class="filter-chip" onclick="loadDailyChart(14,this)">14j</button>'
     + '<button class="filter-chip active" onclick="loadDailyChart(30,this)">30j</button>'
     + '<button class="filter-chip" onclick="loadDailyChart(60,this)">60j</button>'
+    + '<button class="filter-chip" onclick="loadDailyChart(90,this)">90j</button>'
     + '</div></div>'
     + '<div style="position:relative;height:280px"><canvas id="chart-daily-leads-dms"></canvas></div>'
     + '</div>'

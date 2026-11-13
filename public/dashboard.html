@@ -556,12 +556,7 @@
         <div class="page-subtitle" data-i18n="section.performances_sub">Graphiques et analyse des performances</div>
       </div>
       <div class="header-actions">
-        <div style="display:flex;gap:6px" id="perf-period-btns">
-          <button class="btn perf-period active" onclick="loadPerformances(7, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--accent);color:white;border:none;cursor:pointer" data-i18n="perf.7days">7 jours</button>
-          <button class="btn perf-period" onclick="loadPerformances(30, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="perf.30days">30 jours</button>
-          <button class="btn perf-period" onclick="loadPerformances(60, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="perf.60days">60 jours</button>
-          <button class="btn perf-period" onclick="loadPerformances(365, this)" style="padding:6px 14px;font-size:12px;border-radius:20px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer" data-i18n="perf.1year">1 an</button>
-        </div>
+        <div id="perf-period-btns"></div>
       </div>
     </div>
 
