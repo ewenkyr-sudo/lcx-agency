@@ -158,7 +158,13 @@ async function renderModelSchedule(modelId) {
 
   var days = []; for (var i = 0; i < 7; i++) { var d = new Date(mon); d.setDate(d.getDate()+i); days.push(d); }
   var dayNames = getMSDayNames();
+  // heures de base + toutes les heures utilisées par les événements de la semaine (ex. 20:30)
+  var slot5 = function(x) { return x ? String(x).slice(0, 5) : ''; };
   var hours = ['10:00','12:00','14:00','17:00','18:00','18:30','19:00','20:00','21:30','22:00','23:00','23:30','00:00'];
+  msItems.forEach(function(it) { var h = slot5(it.time_slot); if (/^\d{2}:\d{2}$/.test(h) && hours.indexOf(h) < 0) hours.push(h); });
+  // la nuit (avant 6h) passe à la fin de la journée
+  var hKey = function(h) { var m = +h.slice(0, 2) * 60 + +h.slice(3, 5); return m < 360 ? m + 1440 : m; };
+  hours.sort(function(a, b) { return hKey(a) - hKey(b); });
   var today = new Date(); today.setHours(0,0,0,0);
   var catColors = { content: '#22D3EE', live: '#dc2626', call: '#FBBF24', deadline: '#8B5CF6', task: '#3B82F6' };
 
@@ -182,7 +188,7 @@ async function renderModelSchedule(modelId) {
     html += '<div style="padding:4px 6px;font-size:10px;color:var(--text-tertiary);text-align:right;border-bottom:1px solid var(--border);min-height:40px;display:flex;align-items:flex-start;justify-content:flex-end">' + hours[hi] + '</div>';
     for (var di = 0; di < 7; di++) {
       var dayStr = fmtDateISO(days[di]);
-      var cellItems = msItems.filter(function(it) { return it.day_date && it.day_date.substring(0,10) === dayStr && (it.time_slot === hours[hi] || (!it.time_slot && hi === 0)); });
+      var cellItems = msItems.filter(function(it) { return it.day_date && it.day_date.substring(0,10) === dayStr && (slot5(it.time_slot) === hours[hi] || (!it.time_slot && hi === 0)); });
       html += '<div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px;min-height:40px;cursor:pointer" onclick="' + (isAdmin()?'openMSModal('+modelId+',\''+dayStr+'\',\''+hours[hi]+'\')':'') + '">';
       cellItems.forEach(function(it) {
         var col = catColors[it.category] || it.color || '#3B82F6';

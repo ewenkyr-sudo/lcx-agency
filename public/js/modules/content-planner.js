@@ -338,4 +338,5 @@ function getCPMonday(d) {
   return dt;
 }
 
-function fmtDateISO(d) { return d.toISOString().slice(0, 10); }
+// date locale AAAA-MM-JJ (toISOString passait en UTC : en France, minuit devenait la veille)
+function fmtDateISO(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
