@@ -137,7 +137,31 @@ async function syncStats(agencyId, key, from, to) {
        cents(d.paymentLinksNetRevenue), cents(d.boudoirNetRevenue), cents(d.paidMessagesNetRevenue), cents(d.otherNetRevenue),
        d.messagesSent ?? null, d.messagesReceived ?? null]);
   }
+  return (r.data || []).length;
 }
+
+// Historique : on remonte 31 jours de plus à chaque passage, jusqu'à 12 mois (pour Finances et les graphiques)
+const HISTORY_DAYS = 365;
+function addDays(dateStr, n) { const d = new Date(dateStr + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+async function syncHistoryChunk(agencyId, key) {
+  const { rows } = await pool.query(`SELECT to_char(history_from,'YYYY-MM-DD') hf, history_done FROM reveal_api_state WHERE agency_id = $1`, [agencyId]);
+  if (!rows[0] || rows[0].history_done) return false;
+  const limit = parseDate(-HISTORY_DAYS);
+  const to = addDays(rows[0].hf || parseDate(-30), -1);
+  if (to < limit) { await pool.query(`UPDATE reveal_api_state SET history_done = true WHERE agency_id = $1`, [agencyId]); return false; }
+  const from = addDays(to, -30) < limit ? limit : addDays(to, -30);
+  let n = 0;
+  try { n = await syncStats(agencyId, key, from, to); } catch (e) {
+    if (e.status === 400 || e.status === 404) { await pool.query(`UPDATE reveal_api_state SET history_done = true WHERE agency_id = $1`, [agencyId]); return false; }
+    throw e;
+  }
+  try { await syncChatterStats(agencyId, key, from, to); } catch (e) { /* le classement ancien est un plus */ }
+  // plus rien avant cette date : l'historique est complet
+  await pool.query(`UPDATE reveal_api_state SET history_from = $2, history_done = $3 WHERE agency_id = $1`, [agencyId, from, n === 0 || from <= limit]);
+  await updateObjectives(agencyId);
+  return true;
+}
+function parseDate(offset) { return parisDate(offset); }
 
 // Objectifs de CA du mois : « réalisé » rempli depuis Reveal
 async function updateObjectives(agencyId) {
@@ -352,6 +376,7 @@ async function tick() {
       try {
         const key = await getKey(r.agency_id);
         await syncSales(r.agency_id, key);
+        await syncHistoryChunk(r.agency_id, key);
       } catch (e) { await setError(r.agency_id, e); }
     }
   } catch (e) {

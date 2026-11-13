@@ -21,6 +21,9 @@ async function initRevealApiDB() {
       sale_alert_min NUMERIC
     );
 
+    ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_from DATE;
+    ALTER TABLE reveal_api_state ADD COLUMN IF NOT EXISTS history_done BOOLEAN DEFAULT false;
+
     CREATE TABLE IF NOT EXISTS reveal_models (
       reveal_model_id TEXT PRIMARY KEY,
       agency_id INTEGER,

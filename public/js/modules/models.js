@@ -157,6 +157,7 @@ function closeCockpit() {
   cockpitCharts = {};
 }
 
+var cockpitCur = '$';
 async function renderModelCockpit(modelId) {
   const container = document.getElementById('cockpit-content');
   container.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><div style="color:var(--text-tertiary);margin-top:12px">' + t('models.cockpit_loading') + '</div></div>';
@@ -171,6 +172,7 @@ async function renderModelCockpit(modelId) {
     const d = await res.json();
     // complète avec la liste des modèles (photo Reveal, etc.)
     const model = Object.assign({}, allModels.find(m => m.id === modelId) || {}, d.model);
+    cockpitCur = d.currency || '$';
     if (typeof model.platforms === 'string') { try { model.platforms = JSON.parse(model.platforms); } catch(e2) { model.platforms = []; } }
     const modelIdx = allModels.findIndex(m => m.id === modelId);
     const objPct = d.objective.target > 0 ? Math.min(100, (d.revenueMonth / d.objective.target * 100)).toFixed(0) : 0;
@@ -203,13 +205,13 @@ async function renderModelCockpit(modelId) {
       <div class="cockpit-kpis">
         <div class="cockpit-kpi">
           <div class="cockpit-kpi-label">${t('models.revenue_today')}</div>
-          <div class="cockpit-kpi-value" style="color:var(--green)">$${d.revenueToday.toFixed(2)}</div>
-          <div class="cockpit-kpi-sub">PPV $${d.ppvToday.toFixed(2)} · Tips $${d.tipsToday.toFixed(2)}</div>
+          <div class="cockpit-kpi-value" style="color:var(--green)">${cockpitCur}${d.revenueToday.toFixed(2)}</div>
+          <div class="cockpit-kpi-sub">PPV ${cockpitCur}${d.ppvToday.toFixed(2)} · Tips ${cockpitCur}${d.tipsToday.toFixed(2)}</div>
         </div>
         <div class="cockpit-kpi">
           <div class="cockpit-kpi-label">${t('models.revenue_month')}</div>
-          <div class="cockpit-kpi-value">$${d.revenueMonth.toFixed(2)}</div>
-          <div class="cockpit-kpi-sub">${d.objective.target > 0 ? t('models.objective_prefix') + ' $' + d.objective.target.toFixed(0) + ' (' + objPct + '%)' : t('models.no_objective')}</div>
+          <div class="cockpit-kpi-value">${cockpitCur}${d.revenueMonth.toFixed(2)}</div>
+          <div class="cockpit-kpi-sub">${d.objective.target > 0 ? t('models.objective_prefix') + ' ' + cockpitCur + d.objective.target.toFixed(0) + ' (' + objPct + '%)' : t('models.no_objective')}</div>
           ${d.objective.target > 0 ? '<div class="cockpit-progress"><div class="cockpit-progress-bar" style="width:'+objPct+'%;background:'+objColor+'"></div></div>' : ''}
         </div>
         <div class="cockpit-kpi">
@@ -228,16 +230,16 @@ async function renderModelCockpit(modelId) {
       <div class="cockpit-charts">
         <div class="cockpit-panel">
           <div class="cockpit-panel-title">${t('models.revenue_30d')}</div>
-          <canvas id="cockpit-chart-revenue" height="200"></canvas>
+          <div style="position:relative;height:260px"><canvas id="cockpit-chart-revenue"></canvas></div>
         </div>
         <div class="cockpit-panel">
           <div class="cockpit-panel-title">${t('models.revenue_breakdown')}</div>
-          <canvas id="cockpit-chart-donut" height="200"></canvas>
+          <div style="position:relative;height:260px"><canvas id="cockpit-chart-donut"></canvas></div>
         </div>
       </div>
       <div class="cockpit-panel">
         <div class="cockpit-panel-title">${t('models.revenue_weekly')}</div>
-        <canvas id="cockpit-chart-weekly" height="160"></canvas>
+        <div style="position:relative;height:220px"><canvas id="cockpit-chart-weekly"></canvas></div>
       </div>
 
       <!-- Team + Activity -->
@@ -275,7 +277,7 @@ async function renderModelCockpit(modelId) {
         + '<div style="flex:1"><strong style="font-size:13px">' + tm.name + '</strong>'
         + (clockInfo ? '<div style="font-size:11px;color:var(--text-tertiary)">' + clockInfo + '</div>' : '')
         + '</div>'
-        + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">$' + tm.monthRevenue.toFixed(2) + '</div>'
+        + '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--green)">' + cockpitCur + tm.monthRevenue.toFixed(2) + '</div>'
         + '<div style="font-size:10px;color:var(--text-tertiary)">' + tm.monthShifts + ' ' + t('models.shifts_month') + '</div></div>'
         + '</div>';
     });
@@ -284,7 +286,7 @@ async function renderModelCockpit(modelId) {
     // Render activity feed
     var feedItems = [];
     d.recentShifts.forEach(function(s) {
-      feedItems.push({ time: new Date(s.created_at), html: '<strong>' + s.chatter_name + '</strong> ' + t('models.recorded_revenue') + ' $' + (parseFloat(s.ppv_total)+parseFloat(s.tips_total)).toFixed(2) + ' ' + t('models.ppv_tips_suffix'), icon: '💰' });
+      feedItems.push({ time: new Date(s.created_at), html: '<strong>' + s.chatter_name + '</strong> ' + t('models.recorded_revenue') + ' ' + cockpitCur + (parseFloat(s.ppv_total)+parseFloat(s.tips_total)).toFixed(2) + ' ' + t('models.ppv_tips_suffix'), icon: '💰' });
     });
     d.activity.forEach(function(a) {
       var icons = {'lead-signed':'🎉','lead-call-booked':'📞','lead-talking-warm':'🔥','clock-in':'🟢','clock-out':'🔴'};
@@ -306,7 +308,7 @@ async function renderModelCockpit(modelId) {
       var statusColor = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
       objHtml += '<div style="display:flex;align-items:center;gap:16px;padding:14px;background:var(--bg-elevated);border-radius:10px;margin-bottom:8px">'
         + '<div style="flex:1"><div style="font-size:14px;font-weight:600">' + t('models.revenue_monthly_label') + '</div>'
-        + '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">$' + d.revenueMonth.toFixed(2) + ' / $' + d.objective.target.toFixed(0) + '</div>'
+        + '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">' + cockpitCur + d.revenueMonth.toFixed(2) + ' / ' + cockpitCur + d.objective.target.toFixed(0) + '</div>'
         + '<div class="cockpit-progress" style="margin-top:8px"><div class="cockpit-progress-bar" style="width:' + pct + '%;background:' + statusColor + '"></div></div></div>'
         + '<div style="text-align:right"><div style="font-size:20px;font-weight:800">' + pct + '%</div><div style="font-size:11px;color:' + statusColor + ';font-weight:600">' + status + '</div></div></div>';
     } else {
@@ -352,14 +354,20 @@ function renderCockpitCharts(d) {
           borderColor: '#8B5CF6',
           backgroundColor: 'rgba(236,72,153,0.1)',
           fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
-        }]
+        }].concat(d.source === 'reveal' ? [{
+          label: 'Abonnements & autres',
+          data: d.rev30.map(function(r) { return Math.max(0, (r.net || 0) - r.ppv - r.tips); }),
+          borderColor: '#22D3EE',
+          backgroundColor: 'rgba(34,211,238,0.08)',
+          fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
+        }] : [])
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
           x: { ticks: chartDarkTicks, grid: chartDarkGrid },
-          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }), grid: chartDarkGrid }
+          y: { ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '' + cockpitCur + v; } }), grid: chartDarkGrid }
         }
       }
     });
@@ -372,7 +380,7 @@ function renderCockpitCharts(d) {
     cockpitCharts.donut = new Chart(ctx2, {
       type: 'doughnut',
       data: {
-        labels: ['PPV', 'Tips', 'Autres'],
+        labels: ['PPV', 'Tips', d.source === 'reveal' ? 'Abonnements & autres' : 'Autres'],
         datasets: [{
           data: [d.ppvMonth, d.tipsMonth, msgRevenue],
           backgroundColor: ['#3B82F6', '#8B5CF6', '#22D3EE'],
@@ -411,7 +419,7 @@ function renderCockpitCharts(d) {
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
           x: { stacked: true, ticks: chartDarkTicks, grid: { display: false } },
-          y: { stacked: true, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }), grid: chartDarkGrid }
+          y: { stacked: true, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '' + cockpitCur + v; } }), grid: chartDarkGrid }
         }
       }
     });

@@ -1,3 +1,4 @@
+var FIN_CUR = '$';
 // FINANCES MODULE v2
 // Complete financial dashboard with charts, KPIs, and detailed tracking
 
@@ -23,6 +24,7 @@ async function renderFinance() {
     f('/api/finance/commissions')
   ]);
 
+  FIN_CUR = (summary && summary.currency) || '$';
   if (!summary) summary = { currentMonth: { revenue: 0, ppv: 0, tips: 0, month: '' }, previousMonth: { revenue: 0 }, variation: 0, objective: { target: 0, current: 0 }, due: { count: 0, total: 0 } };
   if (!monthly) monthly = [];
   if (!breakdown) breakdown = { byModel: [], bySource: { ppv: 0, tips: 0 } };
@@ -38,13 +40,14 @@ async function renderFinance() {
 
   container.innerHTML = ''
     // === KPIs ===
+    + (summary.source === 'reveal' ? '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px">Chiffres officiels Reveal en € nets (après TVA et frais Reveal), mis à jour toutes les 15 min. La variation compare à la même date le mois dernier.</div>' : '')
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px">'
-    + '<div class="stat-card"><div class="stat-value" style="color:var(--green);font-size:28px">$' + summary.currentMonth.revenue.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div class="stat-label">' + t('finance.revenue_total') + ' — ' + summary.currentMonth.month + '</div></div>'
-    + '<div class="stat-card"><div class="stat-value" style="color:var(--text-secondary);font-size:20px">$' + summary.previousMonth.revenue.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div class="stat-label" style="display:flex;align-items:center;gap:6px;justify-content:center">' + t('finance.prev_month') + ' <span style="color:' + variationColor + ';font-weight:700;font-size:14px">' + variationIcon + ' ' + Math.abs(summary.variation) + '%</span></div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--green);font-size:28px">' + FIN_CUR + summary.currentMonth.revenue.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div class="stat-label">' + t('finance.revenue_total') + ' — ' + summary.currentMonth.month + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--text-secondary);font-size:20px">' + FIN_CUR + summary.previousMonth.revenue.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div class="stat-label" style="display:flex;align-items:center;gap:6px;justify-content:center">' + t('finance.prev_month') + ' <span style="color:' + variationColor + ';font-weight:700;font-size:14px">' + variationIcon + ' ' + Math.abs(summary.variation) + '%</span></div></div>'
     + '<div class="stat-card"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:var(--text-secondary)">' + t('finance.objective') + '</span><span style="color:var(--accent);font-weight:700">' + objPct + '%</span></div>'
     + '<div style="height:8px;background:var(--bg-base);border-radius:4px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:' + objPct + '%;background:' + (objPct >= 100 ? 'var(--green)' : 'var(--accent)') + ';border-radius:4px;transition:width 0.5s"></div></div>'
-    + '<div style="font-size:12px;color:var(--text-tertiary);text-align:center">$' + summary.objective.current.toLocaleString(undefined, {maximumFractionDigits:0}) + ' / $' + summary.objective.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div></div>'
-    + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow);font-size:22px">' + summary.due.count + '</div><div class="stat-label">' + t('finance.pending_payments') + ' — $' + summary.due.total.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div></div>'
+    + '<div style="font-size:12px;color:var(--text-tertiary);text-align:center">' + FIN_CUR + summary.objective.current.toLocaleString(undefined, {maximumFractionDigits:0}) + ' / ' + FIN_CUR + summary.objective.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value" style="color:var(--yellow);font-size:22px">' + summary.due.count + '</div><div class="stat-label">' + t('finance.pending_payments') + ' — ' + FIN_CUR + summary.due.total.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div></div>'
     + '</div>'
 
     // === Revenue chart 12 months + Pie charts ===
@@ -57,11 +60,11 @@ async function renderFinance() {
 
     // === Due this month ===
     + (due.length > 0 ? '<div class="panel" style="padding:20px;margin-bottom:20px;border-left:3px solid var(--yellow)">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--yellow)">' + t('finance.due_this_month') + '</h3><span style="font-size:18px;font-weight:800;color:var(--yellow)">$' + due.reduce(function(s, d) { return s + parseFloat(d.amount || 0); }, 0).toLocaleString(undefined, {maximumFractionDigits:0}) + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="font-size:15px;font-weight:700;color:var(--yellow)">' + t('finance.due_this_month') + '</h3><span style="font-size:18px;font-weight:800;color:var(--yellow)">' + FIN_CUR + due.reduce(function(s, d) { return s + parseFloat(d.amount || 0); }, 0).toLocaleString(undefined, {maximumFractionDigits:0}) + '</span></div>'
     + '<div style="display:grid;gap:8px">' + due.map(function(d) {
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-elevated);border-radius:8px">'
         + '<strong>' + d.model_name + '</strong>'
-        + '<div style="display:flex;align-items:center;gap:12px"><span style="font-size:16px;font-weight:700;color:var(--yellow)">$' + parseFloat(d.amount).toFixed(2) + '</span>'
+        + '<div style="display:flex;align-items:center;gap:12px"><span style="font-size:16px;font-weight:700;color:var(--yellow)">' + FIN_CUR + parseFloat(d.amount).toFixed(2) + '</span>'
         + '<button class="btn" style="font-size:11px;padding:4px 12px;background:var(--green-bg);color:var(--green);border:none;cursor:pointer;border-radius:6px" onclick="markPaymentPaid(' + d.id + ')">' + t('finance.mark_paid') + '</button></div></div>';
     }).join('') + '</div></div>' : '')
 
@@ -69,11 +72,11 @@ async function renderFinance() {
     + '<div class="panel" style="padding:20px;margin-bottom:20px">'
     + '<h3 style="font-size:15px;font-weight:700;color:var(--accent-blue-light);margin-bottom:16px">' + t('finance.agency_commissions') + '</h3>'
     + '<div class="grid-2col" style="gap:14px;margin-bottom:16px">'
-    + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--accent)">$' + commissions.monthlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.this_month_commission') + '</div></div>'
-    + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--green)">$' + commissions.yearlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.yearly_commission') + '</div></div>'
+    + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--accent)">' + FIN_CUR + commissions.monthlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.this_month_commission') + '</div></div>'
+    + '<div style="background:var(--bg-elevated);padding:14px;border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:800;color:var(--green)">' + FIN_CUR + commissions.yearlyCommission.toLocaleString(undefined, {maximumFractionDigits:0}) + '</div><div style="font-size:12px;color:var(--text-tertiary)">' + t('finance.yearly_commission') + '</div></div>'
     + '</div>'
     + (commissions.byModel.length > 0 ? '<div style="display:grid;gap:6px">' + commissions.byModel.map(function(cm) {
-      return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-elevated);border-radius:6px;font-size:13px"><span>' + cm.model_name + '</span><div><span style="color:var(--text-tertiary);margin-right:12px">$' + parseFloat(cm.revenue).toLocaleString(undefined, {maximumFractionDigits:0}) + ' rev</span><span style="color:var(--accent);font-weight:700">$' + parseFloat(cm.commission).toLocaleString(undefined, {maximumFractionDigits:0}) + ' comm</span></div></div>';
+      return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-elevated);border-radius:6px;font-size:13px"><span>' + cm.model_name + '</span><div><span style="color:var(--text-tertiary);margin-right:12px">' + FIN_CUR + parseFloat(cm.revenue).toLocaleString(undefined, {maximumFractionDigits:0}) + ' rev</span><span style="color:var(--accent);font-weight:700">' + FIN_CUR + parseFloat(cm.commission).toLocaleString(undefined, {maximumFractionDigits:0}) + ' comm</span></div></div>';
     }).join('') + '</div>' : '')
     + '</div>'
 
@@ -104,7 +107,7 @@ async function renderFinance() {
       return '<div style="background:var(--bg-elevated);padding:12px;border-radius:8px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>' + o.model_name + '</strong>'
         + '<div style="display:flex;align-items:center;gap:8px"><input type="number" value="' + o.current + '" onchange="updateRevenueObj(' + o.id + ',{current:this.value})" style="width:80px;background:var(--bg-base);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;font-family:inherit;text-align:right">'
-        + '<span style="font-size:13px;color:var(--text-tertiary)">/ $' + parseFloat(o.target).toFixed(0) + '</span><span style="font-size:12px;font-weight:700;color:' + (pct >= 100 ? 'var(--green)' : 'var(--accent)') + '">' + pct + '%</span></div></div>'
+        + '<span style="font-size:13px;color:var(--text-tertiary)">/ ' + FIN_CUR + parseFloat(o.target).toFixed(0) + '</span><span style="font-size:12px;font-weight:700;color:' + (pct >= 100 ? 'var(--green)' : 'var(--accent)') + '">' + pct + '%</span></div></div>'
         + '<div style="height:6px;background:var(--bg-base);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + (pct >= 100 ? 'var(--green)' : 'var(--accent)') + ';border-radius:3px"></div></div></div>';
     }).join('') || '<div style="color:var(--text-tertiary);text-align:center;padding:16px">' + t('finances.no_objective') + '</div>'
     + '</div></div>';
@@ -131,7 +134,7 @@ function renderFinancePayments() {
       var stBg = p.status === 'paid' ? 'var(--green-bg)' : p.status === 'pending' ? 'var(--yellow-bg)' : 'var(--red-bg)';
       return '<tr><td data-label="" class="mc-title"><strong>' + p.model_name + '</strong></td>'
         + '<td data-label="' + t('finance.month_col') + '" class="mc-half">' + p.month + '</td>'
-        + '<td data-label="' + t('finance.amount') + '" class="mc-half" style="color:var(--green);font-weight:700">$' + parseFloat(p.amount).toFixed(2) + '</td>'
+        + '<td data-label="' + t('finance.amount') + '" class="mc-half" style="color:var(--green);font-weight:700">' + FIN_CUR + parseFloat(p.amount).toFixed(2) + '</td>'
         + '<td data-label="' + t('common.status') + '" class="mc-half"><select onchange="updatePayment(' + p.id + ',{status:this.value})" style="background:' + stBg + ';color:' + stColor + ';border:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><option value="pending"' + (p.status === 'pending' ? ' selected' : '') + '>' + t('finance.pending') + '</option><option value="paid"' + (p.status === 'paid' ? ' selected' : '') + '>' + t('finance.paid') + '</option><option value="cancelled"' + (p.status === 'cancelled' ? ' selected' : '') + '>' + t('cp.status_cancelled') + '</option></select></td>'
         + '<td data-label="' + t('common.notes') + '" class="mc-full" style="font-size:12px;color:var(--text-secondary)">' + (p.notes || '-') + '</td>'
         + '<td data-label=""><button class="btn-delete-small" onclick="deletePayment(' + p.id + ')">✕</button></td></tr>';
@@ -178,7 +181,7 @@ function renderFinanceCharts(monthly, breakdown) {
         plugins: { legend: { labels: chartDarkLegend }, tooltip: chartDarkTooltip },
         scales: {
           x: { stacked: true, grid: { display: false }, ticks: chartDarkTicks },
-          y: { stacked: true, grid: chartDarkGrid, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '$' + v; } }) }
+          y: { stacked: true, grid: chartDarkGrid, ticks: Object.assign({}, chartDarkTicks, { callback: function(v) { return '' + FIN_CUR + v; } }) }
         }
       }
     });
@@ -204,13 +207,14 @@ function renderFinanceCharts(monthly, breakdown) {
   if (ctx3) {
     var ppv = parseFloat(breakdown.bySource.ppv || 0);
     var tips = parseFloat(breakdown.bySource.tips || 0);
-    if (ppv + tips > 0) {
+    var subs = parseFloat(breakdown.bySource.subs || 0), other = parseFloat(breakdown.bySource.other || 0);
+    if (ppv + tips + subs + other > 0) {
       if (financeChartBySource) financeChartBySource.destroy();
       financeChartBySource = new Chart(ctx3.getContext('2d'), {
         type: 'doughnut',
         data: {
-          labels: ['PPV', 'Tips'],
-          datasets: [{ data: [ppv, tips], backgroundColor: ['#3B82F6', '#22D3EE'], borderWidth: 0 }]
+          labels: breakdown.source === 'reveal' ? ['PPV', 'Pourboires', 'Abonnements', 'Autres'] : ['PPV', 'Tips'],
+          datasets: [{ data: breakdown.source === 'reveal' ? [ppv, tips, subs, other] : [ppv, tips], backgroundColor: ['#3B82F6', '#22D3EE', '#8B5CF6', '#F59E0B'], borderWidth: 0 }]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: chartDarkLegend }, tooltip: chartDarkTooltip } }
       });
@@ -265,7 +269,7 @@ function showRevenueObjForm() {
   wrap.innerHTML = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:end;background:var(--bg-elevated);padding:14px;border-radius:10px">'
     + '<div><label style="font-size:11px;color:var(--text-tertiary)">' + t('finance.model_col') + '</label><select id="robj-model" class="form-input" style="font-size:12px">' + modelOpts + '</select></div>'
     + '<div><label style="font-size:11px;color:var(--text-tertiary)">' + t('finance.month_col') + '</label><input type="month" id="robj-month" class="form-input" style="font-size:12px" value="' + new Date().toISOString().slice(0, 7) + '"></div>'
-    + '<div><label style="font-size:11px;color:var(--text-tertiary)">' + t('coaching.obj_target') + ' ($)</label><input type="number" id="robj-target" class="form-input" style="font-size:12px;width:100px" placeholder="0"></div>'
+    + '<div><label style="font-size:11px;color:var(--text-tertiary)">' + t('coaching.obj_target') + ' (' + FIN_CUR + ')</label><input type="number" id="robj-target" class="form-input" style="font-size:12px;width:100px" placeholder="0"></div>'
     + '<button class="btn btn-primary" style="font-size:12px" onclick="addRevenueObj()">' + t('common.add') + '</button>'
     + '</div>';
 }
