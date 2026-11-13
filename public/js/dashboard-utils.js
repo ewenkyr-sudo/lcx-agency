@@ -8,7 +8,7 @@
 var CHART_PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 var CHART_SURFACE = '#131316';
 // Style « Reveal » : une couleur vive pour la série principale, un gris pour la série de comparaison
-var CHART_ACCENT = '#1F6FFF', CHART_SECOND = '#5B5B63';
+var CHART_ACCENT = '#1449E6', CHART_SECOND = '#5B5B63';
 var CHART_TEXT = '#A1A1AA', CHART_MUTED = '#71717A';
 
 var chartDarkTooltip = {
