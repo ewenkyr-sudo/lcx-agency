@@ -4963,6 +4963,7 @@ app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, admin
 app.use('/api/autopost', require('./routes/autopost'));
 // ============ API REVEAL (stats, chatteurs, liens, ventes) ============
 app.use('/api/reveal', require('./routes/reveal'));
+app.use('/api/sfs', require('./routes/sfs'));
 
 // ============ CATCH-ALL (must be last route) ============
 app.get('*', (req, res) => {
@@ -4977,6 +4978,7 @@ async function start() {
   await migrateToMultiMembership();
   await require('./db/autopost-schema').initAutopostDB();
   await require('./db/reveal-api-schema').initRevealApiDB();
+  await require('./db/sfs-schema').initSfsDB();
   if (process.env.REVEAL_API_SYNC !== 'false') require('./services/reveal-api/sync').start();
   // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
   if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();

@@ -80,6 +80,9 @@ const RULES = [
   ['GET', /^\/api\/reveal\/(me|status|overview|daily-by-model|models|chatters|tracking|sales)$/, OK],
   ['GET', /^\/api\/reveal\/models\/([\w-]+)\/daily$/, byRevealId],
 
+  // SFS (les routes filtrent et vérifient la modèle elles-mêmes)
+  ['GET|POST|PUT|DELETE', /^\/api\/sfs\//, OK],
+
   // Auto-post (les routes vérifient la modèle via ownModel / ownMedia)
   ['GET', /^\/api\/autopost\/(overview|jobs|reports)$/, OK],
   ['PUT', /^\/api\/autopost\/models\/(\d+)\/settings$/, byParam],
