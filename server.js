@@ -4152,11 +4152,12 @@ app.put('/api/model-profile/:modelId', authMiddleware, async (req, res) => {
 // ============ MODEL SCHEDULE (PLANNING MODÈLE) ============
 app.get('/api/model-schedule/:modelId', authMiddleware, async (req, res) => {
   const { start, end } = req.query;
-  let query = 'SELECT * FROM model_schedule WHERE model_id = $1';
+  // date renvoyée en texte (AAAA-MM-JJ) pour éviter tout décalage de fuseau horaire
+  let query = "SELECT *, to_char(day_date, 'YYYY-MM-DD') AS day_date FROM model_schedule WHERE model_id = $1";
   const params = [req.params.modelId];
   if (start) { params.push(start); query += ' AND day_date >= $' + params.length; }
   if (end) { params.push(end); query += ' AND day_date <= $' + params.length; }
-  query += ' ORDER BY day_date, time_slot';
+  query += ' ORDER BY model_schedule.day_date, model_schedule.time_slot';
   const { rows } = await pool.query(query, params);
   res.json(rows);
 });
