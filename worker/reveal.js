@@ -275,6 +275,45 @@ async function createMassDM(page, access, { revealId, content, plannedAt, audien
   return { id: String(id), raw: j };
 }
 
+// Mass DM avec photos / vidéos : on passe par la fenêtre « Programmer un mass DM » du dashboard,
+// comme une personne (l'import des médias de Reveal se fait dans le navigateur).
+function parisLocal(d) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(d)).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+async function createMassDMViaUI(page, { revealId, content, plannedAt, audience, files }) {
+  await openModelPage(page, revealId, 'mass-dm');
+  await (await visible(page, 'Programmer un mass DM', { exact: true })).click();
+  const dlg = page.locator('[role=dialog]').filter({ has: page.locator('textarea[name=content]') }).last();
+  await dlg.waitFor({ timeout: 20000 });
+  await human(800, 1500);
+  // destinataires : 1re case = abonnés, 2e = anciens abonnés
+  const box = dlg.locator('button[role=checkbox]').nth(audience === 'expired' ? 1 : 0);
+  if ((await box.getAttribute('aria-checked')) !== 'true') await box.click();
+  await human(400, 900);
+  if ((await box.getAttribute('aria-checked')) !== 'true') throw new Error('Impossible de choisir les destinataires du mass DM');
+  await typeHuman(dlg.locator('textarea[name=content]'), content);
+  await human(500, 1000);
+  const at = dlg.locator('input[name=plannedAt]');
+  if (!(await at.isVisible().catch(() => false))) { await dlg.getByText('À une date', { exact: true }).click(); await human(400, 800); }
+  await at.fill(parisLocal(plannedAt));
+  await human(500, 1000);
+  await dlg.getByText("Importer depuis l'ordinateur", { exact: true }).click();
+  await importMedia(page, files);
+  const price = dlg.locator('input[name=price]');
+  if (await price.isVisible().catch(() => false)) await price.fill('0');
+  const resP = page.waitForResponse(r => r.request().method() === 'POST' && /\/mass-dm(\?|$)/.test(r.url()), { timeout: 120000 });
+  await dlg.getByRole('button', { name: 'Envoyer', exact: true }).click();
+  const res = await resP;
+  if (res.status() === 401) throw new SessionExpired();
+  const j = await res.json().catch(() => null);
+  if (!res.ok()) throw new Error(`Reveal a refusé le mass DM (${res.status()}${j && j.message ? ' : ' + String(j.message).slice(0, 120) : ''})`);
+  await dlg.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
+  const id = j && (j.id || (j.massDM && j.massDM.id) || (j.data && (j.data.id || (j.data.massDM && j.data.massDM.id))));
+  return { id: id ? String(id) : null, raw: j };
+}
+
 async function deleteMassDM(page, access, id) {
   try { return await apiCall(page, access, 'DELETE', '/mass-dm/' + encodeURIComponent(id)); }
   catch (e) { if (e.status === 404) return null; throw e; }
@@ -287,5 +326,5 @@ async function listMassDMs(page, access, revealId, from, to) {
   return ((j && j.data) || []).map(x => x.massDM || x);
 }
 
-module.exports = { BASE, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired,
+module.exports = { BASE, createMassDMViaUI, parisLocal, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired,
   apiAccess, createMassDM, deleteMassDM, listMassDMs };

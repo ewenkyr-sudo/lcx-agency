@@ -363,7 +363,27 @@ async function sfsSync() {
                 continue;
               }
               const plannedAt = new Date(Math.max(when, Date.now() + 2 * 60000));
-              const md = await reveal.createMassDM(page, access, { revealId: r.reveal_id, content: r.message, plannedAt, audience: r.audience });
+              const media = Array.isArray(r.media) ? r.media : [];
+              let md;
+              if (media.length) {
+                // photos / vidéos : on récupère les fichiers puis on passe par la fenêtre de Reveal
+                const files = [];
+                try {
+                  for (const [i, m] of media.entries()) {
+                    const f = path.join(TMP, `sfs${r.id}_${i}${path.extname(m.key) || ''}`);
+                    await storage.getToFile(m.key, f);
+                    files.push(f);
+                  }
+                  md = await reveal.createMassDMViaUI(page, { revealId: r.reveal_id, content: r.message, plannedAt, audience: r.audience, files });
+                } finally { for (const f of files) fs.promises.unlink(f).catch(() => {}); }
+                if (!md.id) { // pas d'identifiant dans la réponse : on le retrouve dans la liste
+                  const t = plannedAt.getTime();
+                  const list = await reveal.listMassDMs(page, access, r.reveal_id, new Date(t - 86400000), new Date(t + 86400000));
+                  const hit = list.filter(x => x.content === r.message && Math.abs(new Date(x.plannedAt).getTime() - t) < 120000).pop();
+                  if (!hit) throw new Error('Mass DM envoyé à Reveal mais introuvable ensuite : vérifie sur Reveal');
+                  md.id = String(hit.id);
+                }
+              } else md = await reveal.createMassDM(page, access, { revealId: r.reveal_id, content: r.message, plannedAt, audience: r.audience });
               await set(r.id, { bot_status: 'scheduled', reveal_mass_dm_id: md.id, bot_error: null });
               log(`💬 SFS #${r.id} : mass DM programmé chez Reveal pour ${plannedAt.toISOString()} (${md.id})`);
               continue;

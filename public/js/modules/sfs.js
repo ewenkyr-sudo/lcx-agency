@@ -157,7 +157,7 @@ function sfsCard(p) {
     + '<div style="display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--text-tertiary)"><span>' + sfsTime(p.scheduled_at) + ' · ' + SFS_PLAT[p.platform] + '</span>'
     + '<span style="display:flex;gap:4px">' + tick(p.our_sent, 'Notre mass DM envoyé') + tick(p.partner_sent, 'Mass DM de la partenaire reçu') + '</span></div>'
     + '<div style="font-weight:600;font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sfsEsc(p.model_name) + ' × ' + sfsEsc(p.partner_name) + '</div>'
-    + sfsBotBadge(p)
+    + sfsBotBadge(p) + (p.auto_send && p.media && p.media.length ? '<div style="font-size:11px;color:var(--text-tertiary)">📎 ' + p.media.length + ' média' + (p.media.length > 1 ? 's' : '') + '</div>' : '')
     + (p.subs_gained != null || p.reveal_new_subs_day != null ? '<div style="font-size:11px;color:var(--accent-green);margin-top:2px">'
       + (p.subs_gained != null ? '+' + sfsNum(p.subs_gained) + ' abonnés' : '+' + sfsNum(p.reveal_new_subs_day) + ' abonnés ce jour-là') + '</div>' : '')
     + '</div>';
@@ -218,7 +218,11 @@ function sfsOpen(id, ymd) {
       + '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="sfs-f-auto"' + (auto ? ' checked' : '') + (sent ? ' disabled' : '') + ' onchange="sfsAutoToggle()"> 🤖 Le bot envoie le mass DM (Reveal)</label>'
       + '<div id="sfs-auto-fields" style="margin-top:10px">'
       + '<div class="form-group"><label class="form-label">Message du mass DM (gratuit)</label><textarea class="form-input" id="sfs-f-msg" rows="4"' + (sent ? ' disabled' : '') + ' placeholder="Ex. Allez voir ma copine @jade, elle est trop mignonne 😍 reveal.me/jade">' + sfsEsc(p ? p.message : '') + '</textarea>'
-      + '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">%NAME% est remplacé par le prénom du fan. Texte seul pour l\'instant.</div></div>'
+      + '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">%NAME% est remplacé par le prénom du fan.</div></div>'
+      + '<div class="form-group"><label class="form-label">Photos / vidéos (4 max)</label>'
+      + '<div id="sfs-media-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>'
+      + (sent ? '' : '<label class="btn btn-secondary" style="padding:4px 12px;font-size:12px;cursor:pointer">📎 Ajouter<input type="file" accept="image/*,video/*" multiple style="display:none" onchange="sfsAddMedia(this)"></label>')
+      + '</div>'
       + '<div class="form-group" style="margin-bottom:0"><label class="form-label">Envoyé à</label><select class="form-input" id="sfs-f-aud"' + (sent ? ' disabled' : '') + '>'
         + [['active', 'Abonnés actuels'], ['expired', 'Anciens abonnés']].map(function(a) { return '<option value="' + a[0] + '"' + ((p ? p.audience : 'active') === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') + '</select></div>'
       + (p && p.auto_send ? '<div style="font-size:12px;margin-top:10px;color:' + ((SFS_BOT[p.bot_status] || [])[1] || 'var(--text-tertiary)') + '">' + ((SFS_BOT[p.bot_status] || [''])[0])
@@ -237,6 +241,9 @@ function sfsOpen(id, ymd) {
     sfsModal(p ? 'SFS · ' + sfsEsc(p.model_name) + ' × ' + sfsEsc(p.partner_name) : 'Programmer un SFS', body,
       (p && p.bot_status !== 'sent' ? '<button class="btn btn-ghost" style="color:var(--accent-red);margin-right:auto" onclick="sfsDelete(' + p.id + ')">Supprimer</button>' : '')
       + '<button class="btn btn-primary" onclick="sfsSave(' + (p ? p.id : 'null') + ')">' + (p ? 'Enregistrer' : 'Programmer') + '</button>');
+    sfs.media = (p && Array.isArray(p.media) ? p.media : []).map(function(m) { return Object.assign({}, m); });
+    sfs.mediaLocked = sent;
+    sfsPaintMedia();
     sfsAutoToggle();
   };
   if (id && !p) sfsApi('GET', '/pushes').then(function(all) { go(all.find(function(x) { return x.id === id; })); });
@@ -247,6 +254,46 @@ function sfsAutoToggle() {
   if (!plat || !box) return;
   box.style.display = plat.value === 'reveal' ? '' : 'none';
   if (f) f.style.display = cb && cb.checked ? '' : 'none';
+}
+// photos / vidéos jointes : fichiers déjà en ligne {key,…} ou à envoyer {file}
+function sfsPaintMedia() {
+  var el = document.getElementById('sfs-media-list');
+  if (!el) return;
+  el.innerHTML = (sfs.media || []).map(function(m, i) {
+    var name = m.file ? m.file.name : m.filename, vid = /^video/.test(m.file ? m.file.type : m.mime);
+    var thumb = m.file && !vid ? '<img src="' + URL.createObjectURL(m.file) + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px">' : '<span>' + (vid ? '🎬' : '🖼️') + '</span>';
+    return '<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px solid var(--border-default);border-radius:6px;font-size:12px;max-width:220px">' + thumb
+      + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + sfsEsc(name) + '</span>'
+      + (sfs.mediaLocked ? '' : '<button class="btn btn-ghost" style="padding:0 4px" title="Retirer" onclick="sfsRemoveMedia(' + i + ')">✕</button>') + '</span>';
+  }).join('') || '<span style="font-size:12px;color:var(--text-tertiary)">Aucune — texte seul</span>';
+}
+function sfsAddMedia(input) {
+  var files = Array.prototype.slice.call(input.files || []);
+  input.value = '';
+  files.forEach(function(f) {
+    if (!/^(image|video)\//.test(f.type)) return sfsToast(f.name + ' : seulement des photos ou des vidéos', 'error');
+    if ((sfs.media || []).length >= 4) return sfsToast('4 photos ou vidéos maximum', 'error');
+    sfs.media.push({ file: f });
+  });
+  sfsPaintMedia();
+}
+function sfsRemoveMedia(i) { sfs.media.splice(i, 1); sfsPaintMedia(); }
+function sfsUploadMedia() {
+  return Promise.all((sfs.media || []).map(function(m) {
+    if (!m.file) return Promise.resolve({ key: m.key, filename: m.filename, mime: m.mime, size: m.size });
+    var f = m.file;
+    return sfsApi('POST', '/upload-url', { filename: f.name, mime: f.type, size: f.size }).then(function(u) {
+      return new Promise(function(res, rej) {
+        var x = new XMLHttpRequest();
+        x.open('PUT', u.url);
+        if (u.mode === 'local') x.withCredentials = true;
+        x.setRequestHeader('Content-Type', u.mode === 'local' ? 'application/octet-stream' : f.type);
+        x.onload = function() { x.status < 300 ? res() : rej(new Error(f.name + ' : envoi refusé (' + x.status + ')')); };
+        x.onerror = function() { rej(new Error(f.name + ' : envoi impossible')); };
+        x.send(f);
+      }).then(function() { var d = { key: u.key, filename: f.name, mime: f.type, size: f.size }; Object.assign(m, d); delete m.file; return d; });
+    });
+  }));
 }
 function sfsRetry(id) {
   sfsApi('POST', '/pushes/' + id + '/retry').then(function() { sfsCloseModal(); sfsToast('Le bot va réessayer', 'success'); sfsLoadPushes(); })
@@ -268,11 +315,18 @@ function sfsSave(id) {
     auto_send: g('plat') === 'reveal' && !!g('auto'), message: g('msg'), audience: g('aud') };
   if (body.auto_send && !String(body.message || '').trim()) return sfsToast('Écris le message du mass DM', 'error');
   if (id) { body.our_sent = g('our'); body.partner_sent = g('their'); body.subs_gained = g('gained'); body.status = g('status'); }
-  sfsApi(id ? 'PUT' : 'POST', id ? '/pushes/' + id : '/pushes', body).then(function() {
+  var btn = document.querySelector('#sfs-modal button.btn-primary');
+  var hasNew = body.auto_send && (sfs.media || []).some(function(m) { return m.file; });
+  if (btn) { btn.disabled = true; if (hasNew) btn.textContent = 'Envoi des photos…'; }
+  var again = function() { if (btn) { btn.disabled = false; btn.textContent = id ? 'Enregistrer' : 'Programmer'; } };
+  (body.auto_send && !sfs.mediaLocked ? sfsUploadMedia() : Promise.resolve(null)).then(function(media) {
+    if (media) body.media = media;
+    return sfsApi(id ? 'PUT' : 'POST', id ? '/pushes/' + id : '/pushes', body);
+  }).then(function() {
     sfsCloseModal(); sfsToast(body.auto_send ? (id ? 'SFS mis à jour : le bot met Reveal à jour' : 'SFS programmé : le bot le programme sur Reveal') : (id ? 'SFS mis à jour' : 'SFS programmé'), 'success');
     var d = sfsMonday(new Date(body.scheduled_at)); if (!id) sfs.week = d;
     sfsLoadPushes(); sfsLoadPartners();
-  }).catch(function(e) { sfsToast(e.message, 'error'); });
+  }).catch(function(e) { again(); sfsToast(e.message, 'error'); });
 }
 function sfsDelete(id) {
   if (!confirm('Supprimer ce SFS ?')) return;

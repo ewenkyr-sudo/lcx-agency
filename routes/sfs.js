@@ -1,5 +1,8 @@
 // Page SFS : abonnés par modèle (Reveal via l'API, MyM à la main) + planning des SFS en mass DM
 const express = require('express');
+const path = require('path');
+const crypto = require('crypto');
+const storage = require('../services/autopost/storage');
 const pool = require('../db/pool');
 const { authMiddleware, adminOnly } = require('../middlewares/auth');
 
@@ -37,7 +40,21 @@ function clean(b) {
   if (b.message !== undefined) v.message = String(b.message || '').slice(0, 2000) || null;
   if (b.auto_send !== undefined) v.auto_send = !!b.auto_send;
   if (b.audience !== undefined) { if (!['active', 'expired'].includes(b.audience)) throw fail(400, 'Audience invalide'); v.audience = b.audience; }
+  if (b.media !== undefined) v.media = cleanMedia(b.media, b._agencyId);
   return v;
+}
+
+// photos / vidéos du mass DM : déjà envoyées dans le stockage du CRM (clé « a<agence>/sfs/… »)
+function cleanMedia(list, agencyId) {
+  if (!Array.isArray(list)) throw fail(400, 'Médias invalides');
+  if (list.length > 4) throw fail(400, '4 photos ou vidéos maximum');
+  return JSON.stringify(list.map(m => {
+    const key = String(m && m.key || '');
+    if (!key.startsWith(`a${agencyId}/sfs/`) || key.includes('..')) throw fail(403, 'Fichier refusé');
+    const mime = String(m.mime || '');
+    if (!/^(image|video)\//.test(mime)) throw fail(400, 'Seulement des photos ou des vidéos');
+    return { key, filename: String(m.filename || '').slice(0, 200), mime, size: Number(m.size) || null };
+  }));
 }
 
 function checkAuto(message, when) {
@@ -105,7 +122,7 @@ router.get('/pushes', wrap(async (req, res) => {
 }));
 
 router.post('/pushes', wrap(async (req, res) => {
-  const v = clean(req.body);
+  const v = clean({ ...req.body, _agencyId: req.agencyId });
   if (!req.body.model_id) throw fail(400, 'Choisis la modèle');
   await ownModel(req, req.body.model_id);
   if (!v.partner_name || !v.scheduled_at) throw fail(400, 'Partenaire et date obligatoires');
@@ -113,16 +130,16 @@ router.post('/pushes', wrap(async (req, res) => {
   const auto = !!v.auto_send && platform === 'reveal';
   if (auto) checkAuto(v.message, v.scheduled_at);
   const { rows } = await pool.query(
-    `INSERT INTO sfs_pushes (agency_id, model_id, platform, partner_name, partner_link, partner_subs, scheduled_at, notes, created_by, auto_send, message, audience, bot_status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    `INSERT INTO sfs_pushes (agency_id, model_id, platform, partner_name, partner_link, partner_subs, scheduled_at, notes, created_by, auto_send, message, audience, bot_status, media)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb) RETURNING *`,
     [req.agencyId, req.body.model_id, platform, v.partner_name, v.partner_link || null, v.partner_subs ?? null, v.scheduled_at, v.notes || null, req.user.id,
-     auto, v.message || null, v.audience || 'active', auto ? 'queued' : 'none']);
+     auto, v.message || null, v.audience || 'active', auto ? 'queued' : 'none', v.media || '[]']);
   res.json(rows[0]);
 }));
 
 router.put('/pushes/:id', wrap(async (req, res) => {
   await ownPush(req, req.params.id);
-  const v = clean(req.body);
+  const v = clean({ ...req.body, _agencyId: req.agencyId });
   if (req.body.model_id !== undefined) { await ownModel(req, req.body.model_id); v.model_id = parseInt(req.body.model_id); }
   // les deux mass DM envoyés => SFS fait
   if ((v.our_sent || v.partner_sent) && v.status === undefined) {
@@ -137,7 +154,8 @@ router.put('/pushes/:id', wrap(async (req, res) => {
     const auto = (v.auto_send ?? cur.auto_send) && platform === 'reveal';
     const cancelled = (v.status || cur.status) === 'cancelled';
     const onReveal = ['scheduled', 'queued', 'requeue'].includes(cur.bot_status);
-    const touched = ['message', 'scheduled_at', 'audience', 'model_id', 'platform'].some(k => v[k] !== undefined && String(v[k]) !== String(k === 'scheduled_at' ? new Date(cur[k]).toISOString() : cur[k]));
+    const same = (k, val) => k === 'scheduled_at' ? val === new Date(cur[k]).toISOString() : k === 'media' ? JSON.parse(val).map(m => m.key).join('|') === (cur.media || []).map(m => m.key).join('|') : String(val) === String(cur[k]);
+    const touched = ['message', 'scheduled_at', 'audience', 'model_id', 'platform', 'media'].some(k => v[k] !== undefined && !same(k, v[k]));
     if (cur.bot_status === 'sent' && touched) throw fail(400, 'Ce mass DM est déjà parti : il ne peut plus être modifié');
     if (!auto || cancelled) {
       if (cur.bot_status === 'queued') v.bot_status = 'none';
@@ -151,7 +169,7 @@ router.put('/pushes/:id', wrap(async (req, res) => {
   }
   const keys = Object.keys(v);
   if (!keys.length) return res.json({ ok: true });
-  const set = keys.map((k, i) => `${k} = $${i + 3}`).join(', ');
+  const set = keys.map((k, i) => `${k} = $${i + 3}${k === 'media' ? '::jsonb' : ''}`).join(', ');
   const { rows } = await pool.query(`UPDATE sfs_pushes SET ${set}, updated_at = NOW() WHERE id = $1 AND agency_id = $2 RETURNING *`,
     [req.params.id, req.agencyId, ...keys.map(k => v[k])]);
   res.json(rows[0]);
@@ -167,6 +185,31 @@ router.delete('/pushes/:id', wrap(async (req, res) => {
   if (cur.bot_status === 'sent') throw fail(400, 'Ce mass DM est déjà parti : passe-le en « Annulé » si besoin, il restera dans l\'historique');
   await pool.query('DELETE FROM sfs_pushes WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
   res.json({ ok: true });
+}));
+
+// envoi d'une photo / vidéo pour un mass DM (avant d'enregistrer le SFS)
+router.post('/upload-url', wrap(async (req, res) => {
+  const { filename, mime, size } = req.body || {};
+  if (!/^(image|video)\//.test(mime || '')) throw fail(400, 'Seulement des photos ou des vidéos');
+  if (size > 1024 ** 3) throw fail(400, 'Fichier trop lourd (1 Go max)');
+  const ext = (path.extname(filename || '').toLowerCase().match(/^\.[a-z0-9]{1,5}$/) || [''])[0];
+  const key = `a${req.agencyId}/sfs/${crypto.randomUUID()}${ext}`;
+  if (storage.isRemote()) return res.json({ mode: 'cloud', key, url: await storage.presignPut(key, mime) });
+  res.json({ mode: 'local', key, url: `/api/sfs/local-upload?key=${encodeURIComponent(key)}` });
+}));
+router.put('/local-upload', wrap(async (req, res) => {
+  if (storage.isRemote()) throw fail(400, 'Upload direct désactivé (stockage cloud actif)');
+  const key = String(req.query.key || '');
+  if (!key.startsWith(`a${req.agencyId}/sfs/`) || key.includes('..')) throw fail(403, 'Clé refusée');
+  await storage.putStream(key, req);
+  res.json({ ok: true });
+}));
+// aperçu d'une photo jointe
+router.get('/media-url', wrap(async (req, res) => {
+  const key = String(req.query.key || '');
+  if (!key.startsWith(`a${req.agencyId}/sfs/`) || key.includes('..')) throw fail(403, 'Clé refusée');
+  if (storage.isRemote()) return res.json({ url: await storage.presignGet(key, 600) });
+  res.json({ url: null });
 }));
 
 // relancer un envoi en erreur

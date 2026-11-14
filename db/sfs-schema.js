@@ -44,6 +44,7 @@ async function initSfsDB() {
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS bot_checked_at TIMESTAMPTZ;
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS sent_count INTEGER;
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS income_cents INTEGER;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS media JSONB DEFAULT '[]'::jsonb;        -- photos / vidéos jointes [{key, filename, mime, size}]
   `);
 }
 
