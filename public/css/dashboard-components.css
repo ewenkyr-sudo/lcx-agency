@@ -1339,3 +1339,13 @@
   font-size: 15px !important;
   font-weight: 700 !important;
 }
+
+/* ===== SFS ===== */
+.sfs-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.sfs-day { background: var(--bg-base, #0a0a0b); border: 1px solid var(--border-subtle, rgba(255,255,255,.06)); border-radius: 10px; padding: 8px; min-height: 140px; }
+.sfs-day.sfs-today { border-color: var(--accent, #3b82f6); }
+.sfs-day-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: capitalize; margin-bottom: 6px; }
+.sfs-card { background: var(--bg-elevated, #131316); border-left: 3px solid; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; cursor: pointer; transition: background .15s; }
+.sfs-card:hover { background: rgba(255,255,255,.05); }
+.sfs-plat { background: var(--bg-base, #0a0a0b); border-radius: 8px; padding: 8px 10px; }
+@media (max-width: 900px) { .sfs-week-grid { grid-template-columns: 1fr; } .sfs-day { min-height: 0; } }
