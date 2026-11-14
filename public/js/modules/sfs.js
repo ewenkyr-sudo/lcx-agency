@@ -157,9 +157,22 @@ function sfsCard(p) {
     + '<div style="display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--text-tertiary)"><span>' + sfsTime(p.scheduled_at) + ' · ' + SFS_PLAT[p.platform] + '</span>'
     + '<span style="display:flex;gap:4px">' + tick(p.our_sent, 'Notre mass DM envoyé') + tick(p.partner_sent, 'Mass DM de la partenaire reçu') + '</span></div>'
     + '<div style="font-weight:600;font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sfsEsc(p.model_name) + ' × ' + sfsEsc(p.partner_name) + '</div>'
+    + sfsBotBadge(p)
     + (p.subs_gained != null || p.reveal_new_subs_day != null ? '<div style="font-size:11px;color:var(--accent-green);margin-top:2px">'
       + (p.subs_gained != null ? '+' + sfsNum(p.subs_gained) + ' abonnés' : '+' + sfsNum(p.reveal_new_subs_day) + ' abonnés ce jour-là') + '</div>' : '')
     + '</div>';
+}
+
+// état de l'envoi automatique
+var SFS_BOT = {
+  queued: ['🤖 En attente du bot', 'var(--accent-blue)'], requeue: ['🤖 Mise à jour…', 'var(--accent-blue)'],
+  scheduled: ['🤖 Programmé sur Reveal', 'var(--accent-blue)'], sent: ['🤖 Envoyé', 'var(--accent-green)'],
+  failed: ['⚠️ Erreur', 'var(--accent-red)'], cancel_requested: ['🤖 Annulation…', 'var(--text-tertiary)'], cancelled: ['Annulé', 'var(--text-tertiary)']
+};
+function sfsBotBadge(p) {
+  if (!p.auto_send && !['cancel_requested', 'cancelled'].includes(p.bot_status)) return '';
+  var b = SFS_BOT[p.bot_status]; if (!b) return '';
+  return '<div style="font-size:11px;margin-top:3px;color:' + b[1] + '">' + b[0] + (p.bot_status === 'sent' && p.sent_count != null ? ' à ' + sfsNum(p.sent_count) + ' fans' : '') + '</div>';
 }
 
 // ---------- partenaires ----------
@@ -189,7 +202,7 @@ function sfsOpen(id, ymd) {
     var body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
       + '<div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="sfs-f-model">' + models.map(function(m) {
           return '<option value="' + m.id + '"' + ((p ? p.model_id : Number(sfs.model)) === m.id ? ' selected' : '') + '>' + sfsEsc(m.name) + '</option>'; }).join('') + '</select></div>'
-      + '<div class="form-group"><label class="form-label">Plateforme</label><select class="form-input" id="sfs-f-plat">'
+      + '<div class="form-group"><label class="form-label">Plateforme</label><select class="form-input" id="sfs-f-plat" onchange="sfsAutoToggle()">'
         + ['reveal', 'mym'].map(function(k) { return '<option value="' + k + '"' + ((p ? p.platform : (sfs.platform || 'reveal')) === k ? ' selected' : '') + '>' + SFS_PLAT[k] + '</option>'; }).join('') + '</select></div>'
       + '<div class="form-group"><label class="form-label">Date</label><input class="form-input" id="sfs-f-date" type="date" value="' + date + '"></div>'
       + '<div class="form-group"><label class="form-label">Heure du mass DM</label><input class="form-input" id="sfs-f-time" type="time" value="' + time + '"></div>'
@@ -199,6 +212,20 @@ function sfsOpen(id, ymd) {
       + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">'
       + '<div class="form-group"><label class="form-label">Lien du profil / contact du manager</label><input class="form-input" id="sfs-f-link" value="' + sfsEsc(p ? p.partner_link : '') + '"></div>'
       + '<div class="form-group"><label class="form-label">Ses abonnés</label><input class="form-input" id="sfs-f-psubs" type="number" min="0" value="' + (p && p.partner_subs != null ? p.partner_subs : '') + '"></div></div>';
+    var auto = p ? !!p.auto_send : true;
+    var sent = p && p.bot_status === 'sent';
+    body += '<div id="sfs-auto-box" class="panel" style="padding:12px;margin:4px 0 12px;background:var(--bg-base)">'
+      + '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="sfs-f-auto"' + (auto ? ' checked' : '') + (sent ? ' disabled' : '') + ' onchange="sfsAutoToggle()"> 🤖 Le bot envoie le mass DM (Reveal)</label>'
+      + '<div id="sfs-auto-fields" style="margin-top:10px">'
+      + '<div class="form-group"><label class="form-label">Message du mass DM (gratuit)</label><textarea class="form-input" id="sfs-f-msg" rows="4"' + (sent ? ' disabled' : '') + ' placeholder="Ex. Allez voir ma copine @jade, elle est trop mignonne 😍 reveal.me/jade">' + sfsEsc(p ? p.message : '') + '</textarea>'
+      + '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">%NAME% est remplacé par le prénom du fan. Texte seul pour l\'instant.</div></div>'
+      + '<div class="form-group" style="margin-bottom:0"><label class="form-label">Envoyé à</label><select class="form-input" id="sfs-f-aud"' + (sent ? ' disabled' : '') + '>'
+        + [['active', 'Abonnés actuels'], ['expired', 'Anciens abonnés']].map(function(a) { return '<option value="' + a[0] + '"' + ((p ? p.audience : 'active') === a[0] ? ' selected' : '') + '>' + a[1] + '</option>'; }).join('') + '</select></div>'
+      + (p && p.auto_send ? '<div style="font-size:12px;margin-top:10px;color:' + ((SFS_BOT[p.bot_status] || [])[1] || 'var(--text-tertiary)') + '">' + ((SFS_BOT[p.bot_status] || [''])[0])
+        + (p.bot_status === 'sent' && p.sent_count != null ? ' à ' + sfsNum(p.sent_count) + ' fans' : '')
+        + (p.bot_error ? '<div style="color:var(--accent-red);margin-top:4px">' + sfsEsc(p.bot_error) + '</div>' : '')
+        + (p.bot_status === 'failed' ? ' <button class="btn btn-secondary" style="padding:3px 10px;font-size:12px;margin-top:6px" onclick="sfsRetry(' + p.id + ')">Réessayer</button>' : '') + '</div>' : '')
+      + '</div></div>';
     if (p) body += '<div style="display:grid;gap:8px;margin:4px 0 12px">'
       + '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="sfs-f-our"' + (p.our_sent ? ' checked' : '') + '> Mass DM envoyé par ' + sfsEsc(p.model_name) + '</label>'
       + '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="sfs-f-their"' + (p.partner_sent ? ' checked' : '') + '> Mass DM de ' + sfsEsc(p.partner_name) + ' reçu</label></div>'
@@ -208,11 +235,22 @@ function sfsOpen(id, ymd) {
         + [['planned', 'Prévu'], ['done', 'Fait'], ['cancelled', 'Annulé']].map(function(s) { return '<option value="' + s[0] + '"' + (p.status === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') + '</select></div></div>';
     body += '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="sfs-f-notes" rows="2">' + sfsEsc(p ? p.notes : '') + '</textarea></div>';
     sfsModal(p ? 'SFS · ' + sfsEsc(p.model_name) + ' × ' + sfsEsc(p.partner_name) : 'Programmer un SFS', body,
-      (p ? '<button class="btn btn-ghost" style="color:var(--accent-red);margin-right:auto" onclick="sfsDelete(' + p.id + ')">Supprimer</button>' : '')
+      (p && p.bot_status !== 'sent' ? '<button class="btn btn-ghost" style="color:var(--accent-red);margin-right:auto" onclick="sfsDelete(' + p.id + ')">Supprimer</button>' : '')
       + '<button class="btn btn-primary" onclick="sfsSave(' + (p ? p.id : 'null') + ')">' + (p ? 'Enregistrer' : 'Programmer') + '</button>');
+    sfsAutoToggle();
   };
   if (id && !p) sfsApi('GET', '/pushes').then(function(all) { go(all.find(function(x) { return x.id === id; })); });
   else go(p);
+}
+function sfsAutoToggle() {
+  var plat = document.getElementById('sfs-f-plat'), box = document.getElementById('sfs-auto-box'), f = document.getElementById('sfs-auto-fields'), cb = document.getElementById('sfs-f-auto');
+  if (!plat || !box) return;
+  box.style.display = plat.value === 'reveal' ? '' : 'none';
+  if (f) f.style.display = cb && cb.checked ? '' : 'none';
+}
+function sfsRetry(id) {
+  sfsApi('POST', '/pushes/' + id + '/retry').then(function() { sfsCloseModal(); sfsToast('Le bot va réessayer', 'success'); sfsLoadPushes(); })
+    .catch(function(e) { sfsToast(e.message, 'error'); });
 }
 function sfsFillPartner(name) {
   var r = sfs.partners.find(function(x) { return x.partner_name === name; });
@@ -226,17 +264,19 @@ function sfsSave(id) {
   var date = g('date'), time = g('time') || '00:00';
   if (!date) return sfsToast('Choisis une date', 'error');
   var body = { model_id: g('model'), platform: g('plat'), partner_name: g('partner'), partner_link: g('link'), partner_subs: g('psubs'),
-    scheduled_at: new Date(date + 'T' + time + ':00').toISOString(), notes: g('notes') };
+    scheduled_at: new Date(date + 'T' + time + ':00').toISOString(), notes: g('notes'),
+    auto_send: g('plat') === 'reveal' && !!g('auto'), message: g('msg'), audience: g('aud') };
+  if (body.auto_send && !String(body.message || '').trim()) return sfsToast('Écris le message du mass DM', 'error');
   if (id) { body.our_sent = g('our'); body.partner_sent = g('their'); body.subs_gained = g('gained'); body.status = g('status'); }
   sfsApi(id ? 'PUT' : 'POST', id ? '/pushes/' + id : '/pushes', body).then(function() {
-    sfsCloseModal(); sfsToast(id ? 'SFS mis à jour' : 'SFS programmé', 'success');
+    sfsCloseModal(); sfsToast(body.auto_send ? (id ? 'SFS mis à jour : le bot met Reveal à jour' : 'SFS programmé : le bot le programme sur Reveal') : (id ? 'SFS mis à jour' : 'SFS programmé'), 'success');
     var d = sfsMonday(new Date(body.scheduled_at)); if (!id) sfs.week = d;
     sfsLoadPushes(); sfsLoadPartners();
   }).catch(function(e) { sfsToast(e.message, 'error'); });
 }
 function sfsDelete(id) {
   if (!confirm('Supprimer ce SFS ?')) return;
-  sfsApi('DELETE', '/pushes/' + id).then(function() { sfsCloseModal(); sfsToast('SFS supprimé', 'success'); sfsLoadPushes(); sfsLoadPartners(); })
+  sfsApi('DELETE', '/pushes/' + id).then(function(r) { sfsCloseModal(); sfsToast(r && r.cancelled ? 'Annulé : le bot retire le mass DM de Reveal' : 'SFS supprimé', 'success'); sfsLoadPushes(); sfsLoadPartners(); })
     .catch(function(e) { sfsToast(e.message, 'error'); });
 }
 

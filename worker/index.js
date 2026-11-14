@@ -312,6 +312,97 @@ async function stockAlerts() {
 }
 
 // ---------- boucle principale ----------
+// ---------- SFS : mass DM programmés chez Reveal ----------
+const SFS_REVEAL_ID = `COALESCE(s.reveal_model_id, m.reveal_model_id,
+  (SELECT rm.reveal_model_id FROM reveal_models rm WHERE rm.crm_model_id = m.id LIMIT 1))`;
+async function sfsSync() {
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `SELECT p.*, m.name AS model_name, ${SFS_REVEAL_ID} AS reveal_id
+       FROM sfs_pushes p JOIN models m ON m.id = p.model_id LEFT JOIN autopost_settings s ON s.model_id = p.model_id
+       WHERE p.platform = 'reveal' AND (
+         (p.bot_status IN ('queued', 'requeue', 'cancel_requested') AND (p.bot_checked_at IS NULL OR p.bot_checked_at < NOW() - INTERVAL '2 minutes'))
+         OR (p.bot_status = 'scheduled' AND p.scheduled_at < NOW() - INTERVAL '3 minutes'
+             AND (p.bot_checked_at IS NULL OR p.bot_checked_at < NOW() - INTERVAL '10 minutes')))
+       ORDER BY p.scheduled_at LIMIT 30`));
+  } catch (e) { return; } // tables SFS pas encore créées
+  if (!rows.length) return;
+  const byAgency = {};
+  for (const r of rows) (byAgency[r.agency_id] = byAgency[r.agency_id] || []).push(r);
+  for (const [agencyId, list] of Object.entries(byAgency)) {
+    const set = (id, fields) => {
+      const k = Object.keys(fields);
+      return pool.query(`UPDATE sfs_pushes SET ${k.map((x, i) => `${x} = $${i + 2}`).join(', ')}, bot_checked_at = NOW(), updated_at = NOW() WHERE id = $1`, [id, ...k.map(x => fields[x])]);
+    };
+    // sans lien Reveal : erreur tout de suite, pas besoin d'ouvrir le navigateur
+    const todo = [];
+    for (const r of list) {
+      if (!r.reveal_id && r.bot_status !== 'cancel_requested') {
+        await set(r.id, { bot_status: 'failed', bot_error: `${r.model_name} n'est pas reliée à Reveal (Auto-post > Réglages, ou Stats Reveal > Réglages)` });
+      } else todo.push(r);
+    }
+    if (!todo.length) continue;
+    try {
+      await withBrowser(Number(agencyId), async page => {
+        const access = await reveal.apiAccess(page, todo.find(r => r.reveal_id).reveal_id);
+        for (const r of todo) {
+          try {
+            if (r.bot_status === 'cancel_requested') {
+              if (r.reveal_mass_dm_id) await reveal.deleteMassDM(page, access, r.reveal_mass_dm_id);
+              await set(r.id, { bot_status: 'cancelled', reveal_mass_dm_id: null });
+              log(`💬 SFS #${r.id} : mass DM retiré de Reveal`);
+              continue;
+            }
+            if (r.bot_status === 'queued' || r.bot_status === 'requeue') {
+              if (r.bot_status === 'requeue' && r.reveal_mass_dm_id) await reveal.deleteMassDM(page, access, r.reveal_mass_dm_id);
+              const when = new Date(r.scheduled_at).getTime();
+              if (when < Date.now() - 60 * 60000) {
+                await set(r.id, { bot_status: 'failed', bot_error: 'Heure dépassée de plus d\'une heure : mass DM pas envoyé', reveal_mass_dm_id: null });
+                await notify(r.agency_id, 'whatsapp_failures', `⚠️ SFS ${r.model_name} × ${r.partner_name} : heure dépassée, mass DM pas envoyé. Reprogramme-le dans le CRM.`);
+                continue;
+              }
+              const plannedAt = new Date(Math.max(when, Date.now() + 2 * 60000));
+              const md = await reveal.createMassDM(page, access, { revealId: r.reveal_id, content: r.message, plannedAt, audience: r.audience });
+              await set(r.id, { bot_status: 'scheduled', reveal_mass_dm_id: md.id, bot_error: null });
+              log(`💬 SFS #${r.id} : mass DM programmé chez Reveal pour ${plannedAt.toISOString()} (${md.id})`);
+              continue;
+            }
+            // programmé et l'heure est passée : on vérifie qu'il est bien parti
+            const t = new Date(r.scheduled_at).getTime();
+            const found = (await reveal.listMassDMs(page, access, r.reveal_id, new Date(t - 2 * 86400000), new Date(t + 2 * 86400000)))
+              .find(x => String(x.id) === String(r.reveal_mass_dm_id));
+            if (!found) {
+              if (Date.now() - t > 6 * 3600000) {
+                await set(r.id, { bot_status: 'failed', bot_error: 'Mass DM introuvable chez Reveal (supprimé à la main ?)' });
+              } else await set(r.id, {});
+              continue;
+            }
+            if (found.status === 'sent') {
+              await set(r.id, { bot_status: 'sent', our_sent: true, sent_count: found.sentCount ?? null, income_cents: found.totalIncome ?? null,
+                status: r.partner_sent ? 'done' : r.status });
+              log(`💬 SFS #${r.id} : mass DM envoyé à ${found.sentCount ?? '?'} fans`);
+            } else if (found.status === 'deleted' || found.status === 'deleting') {
+              await set(r.id, { bot_status: 'cancelled' });
+            } else await set(r.id, {}); // encore en cours d'envoi
+          } catch (e) {
+            if (e instanceof reveal.SessionExpired) throw e;
+            await set(r.id, { bot_status: 'failed', bot_error: e.message.slice(0, 300) });
+            await notify(r.agency_id, 'whatsapp_failures', `⚠️ SFS ${r.model_name} × ${r.partner_name} : le mass DM n'a pas pu être programmé (${e.message.slice(0, 120)}).`);
+            log(`💬 SFS #${r.id} : échec`, e.message);
+          }
+        }
+      });
+    } catch (e) {
+      // on réessaiera dans 2 minutes ; l'erreur est visible sur le SFS dans le CRM
+      const msg = e instanceof reveal.SessionExpired ? 'Connexion Reveal du bot expirée : reconnecte-la dans Auto-post' : 'Bot : ' + e.message.slice(0, 200);
+      await pool.query(`UPDATE sfs_pushes SET bot_checked_at = NOW(), bot_error = $2 WHERE id = ANY($1::int[])`, [todo.map(r => r.id), msg]).catch(() => {});
+      if (e instanceof reveal.SessionExpired) { await markSession(Number(agencyId), 'expired').catch(() => {}); log('SFS : session Reveal expirée'); }
+      else log('SFS : erreur', e.message);
+    }
+  }
+}
+
 async function tick() {
   if (state.busy || state.stopping) return;
   state.busy = true;
@@ -325,6 +416,8 @@ async function tick() {
       state.lastPlan = Date.now();
     }
     await checkPendingSessions();
+    // SFS : programme / retire / vérifie les mass DM chez Reveal
+    if (!state.stopping) await sfsSync().catch(e => log('SFS :', e.message));
     // publie tout ce qui est dû
     for (let i = 0; i < 10; i++) {
       if (state.stopping) break; // arrêt demandé (mise à jour) : on ne prend plus rien
@@ -358,6 +451,7 @@ async function tick() {
 
 async function init() {
   await initAutopostDB();
+  await require('../db/sfs-schema').initSfsDB().catch(e => log('SFS : tables', e.message));
   // un créneau resté "running" après un crash repasse en attente
   await pool.query(`UPDATE autopost_jobs SET status = 'pending' WHERE status = 'running' AND started_at < NOW() - INTERVAL '30 minutes'`);
   // évite de renvoyer le rapport/les stats en double si le worker redémarre
@@ -385,4 +479,4 @@ if (require.main === module) {
   main().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { init, tick, claimJob, runJob, collectStats, state };
+module.exports = { init, tick, claimJob, runJob, collectStats, sfsSync, state };

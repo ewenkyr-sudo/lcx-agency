@@ -34,7 +34,15 @@ function clean(b) {
   if (b.status !== undefined) { if (!['planned', 'done', 'cancelled'].includes(b.status)) throw fail(400, 'Statut invalide'); v.status = b.status; }
   if (b.subs_gained !== undefined) v.subs_gained = b.subs_gained === '' || b.subs_gained == null ? null : parseInt(b.subs_gained) || 0;
   if (b.notes !== undefined) v.notes = String(b.notes || '').slice(0, 2000) || null;
+  if (b.message !== undefined) v.message = String(b.message || '').slice(0, 2000) || null;
+  if (b.auto_send !== undefined) v.auto_send = !!b.auto_send;
+  if (b.audience !== undefined) { if (!['active', 'expired'].includes(b.audience)) throw fail(400, 'Audience invalide'); v.audience = b.audience; }
   return v;
+}
+
+function checkAuto(message, when) {
+  if (!message || !String(message).trim()) throw fail(400, 'Écris le message du mass DM pour l\'envoi automatique');
+  if (new Date(when).getTime() < Date.now() - 5 * 60000) throw fail(400, 'L\'heure est déjà passée : le bot ne peut plus l\'envoyer');
 }
 
 // ---------- abonnés par modèle ----------
@@ -101,10 +109,14 @@ router.post('/pushes', wrap(async (req, res) => {
   if (!req.body.model_id) throw fail(400, 'Choisis la modèle');
   await ownModel(req, req.body.model_id);
   if (!v.partner_name || !v.scheduled_at) throw fail(400, 'Partenaire et date obligatoires');
+  const platform = v.platform || 'reveal';
+  const auto = !!v.auto_send && platform === 'reveal';
+  if (auto) checkAuto(v.message, v.scheduled_at);
   const { rows } = await pool.query(
-    `INSERT INTO sfs_pushes (agency_id, model_id, platform, partner_name, partner_link, partner_subs, scheduled_at, notes, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [req.agencyId, req.body.model_id, v.platform || 'reveal', v.partner_name, v.partner_link || null, v.partner_subs ?? null, v.scheduled_at, v.notes || null, req.user.id]);
+    `INSERT INTO sfs_pushes (agency_id, model_id, platform, partner_name, partner_link, partner_subs, scheduled_at, notes, created_by, auto_send, message, audience, bot_status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    [req.agencyId, req.body.model_id, platform, v.partner_name, v.partner_link || null, v.partner_subs ?? null, v.scheduled_at, v.notes || null, req.user.id,
+     auto, v.message || null, v.audience || 'active', auto ? 'queued' : 'none']);
   res.json(rows[0]);
 }));
 
@@ -118,6 +130,25 @@ router.put('/pushes/:id', wrap(async (req, res) => {
     const ours = v.our_sent ?? cur.our_sent, theirs = v.partner_sent ?? cur.partner_sent;
     if (ours && theirs && cur.status === 'planned') v.status = 'done';
   }
+  // envoi automatique (Reveal) : on dit au bot quoi faire
+  {
+    const cur = await ownPush(req, req.params.id);
+    const platform = v.platform || cur.platform;
+    const auto = (v.auto_send ?? cur.auto_send) && platform === 'reveal';
+    const cancelled = (v.status || cur.status) === 'cancelled';
+    const onReveal = ['scheduled', 'queued', 'requeue'].includes(cur.bot_status);
+    const touched = ['message', 'scheduled_at', 'audience', 'model_id', 'platform'].some(k => v[k] !== undefined && String(v[k]) !== String(k === 'scheduled_at' ? new Date(cur[k]).toISOString() : cur[k]));
+    if (cur.bot_status === 'sent' && touched) throw fail(400, 'Ce mass DM est déjà parti : il ne peut plus être modifié');
+    if (!auto || cancelled) {
+      if (cur.bot_status === 'queued') v.bot_status = 'none';
+      else if (onReveal) v.bot_status = 'cancel_requested';
+    } else if (cur.bot_status !== 'sent') {
+      checkAuto(v.message ?? cur.message, v.scheduled_at || cur.scheduled_at);
+      if (cur.bot_status === 'scheduled' && touched) v.bot_status = 'requeue';
+      else if (['none', 'failed', 'cancelled'].includes(cur.bot_status) || (cur.bot_status === 'cancel_requested')) v.bot_status = cur.reveal_mass_dm_id && cur.bot_status === 'cancel_requested' ? 'requeue' : 'queued';
+      if (v.bot_status === 'queued' || v.bot_status === 'requeue') v.bot_error = null;
+    }
+  }
   const keys = Object.keys(v);
   if (!keys.length) return res.json({ ok: true });
   const set = keys.map((k, i) => `${k} = $${i + 3}`).join(', ');
@@ -127,8 +158,23 @@ router.put('/pushes/:id', wrap(async (req, res) => {
 }));
 
 router.delete('/pushes/:id', wrap(async (req, res) => {
-  await ownPush(req, req.params.id);
+  const cur = await ownPush(req, req.params.id);
+  if (cur.reveal_mass_dm_id && ['scheduled', 'requeue'].includes(cur.bot_status)) {
+    // le mass DM est programmé chez Reveal : le bot le retire, la ligne reste en « annulé »
+    await pool.query(`UPDATE sfs_pushes SET status = 'cancelled', bot_status = 'cancel_requested', updated_at = NOW() WHERE id = $1`, [cur.id]);
+    return res.json({ ok: true, cancelled: true });
+  }
+  if (cur.bot_status === 'sent') throw fail(400, 'Ce mass DM est déjà parti : passe-le en « Annulé » si besoin, il restera dans l\'historique');
   await pool.query('DELETE FROM sfs_pushes WHERE id = $1 AND agency_id = $2', [req.params.id, req.agencyId]);
+  res.json({ ok: true });
+}));
+
+// relancer un envoi en erreur
+router.post('/pushes/:id/retry', wrap(async (req, res) => {
+  const cur = await ownPush(req, req.params.id);
+  if (cur.platform !== 'reveal' || !cur.auto_send) throw fail(400, 'Pas d\'envoi automatique sur ce SFS');
+  checkAuto(cur.message, cur.scheduled_at);
+  await pool.query(`UPDATE sfs_pushes SET bot_status = $2, bot_error = NULL, status = 'planned', updated_at = NOW() WHERE id = $1`, [cur.id, cur.reveal_mass_dm_id ? 'requeue' : 'queued']);
   res.json({ ok: true });
 }));
 

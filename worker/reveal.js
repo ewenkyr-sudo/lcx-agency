@@ -224,4 +224,68 @@ async function checkSession(page) {
   try { await visible(page, 'Dashboard', { exact: true, timeout: 25000 }); return true; } catch (e) { return false; }
 }
 
-module.exports = { BASE, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired };
+// ---------- mass DM (SFS) ----------
+// Même appel que le bouton « Programmer un mass DM » du dashboard : POST <api>/mass-dm avec le jeton de la session.
+// Reveal envoie lui-même le message à l'heure prévue (plannedAt) : le bot n'a pas besoin d'être en ligne à ce moment-là.
+async function apiAccess(page, revealId) {
+  let auth = null, apiBase = null;
+  const onReq = req => {
+    const a = req.headers()['authorization'];
+    if (!a || auth) return;
+    // l'API est sur un autre domaine que le dashboard (https://api.reveal.me/...) ; on prend la base devant /mass-dm, /models…
+    const m = /^(https?:\/\/.+?)\/(mass-dm|models|users|conversations|fan-lists)(\/|\?|$)/.exec(req.url());
+    if (m) { auth = a; apiBase = m[1]; }
+  };
+  page.on('request', onReq);
+  try {
+    await openModelPage(page, revealId, 'mass-dm');
+    const end = Date.now() + 20000;
+    while (!auth && Date.now() < end) await sleep(300);
+  } finally { page.off('request', onReq); }
+  if (!auth) throw new Error("Impossible de récupérer l'accès à l'API Reveal (mass DM)");
+  return { auth, apiBase };
+}
+
+async function apiCall(page, access, method, path, body) {
+  const r = await page.request.fetch(access.apiBase + path, {
+    method, headers: { Authorization: access.auth, Accept: 'application/json', 'Content-Type': 'application/json' },
+    data: body ? JSON.stringify(body) : undefined,
+  });
+  let j = null;
+  try { j = await r.json(); } catch (e) { /* corps vide */ }
+  if (r.status() === 401) throw new SessionExpired('Session Reveal expirée');
+  if (!r.ok()) {
+    const msg = j && (j.message || j.error) ? (Array.isArray(j.message) ? j.message.join(', ') : (j.message || j.error)) : '';
+    const e = new Error(`Reveal a refusé (${r.status()})${msg ? ' : ' + msg : ''}`);
+    e.status = r.status();
+    throw e;
+  }
+  return j;
+}
+
+// audience : 'active' (abonnés) ou 'expired' (anciens abonnés). Toujours gratuit (price 0).
+async function createMassDM(page, access, { revealId, content, plannedAt, audience }) {
+  const subscribersStatus = audience === 'expired' ? 'expired' : 'active';
+  const j = await apiCall(page, access, 'POST', '/mass-dm', {
+    massDM: { content, plannedAt: new Date(plannedAt).toISOString(), price: 0, modelId: revealId, status: 'pending', subscribersStatus },
+    subscribersStatus,
+  });
+  const id = j && (j.id || (j.massDM && j.massDM.id));
+  if (!id) throw new Error('Reveal n\'a pas renvoyé l\'identifiant du mass DM');
+  return { id: String(id), raw: j };
+}
+
+async function deleteMassDM(page, access, id) {
+  try { return await apiCall(page, access, 'DELETE', '/mass-dm/' + encodeURIComponent(id)); }
+  catch (e) { if (e.status === 404) return null; throw e; }
+}
+
+// mass DM d'une modèle sur une période (pour savoir s'ils sont partis et à combien de fans)
+async function listMassDMs(page, access, revealId, from, to) {
+  const q = new URLSearchParams({ modelId: revealId, from: new Date(from).toISOString(), to: new Date(to).toISOString(), take: '50', includeActiveTriggers: 'true' });
+  const j = await apiCall(page, access, 'GET', '/mass-dm?' + q.toString());
+  return ((j && j.data) || []).map(x => x.massDM || x);
+}
+
+module.exports = { BASE, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired,
+  apiAccess, createMassDM, deleteMassDM, listMassDMs };

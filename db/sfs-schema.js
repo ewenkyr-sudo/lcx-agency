@@ -33,6 +33,17 @@ async function initSfsDB() {
       updated_by INTEGER,
       PRIMARY KEY (model_id, platform)
     );
+
+    -- envoi automatique par le bot (Reveal : mass DM programmé directement chez Reveal)
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS auto_send BOOLEAN DEFAULT false;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS message TEXT;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS audience TEXT DEFAULT 'active';          -- active | expired
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS bot_status TEXT DEFAULT 'none';          -- none | queued | requeue | scheduled | sent | failed | cancel_requested | cancelled
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS reveal_mass_dm_id TEXT;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS bot_error TEXT;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS bot_checked_at TIMESTAMPTZ;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS sent_count INTEGER;
+    ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS income_cents INTEGER;
   `);
 }
 
