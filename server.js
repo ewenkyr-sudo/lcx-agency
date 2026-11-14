@@ -2705,8 +2705,9 @@ app.post('/api/admin/test-weekly-report', authMiddleware, adminOnly, async (req,
 
 // Test WhatsApp
 app.post('/api/admin/test-whatsapp', authMiddleware, adminOnly, async (req, res) => {
-  await sendWhatsApp('Test notification Fuzion Pilot - tout fonctionne !');
-  res.json({ ok: true });
+  const r = await sendWhatsApp('Test notification Fuzion Pilot - tout fonctionne !', req.agencyId);
+  if (!r.sent) return res.status(502).json({ error: r.errors.join(' · ') || 'Message pas envoyé' });
+  res.json({ ok: true, sent: r.sent, errors: r.errors });
 });
 
 // ============ SHIFT CLOCK (POINTAGE) ============

@@ -351,8 +351,12 @@ async function saveWhatsAppSettings() {
 
 async function testWhatsApp() {
   showToast(t('settings.test_sending'), 'info');
-  await fetch('/api/admin/test-whatsapp', { method: 'POST', credentials: 'include' });
-  showToast(t('settings.test_sent'), 'success');
+  try {
+    const r = await fetch('/api/admin/test-whatsapp', { method: 'POST', credentials: 'include' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return showToast('WhatsApp pas envoyé — ' + (j.error || 'erreur ' + r.status), 'error');
+    showToast(t('settings.test_sent') + (j.errors && j.errors.length ? ' (erreurs : ' + j.errors.join(' · ') + ')' : ''), j.errors && j.errors.length ? 'warning' : 'success');
+  } catch (e) { showToast('WhatsApp pas envoyé — ' + e.message, 'error'); }
 }
 
 async function testDailyReport() {
