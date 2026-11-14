@@ -41,9 +41,13 @@ async function sendWhatsAppToNumber(number, apiKey, message, provider) {
     try {
       const { status, body } = await httpGet(url);
       const txt = textOf(body);
-      // CallMeBot répond souvent 200 même en cas d'erreur : on lit le texte
-      if (status < 300 && /queued|sent|envoy/i.test(txt) && !/error|invalid|not (yet )?activ/i.test(txt)) return { ok: true };
-      const error = `CallMeBot (${status}) : ${txt.slice(0, 200) || 'réponse vide'}`;
+      // CallMeBot recopie le message puis donne le résultat : on ne lit que ce qui suit la copie
+      const tail = textOf(String(message).split('\n').pop()).slice(-25);
+      const at = tail ? txt.lastIndexOf(tail) : -1;
+      const verdict = at >= 0 ? txt.slice(at + tail.length) : txt;
+      // il répond 200/203 même en cas d'erreur : on lit le texte
+      if (status < 300 && /queued|sent|envoy/i.test(verdict) && !/error|invalid|not (yet )?activ|blocked/i.test(verdict)) return { ok: true };
+      const error = `CallMeBot : ${(verdict.trim() || txt).slice(0, 200) || 'réponse vide (' + status + ')'}`;
       console.log('WhatsApp KO +' + number.slice(0, 4) + '… :', error);
       return { ok: false, error };
     } catch (e) {

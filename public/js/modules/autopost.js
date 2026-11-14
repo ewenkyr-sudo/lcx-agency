@@ -408,6 +408,9 @@ function apRenderSettings(b) {
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border-default)"><div><div style="font-weight:600">Rapport hebdo sur WhatsApp</div><div style="font-size:12px;color:var(--text-tertiary)">Chaque lundi, l\'analyse de chaque modèle</div></div>' + apToggle('ap-wa-rep', a.whatsapp_reports) + '</div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border-default)"><div><div style="font-weight:600">Alertes sur WhatsApp</div><div style="font-size:12px;color:var(--text-tertiary)">Échecs de publication, connexion expirée, stock bas</div></div>' + apToggle('ap-wa-fail', a.whatsapp_failures) + '</div>' +
     '<button class="btn btn-primary" style="margin-top:8px" onclick="apSaveAgency()">Enregistrer</button></div>' +
+    (isPartner() ? '' : '<div class="panel" style="padding:16px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div style="font-weight:600">Tester les alertes (auto-post + SFS)</div>' +
+      '<div style="font-size:12px;color:var(--text-tertiary)">Vérifie le bot, la connexion Reveal, les SFS et les publications, puis t\'envoie le résultat sur WhatsApp</div></div>' +
+      '<button class="btn btn-secondary" id="ap-selftest-btn" onclick="apSelfTest()">🧪 Tester maintenant</button></div><div id="ap-selftest" style="margin-top:10px"></div></div>') +
     '<div class="panel" style="padding:16px"><div style="font-weight:600;margin-bottom:8px">Journal du bot</div><div id="ap-logs" style="font-size:12px;font-family:ui-monospace,monospace;max-height:320px;overflow:auto;color:var(--text-secondary)">Chargement…</div></div>';
   apApi('GET', '/logs').then(function(rows) {
     document.getElementById('ap-logs').innerHTML = rows.length ? rows.map(function(l) {
@@ -415,6 +418,20 @@ function apRenderSettings(b) {
       return '<div style="padding:3px 0;border-bottom:1px solid var(--border-subtle)"><span style="color:var(--text-muted)">' + apFmtFull(l.created_at) + '</span> <span style="color:' + col + '">' + apEsc(l.message) + '</span></div>';
     }).join('') : 'Rien pour l\'instant.';
   });
+}
+function apSelfTest() {
+  var btn = document.getElementById('ap-selftest-btn'), out = document.getElementById('ap-selftest');
+  if (btn) { btn.disabled = true; btn.textContent = 'Test en cours…'; }
+  apApi('POST', '/self-test').then(function(r) {
+    var col = { ok: 'var(--accent-green)', warn: 'var(--accent-yellow)', ko: 'var(--accent-red)' }, ic = { ok: '✅', warn: '⚠️', ko: '❌' };
+    var wa = r.whatsapp || {};
+    out.innerHTML = r.checks.map(function(c) { return '<div style="font-size:13px;padding:3px 0;color:' + col[c[0]] + '">' + ic[c[0]] + ' ' + apEsc(c[1]) + '</div>'; }).join('')
+      + '<div style="font-size:13px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-default);color:' + (wa.sent ? 'var(--accent-green)' : 'var(--accent-red)') + '">'
+      + (wa.sent ? '📱 Résultat envoyé sur WhatsApp' + (wa.sent > 1 ? ' (' + wa.sent + ' numéros)' : '') : '📱 WhatsApp pas envoyé : ' + apEsc((wa.errors || []).join(' · ') || 'erreur inconnue'))
+      + (wa.sent && wa.errors && wa.errors.length ? '<div style="color:var(--accent-yellow)">' + apEsc(wa.errors.join(' · ')) + '</div>' : '') + '</div>'
+      + (r.recheck ? '<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">Le bot revérifie la connexion Reveal (1-2 min).</div>' : '');
+  }).catch(function(e) { out.innerHTML = '<div style="color:var(--accent-red);font-size:13px">' + apEsc(e.message) + '</div>'; })
+    .then(function() { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester maintenant'; } });
 }
 function apSaveAgency() {
   apApi('PUT', '/agency', { captions: document.getElementById('ap-captions').value, whatsapp_reports: document.getElementById('ap-wa-rep').checked, whatsapp_failures: document.getElementById('ap-wa-fail').checked })

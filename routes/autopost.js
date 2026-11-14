@@ -96,6 +96,55 @@ router.put('/agency', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- test des alertes : vérifie bot / Reveal / SFS / WhatsApp et envoie le résultat ----------
+router.post('/self-test', wrap(async (req, res) => {
+  if (req.modelScope) throw fail(403, 'Réservé au compte principal');
+  const { sendWhatsApp } = require('../services/whatsapp');
+  const ag = await agencyRow(req.agencyId);
+  const checks = []; // [ok|warn|ko, texte]
+  const add = (lvl, txt) => checks.push([lvl, txt]);
+  const ago = d => { if (!d) return 'jamais'; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+
+  const { rows: w } = await pool.query('SELECT * FROM autopost_worker ORDER BY last_seen DESC NULLS LAST LIMIT 1');
+  const online = w[0] && Date.now() - new Date(w[0].last_seen).getTime() < 3 * 60000;
+  add(online ? 'ok' : 'ko', online ? 'Bot en ligne' : `Bot hors ligne (dernier signe de vie ${ago(w[0]?.last_seen)}) : vérifie « lcx-autopost-worker » sur Render`);
+
+  const sess = ag.session_status || 'missing';
+  if (sess === 'ok') add('ok', ag.session_checked_at ? `Connexion Reveal OK (vérifiée ${ago(ag.session_checked_at)})` : 'Connexion Reveal OK (revérification en cours)');
+  else if (sess === 'unchecked') add('warn', 'Connexion Reveal en cours de vérification');
+  else add('ko', sess === 'expired' ? 'Connexion Reveal expirée : reconnecte-la dans Auto-post' : 'Pas de connexion Reveal : connecte le compte agence dans Auto-post');
+  if (ag.paused) add('warn', 'Publication automatique en pause');
+
+  const { rows: [j] } = await pool.query(
+    `SELECT COUNT(*) FILTER (WHERE status = 'failed')::int AS failed, COUNT(*) FILTER (WHERE status = 'done')::int AS done,
+            COUNT(*) FILTER (WHERE status = 'pending' AND scheduled_at < NOW() - INTERVAL '30 minutes')::int AS late
+     FROM autopost_jobs WHERE agency_id = $1 AND scheduled_at > NOW() - INTERVAL '24 hours'`, [req.agencyId]);
+  add(j.failed || j.late ? 'warn' : 'ok', `Auto-post 24 h : ${j.done} publié(s)` + (j.failed ? `, ${j.failed} échec(s)` : '') + (j.late ? `, ${j.late} en retard` : ''));
+
+  const sfs = await pool.query(
+    `SELECT p.bot_status, p.bot_error, p.scheduled_at, m.name, p.partner_name FROM sfs_pushes p JOIN models m ON m.id = p.model_id
+     WHERE p.agency_id = $1 AND p.auto_send AND (p.bot_status = 'failed'
+       OR (p.bot_status IN ('queued', 'requeue') AND p.created_at < NOW() - INTERVAL '15 minutes')
+       OR (p.bot_status = 'scheduled' AND p.scheduled_at < NOW() - INTERVAL '1 hour'))
+       AND p.scheduled_at > NOW() - INTERVAL '7 days'
+     ORDER BY p.scheduled_at`, [req.agencyId]).then(r => r.rows).catch(() => null);
+  if (sfs == null) add('warn', 'SFS : pas encore en place');
+  else if (!sfs.length) add('ok', 'SFS : aucun mass DM en erreur');
+  else sfs.slice(0, 5).forEach(r => add('ko', `SFS ${r.name} × ${r.partner_name} : ` + (r.bot_status === 'failed' ? (r.bot_error || 'erreur') : r.bot_status === 'scheduled' ? 'heure passée, envoi pas encore confirmé' : 'toujours pas programmé sur Reveal')));
+
+  if (ag.whatsapp_failures === false) add('warn', 'Alertes WhatsApp de l\'auto-post désactivées (Auto-post > Réglages)');
+
+  // le bot revérifie la connexion Reveal pour de vrai au prochain tour (~20 s)
+  if (sess === 'ok') await pool.query('UPDATE autopost_agency SET session_checked_at = NULL WHERE agency_id = $1', [req.agencyId]);
+
+  const icon = { ok: '✅', warn: '⚠️', ko: '❌' };
+  const bad = checks.filter(c => c[0] === 'ko').length;
+  const msg = `🧪 Test des alertes Fuzion Pilot\n${bad ? `${bad} problème(s) :` : 'Tout va bien :'}\n` + checks.map(c => `${icon[c[0]]} ${c[1]}`).join('\n')
+    + (sess === 'ok' ? '\n\n🔑 Le bot revérifie la connexion Reveal maintenant : si elle est cassée, tu recevras l\'alerte de déconnexion dans 1-2 min.' : '');
+  const wa = await sendWhatsApp(msg, req.agencyId);
+  res.json({ checks, whatsapp: wa, recheck: sess === 'ok' });
+}));
+
 // ---------- réglages d'une modèle ----------
 router.put('/models/:id/settings', wrap(async (req, res) => {
   const m = await ownModel(req, req.params.id);
