@@ -219,6 +219,17 @@ async function collectDailyStats(page, revealId) {
   };
 }
 
+// 'ok' | 'expired' (page de connexion) | 'unknown' (Reveal ne répond pas)
+async function sessionState(page) {
+  try { await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 60000 }); } catch (e) { return 'unknown'; }
+  try { await visible(page, 'Dashboard', { exact: true, timeout: 25000 }); }
+  catch (e) {
+    if (/login|connexion|sign-?in/i.test(page.url()) || await isShown(page, 'Se connecter') || await isShown(page, 'Connexion')) return 'expired';
+    return 'unknown';
+  }
+  await sleep(4000); // laisse le dashboard renouveler ses jetons
+  return 'ok';
+}
 async function checkSession(page) {
   await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   try { await visible(page, 'Dashboard', { exact: true, timeout: 25000 }); return true; } catch (e) { return false; }
@@ -326,5 +337,5 @@ async function listMassDMs(page, access, revealId, from, to) {
   return ((j && j.data) || []).map(x => x.massDM || x);
 }
 
-module.exports = { BASE, createMassDMViaUI, parisLocal, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired,
+module.exports = { BASE, sessionState, createMassDMViaUI, parisLocal, publishPost, publishStory, collectPosts, archivePosts, collectDailyStats, checkSession, parsePosts, SessionExpired,
   apiAccess, createMassDM, deleteMassDM, listMassDMs };
