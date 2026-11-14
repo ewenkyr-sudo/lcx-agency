@@ -67,14 +67,48 @@ async function withBrowser(agencyId, fn) {
     await ctx.addInitScript(pw.initScript);
     const page = await ctx.newPage();
     page.setDefaultTimeout(30000);
-    return await fn(page);
+    let expired = false;
+    try { return await fn(page); }
+    catch (e) { expired = e instanceof reveal.SessionExpired; throw e; }
+    finally {
+      // Reveal renouvelle ses jetons de connexion pendant l'utilisation : on garde les nouveaux,
+      // sinon le bot repart le lendemain avec des jetons déjà grillés et se fait déconnecter.
+      if (!expired) await saveRotatedSession(agencyId, ctx, page, sess, origin).catch(e => log('Session : sauvegarde impossible', e.message));
+    }
   } finally {
     await browser.close().catch(() => {});
   }
 }
 
+async function saveRotatedSession(agencyId, ctx, page, sess, origin) {
+  const st = await ctx.storageState();
+  const og = (st.origins || []).find(o => o.origin === origin);
+  if (!og) return;
+  const local = Object.fromEntries((og.localStorage || []).map(kv => [kv.name, kv.value]));
+  let session = sess.session || {};
+  if (page.url().startsWith(origin)) session = await page.evaluate(() => ({ ...sessionStorage })).catch(() => session);
+  const auth = o => JSON.stringify(Object.keys(o || {}).filter(k => k.startsWith('auth_')).sort().map(k => [k, o[k]]));
+  if (auth(local) === '[]' && auth(session) === '[]') return; // plus de connexion dans le navigateur : on ne touche à rien
+  if (auth(local) === auth(sess.local) && auth(session) === auth(sess.session)) return; // rien n'a changé
+  const next = { local, session, cookies: st.cookies || sess.cookies || [], savedAt: sess.savedAt, refreshedAt: new Date().toISOString() };
+  await pool.query('UPDATE autopost_agency SET session_enc = $1 WHERE agency_id = $2', [sessionLib.encrypt(next), agencyId]);
+  log(`🔑 session agence ${agencyId} : jetons Reveal renouvelés et enregistrés`);
+}
+
+// Passe la session en ok / expired. Au passage en « expired », une seule alerte WhatsApp,
+// d'où que vienne la détection (publication, stats, SFS, vérification).
 async function markSession(agencyId, status) {
-  await pool.query('UPDATE autopost_agency SET session_status = $1, session_checked_at = NOW() WHERE agency_id = $2', [status, agencyId]);
+  const { rows } = await pool.query(
+    `UPDATE autopost_agency a SET session_status = $1, session_checked_at = NOW()
+     FROM (SELECT session_status AS was FROM autopost_agency WHERE agency_id = $2) old
+     WHERE a.agency_id = $2 RETURNING old.was`, [status, agencyId]);
+  const was = rows[0]?.was;
+  if (status === 'expired' && was && was !== 'expired') {
+    log(`🔑 session agence ${agencyId} expirée (avant : ${was})`);
+    await notify(agencyId, 'whatsapp_failures', was === 'unchecked'
+      ? `🔑 Auto-post Reveal : la session que tu viens de coller ne marche pas. Recopie-la avec le favori depuis dashboard.reveal.me puis recolle-la dans le CRM (Auto-post > Connexion).`
+      : `🔑 Auto-post Reveal en pause : le bot a été déconnecté de Reveal. Reconnecte-le dans le CRM (Auto-post > Connexion) — les publications reprendront toutes seules.`);
+  }
 }
 
 // ---------- publication d'un créneau ----------
@@ -204,9 +238,7 @@ async function runJob({ job, media, settings }) {
     if (expired) {
       // on remet le créneau en attente (attempts inchangé) et on bloque tout jusqu'à reconnexion
       await pool.query('UPDATE autopost_jobs SET attempts = GREATEST(attempts - 1, 0) WHERE id = $1', [job.id]);
-      const was = (await pool.query('SELECT session_status FROM autopost_agency WHERE agency_id = $1', [job.agency_id])).rows[0]?.session_status;
-      await markSession(job.agency_id, 'expired');
-      if (was !== 'expired') await notify(job.agency_id, 'whatsapp_failures', `🔑 Auto-post Reveal en pause : la connexion au compte agence a expiré. Reconnecte-le dans le CRM (Auto-post > Connexion).`);
+      await markSession(job.agency_id, 'expired'); // envoie l'alerte WhatsApp
     } else if (!retry) {
       await notify(job.agency_id, 'whatsapp_failures', `❌ Auto-post : échec ${job.kind} pour ${modelName} — ${String(e.message).slice(0, 120)}`);
     }
@@ -228,6 +260,29 @@ async function checkPendingSessions() {
     } catch (e) {
       await markSession(r.agency_id, 'expired');
       await apLog(r.agency_id, null, 'error', 'Vérif session : ' + e.message);
+    }
+  }
+}
+
+// Toutes les 4 h, le bot ouvre Reveal même sans publication : les jetons sont renouvelés
+// (et enregistrés) avant d'expirer, et une déconnexion est repérée tout de suite.
+async function keepSessionsAlive() {
+  const { rows } = await pool.query(
+    `SELECT agency_id FROM autopost_agency WHERE session_status = 'ok' AND session_enc IS NOT NULL
+       AND (session_checked_at IS NULL OR session_checked_at < NOW() - INTERVAL '4 hours')`);
+  for (const r of rows) {
+    if (state.stopping) return;
+    try {
+      const res = await withBrowser(r.agency_id, page => reveal.sessionState(page));
+      if (res === 'ok') await markSession(r.agency_id, 'ok');
+      else if (res === 'expired') await markSession(r.agency_id, 'expired');
+      else { // Reveal lent ou en panne : on réessaie dans 30 min sans crier au loup
+        await pool.query(`UPDATE autopost_agency SET session_checked_at = NOW() - INTERVAL '210 minutes' WHERE agency_id = $1`, [r.agency_id]);
+        log(`🔑 session agence ${r.agency_id} : Reveal ne répond pas, on réessaie plus tard`);
+      }
+    } catch (e) {
+      if (e instanceof reveal.SessionExpired) await markSession(r.agency_id, 'expired');
+      else log('Vérif session :', e.message);
     }
   }
 }
@@ -436,6 +491,7 @@ async function tick() {
       state.lastPlan = Date.now();
     }
     await checkPendingSessions();
+    if (!state.stopping) await keepSessionsAlive().catch(e => log('Session :', e.message));
     // SFS : programme / retire / vérifie les mass DM chez Reveal
     if (!state.stopping) await sfsSync().catch(e => log('SFS :', e.message));
     // publie tout ce qui est dû
@@ -499,4 +555,4 @@ if (require.main === module) {
   main().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { init, tick, claimJob, runJob, collectStats, sfsSync, state };
+module.exports = { keepSessionsAlive, markSession, withBrowser, init, tick, claimJob, runJob, collectStats, sfsSync, state };
