@@ -4151,6 +4151,19 @@ app.put('/api/model-profile/:modelId', authMiddleware, async (req, res) => {
 });
 
 // ============ MODEL SCHEDULE (PLANNING MODÈLE) ============
+// planning de toutes les modèles de l'agence sur une période (vue « Tout le monde » du Planning)
+app.get('/api/model-schedule-all', authMiddleware, adminOnly, async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) return res.status(400).json({ error: 'start et end requis' });
+  const { rows } = await pool.query(
+    `SELECT ms.id, ms.model_id, to_char(ms.day_date, 'YYYY-MM-DD') AS day_date, ms.time_slot, ms.title, ms.category, ms.color, ms.notes, m.name AS model_name
+     FROM model_schedule ms JOIN models m ON m.id = ms.model_id
+     WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND ($4::int[] IS NULL OR m.id = ANY($4::int[]))
+       AND COALESCE(m.status, 'active') <> 'archived'
+       AND ms.day_date >= $2 AND ms.day_date <= $3
+     ORDER BY ms.day_date, ms.time_slot NULLS FIRST`, [req.agencyId, start, end, req.modelScope || null]);
+  res.json(rows);
+});
 app.get('/api/model-schedule/:modelId', authMiddleware, async (req, res) => {
   const { start, end } = req.query;
   // date renvoyée en texte (AAAA-MM-JJ) pour éviter tout décalage de fuseau horaire

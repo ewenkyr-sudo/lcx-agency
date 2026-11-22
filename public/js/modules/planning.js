@@ -32,7 +32,7 @@ async function renderPlanning() {
   renderPlanMemberList();
   // Auto-select first member or self
   if (!planSelectedUser) {
-    planSelectedUser = currentUser.id;
+    planSelectedUser = isAdmin() ? 'all' : currentUser.id;
   }
   await renderPlanDetail();
   if (isAdmin()) renderPlanLeaves();
@@ -52,7 +52,12 @@ function renderPlanMemberList() {
     members = [currentUser];
   }
 
+  var allSel = planSelectedUser === 'all';
   container.innerHTML = '<div class="panel" style="padding:0;overflow:hidden">'
+    + (isAdmin() ? '<div onclick="selectPlanMember(\'all\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-left:3px solid ' + (allSel ? 'var(--accent)' : 'transparent') + ';background:' + (allSel ? 'rgba(59,130,246,0.12)' : 'transparent') + ';border-bottom:1px solid var(--border)">'
+      + '<div style="width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">👥</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (allSel ? '700' : '600') + ';color:var(--text)">Tout le monde</div>'
+      + '<div style="font-size:11px;color:var(--text-tertiary)">Équipe + modèles</div></div></div>' : '')
     + members.map(function(u) {
       var rc = ROLE_COLORS[u.role] || '#52525B';
       var rbg = ROLE_BG[u.role] || 'var(--bg-elevated)';
@@ -80,6 +85,9 @@ function selectPlanMember(userId) {
 async function renderPlanDetail() {
   var container = document.getElementById('planning-detail');
   if (!container || !planSelectedUser) { if (container) container.innerHTML = ''; return; }
+  var side = document.getElementById('planning-members');
+  if (side) side.style.width = planSelectedUser === 'all' ? '190px' : '240px';
+  if (planSelectedUser === 'all') return renderPlanAll(container);
 
   var mon = getMonday(planDate);
   var sun = new Date(mon); sun.setDate(sun.getDate()+6);
@@ -441,4 +449,145 @@ async function renderPlanStats(start, end) {
     }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-tertiary)">' + t('planning.no_data') + '</td></tr>'
     + '</tbody></table></div>'
     + '</div></div>';
+}
+
+
+// ========== VUE « TOUT LE MONDE » : équipe + modèles dans un seul planning ==========
+var planAllHidden = {};        // personnes masquées : 'u12' / 'm3'
+var planAllFilter = 'all';     // all | team | models
+try { planAllHidden = JSON.parse(localStorage.getItem('planAllHidden') || '{}') || {}; planAllFilter = localStorage.getItem('planAllFilter') || 'all'; } catch (e) {}
+function planAllSave() { try { localStorage.setItem('planAllHidden', JSON.stringify(planAllHidden)); localStorage.setItem('planAllFilter', planAllFilter); } catch (e) {} }
+function planAllToggle(key) { planAllHidden[key] = !planAllHidden[key]; planAllSave(); renderPlanDetail(); }
+function planAllSetFilter(f) { planAllFilter = f; planAllSave(); renderPlanDetail(); }
+function planAllEsc(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function planLocalDate(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+// ouvre la fiche de la modèle directement sur son onglet Planning
+function planOpenModel(id) {
+  if (typeof openModelCockpit !== 'function') return;
+  openModelCockpit(id);
+  var n = 0, iv = setInterval(function() {
+    var b = document.querySelector('#cockpit-content .tab[onclick*="\'schedule\'"]');
+    if (b) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv);
+  }, 150);
+}
+function planAllAvatar(name, photo, color, size) {
+  size = size || 20;
+  return photo
+    ? '<img src="' + planAllEsc(photo) + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+    : '<span style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + color + ';color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:' + Math.round(size * 0.5) + 'px;font-weight:700;flex-shrink:0">' + planAllEsc((name || '?').charAt(0).toUpperCase()) + '</span>';
+}
+
+async function renderPlanAll(container) {
+  var mon = getMonday(planDate);
+  var sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  var start = planLocalDate(mon), end = planLocalDate(sun);
+  var lang = i18n.getLang() === 'en' ? 'en-US' : 'fr-FR';
+  document.getElementById('planning-subtitle').textContent = 'Tout le monde — semaine du ' + fmtDateFR(mon) + ' au ' + fmtDateFR(sun);
+  container.innerHTML = '<div class="panel" style="padding:20px;color:var(--text-tertiary)">Chargement…</div>';
+
+  var f = function(url) { return fetch(url, { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; }); };
+  var res = await Promise.all([
+    f('/api/planning-shifts?start=' + start + '&end=' + end),
+    f('/api/model-schedule-all?start=' + start + '&end=' + end),
+    f('/api/leave-requests')
+  ]);
+  if (planSelectedUser !== 'all') return;
+  var shifts = res[0], modelRows = res[1], leaves = res[2];
+
+  // toutes les entrées, au même format
+  var items = [];
+  shifts.forEach(function(s) {
+    var u = allUsers.find(function(x) { return x.id === s.user_id; }) || { display_name: s.user_name, role: s.user_role };
+    var isTask = s.entry_type === 'task';
+    var st = SHIFT_TYPES[s.shift_type] || SHIFT_TYPES.custom;
+    items.push({
+      key: 'u' + s.user_id, kind: 'team', day: String(s.shift_date).slice(0, 10), time: s.start_time || '',
+      timeLabel: s.start_time ? s.start_time + (s.end_time ? '–' + s.end_time : '') : '',
+      who: u.display_name || '?', photo: u.avatar_url, color: ROLE_COLORS[u.role] || '#52525B',
+      label: isTask ? (s.description || s.notes || 'Tâche') : (s.shift_type === 'off' ? 'OFF' : getShiftLabel(st)),
+      tag: isTask ? (s.priority === 'urgent' ? 'Urgent' : 'Tâche') : 'Shift', tagColor: isTask ? (s.priority === 'urgent' ? 'var(--red)' : 'var(--green)') : st.color,
+      onclick: 'selectPlanMember(' + s.user_id + ')'
+    });
+  });
+  modelRows.forEach(function(e) {
+    var m = allModels.find(function(x) { return x.id === e.model_id; }) || { name: e.model_name };
+    items.push({
+      key: 'm' + e.model_id, kind: 'models', day: e.day_date, time: e.time_slot || '',
+      timeLabel: e.time_slot || '', who: m.name || e.model_name, photo: typeof modelPhoto === 'function' ? modelPhoto(m) : '',
+      color: typeof modelColor === 'function' ? modelColor(e.model_id, m.name) : (e.color || '#22D3EE'),
+      label: e.title, tag: 'Modèle', tagColor: e.color || '#22D3EE',
+      onclick: 'planOpenModel(' + e.model_id + ')'
+    });
+  });
+  // congés acceptés
+  leaves.filter(function(l) { return l.status === 'accepted'; }).forEach(function(l) {
+    var u = allUsers.find(function(x) { return x.id === l.user_id; });
+    if (!u) return;
+    var d = new Date(String(l.start_date).slice(0, 10) + 'T12:00:00'), e = new Date(String(l.end_date).slice(0, 10) + 'T12:00:00');
+    for (; d <= e; d.setDate(d.getDate() + 1)) {
+      var dk = planLocalDate(d);
+      if (dk < start || dk > end) continue;
+      items.push({ key: 'u' + u.id, kind: 'team', day: dk, time: '', timeLabel: '', who: u.display_name, photo: u.avatar_url, color: ROLE_COLORS[u.role] || '#52525B',
+        label: t('planning.leave'), tag: 'Congé', tagColor: 'var(--red)', onclick: 'selectPlanMember(' + u.id + ')' });
+    }
+  });
+
+  // personnes présentes cette semaine (pour les filtres)
+  var people = {};
+  items.forEach(function(it) { if (!people[it.key]) people[it.key] = { key: it.key, kind: it.kind, who: it.who, photo: it.photo, color: it.color, n: 0 }; people[it.key].n++; });
+  var plist = Object.keys(people).map(function(k) { return people[k]; }).sort(function(a, b) { return a.kind === b.kind ? a.who.localeCompare(b.who) : a.kind === 'team' ? -1 : 1; });
+
+  var shown = items.filter(function(it) { return !planAllHidden[it.key] && (planAllFilter === 'all' || planAllFilter === it.kind); });
+  var byDay = {};
+  shown.forEach(function(it) { (byDay[it.day] = byDay[it.day] || []).push(it); });
+
+  var chip = function(f, label) {
+    var on = planAllFilter === f;
+    return '<button onclick="planAllSetFilter(\'' + f + '\')" style="padding:6px 12px;border-radius:999px;border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'rgba(59,130,246,0.15)' : 'transparent') + ';color:' + (on ? 'var(--text)' : 'var(--text-secondary)') + ';font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">' + label + '</button>';
+  };
+  var html = '<div class="panel" style="padding:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<div style="display:flex;gap:6px;align-items:center">'
+    + '<button onclick="planNavigate(-1)" style="padding:8px 14px;background:var(--bg-base);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">‹</button>'
+    + '<button onclick="planNavigateToday()" style="padding:8px 12px;background:var(--bg-base);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit">Aujourd\'hui</button>'
+    + '<button onclick="planNavigate(1)" style="padding:8px 14px;background:var(--bg-base);color:var(--text);border:none;cursor:pointer;border-radius:8px;font-size:16px;font-family:inherit">›</button>'
+    + '<span style="font-size:15px;font-weight:700;margin-left:8px">' + mon.toLocaleDateString(lang, { day: 'numeric', month: 'long' }) + ' — ' + sun.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' }) + '</span></div>'
+    + '<div style="display:flex;gap:6px">' + chip('all', 'Tout') + chip('team', 'Équipe') + chip('models', 'Modèles') + '</div></div>';
+
+  // personnes : clic = masquer / afficher
+  if (plist.length) {
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">' + plist.filter(function(p) { return planAllFilter === 'all' || planAllFilter === p.kind; }).map(function(p) {
+      var off = planAllHidden[p.key];
+      return '<button onclick="planAllToggle(\'' + p.key + '\')" title="' + (off ? 'Afficher' : 'Masquer') + '" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;border:1px solid ' + (off ? 'var(--border)' : p.color) + ';background:transparent;color:var(--text);font-size:12px;cursor:pointer;font-family:inherit;opacity:' + (off ? '0.4' : '1') + (off ? ';text-decoration:line-through' : '') + '">'
+        + planAllAvatar(p.who, p.photo, p.color, 20) + planAllEsc(p.who) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  // grille : une colonne par jour, entrées triées par heure
+  var today = planLocalDate(new Date());
+  html += '<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(7,minmax(108px,1fr));gap:6px;min-width:780px">';
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(mon); d.setDate(d.getDate() + i);
+    var dk = planLocalDate(d), isToday = dk === today;
+    var list = (byDay[dk] || []).sort(function(a, b) { return (a.time || '').localeCompare(b.time || '') || a.who.localeCompare(b.who); });
+    html += '<div style="background:' + (isToday ? 'rgba(59,130,246,0.08)' : 'var(--bg-elevated)') + ';border:1px solid ' + (isToday ? 'var(--accent)' : 'var(--border)') + ';border-radius:12px;padding:8px 6px;min-height:160px">'
+      + '<div style="text-align:center;margin-bottom:10px"><div style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:' + (isToday ? 'var(--accent)' : 'var(--text-tertiary)') + '">' + d.toLocaleDateString(lang, { weekday: 'long' }) + '</div>'
+      + '<div style="font-size:13px;font-weight:700;color:' + (isToday ? 'var(--accent)' : 'var(--text)') + '">' + d.toLocaleDateString(lang, { day: 'numeric', month: 'short' }) + '</div></div>';
+    if (!list.length) html += '<div style="font-size:11px;color:var(--text-tertiary);text-align:center;font-style:italic">Rien de prévu</div>';
+    list.forEach(function(it) {
+      html += '<div ' + (it.onclick ? 'onclick="' + it.onclick + '" ' : '') + 'style="padding:6px 7px;margin-bottom:6px;border-radius:8px;background:var(--bg);border-left:3px solid ' + it.color + ';cursor:' + (it.onclick ? 'pointer' : 'default') + '">'
+        + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;min-width:0">' + planAllAvatar(it.who, it.photo, it.color, 18)
+        + '<span style="font-size:11px;font-weight:700;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + planAllEsc(it.who) + '</span></div>'
+        + (it.timeLabel ? '<div style="font-size:11px;font-weight:700;color:' + it.color + ';margin-bottom:1px">' + planAllEsc(it.timeLabel) + '</div>' : '')
+        + '<div style="font-size:12px;color:var(--text);line-height:1.3;word-break:break-word">' + planAllEsc(it.label) + '</div>'
+        + '<span style="display:inline-block;margin-top:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:5px;color:' + it.tagColor + ';border:1px solid ' + it.tagColor + '">' + it.tag + '</span>'
+        + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div></div>'
+    + '<div style="margin-top:12px;font-size:12px;color:var(--text-tertiary)">' + shown.length + ' élément' + (shown.length > 1 ? 's' : '') + ' cette semaine · clique sur une personne pour la masquer, sur un créneau pour ouvrir son planning</div>'
+    + '</div>';
+  container.innerHTML = html;
 }
