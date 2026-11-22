@@ -345,7 +345,7 @@ function rvDashWidget() {
       }, { net: 0, agency: 0, ttc: 0, subs: 0 });
       // le CA par modèle couvre hier + le mois : on garde le mois seulement si hier est dans le mois
       var modelsMonth = yest < month ? null : models;
-      var chatters = r[1].chatters.filter(function(c) { return !c.is_bot && Number(c.net) > 0; }).slice(0, 5);
+      var chatters = r[1].chatters.filter(function(c) { return !c.is_bot && Number(c.ttc) > 0; }).sort(function(a, b) { return Number(b.ttc) - Number(a.ttc); }).slice(0, 5);
       var row = function(left, sub, right) {
         return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-subtle);font-size:13px"><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + left + '</div>'
           + (sub ? '<div style="font-size:11px;color:var(--text-tertiary)">' + sub + '</div>' : '') + '</div><div style="font-weight:600;white-space:nowrap">' + right + '</div></div>';
@@ -361,17 +361,17 @@ function rvDashWidget() {
         + '<span style="font-weight:400;font-size:12px;color:var(--text-tertiary)">' + (s.last_error ? rvEsc(s.last_error) : 'à jour ' + rvAgo(s.last_sync_at)) + '</span></div>'
         + '<button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="rvGoTo(\'overview\')">Stats Reveal →</button></div>'
         + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
-        + rvStat('CA net aujourd\'hui', rvEur(td.net), 'Hier (journée entière) : ' + rvEur(yd.net))
-        + rvStat('CA net ce mois', rvEur(m.net), 'TTC : ' + rvEur(m.ttc))
+        + rvStat('CA TTC aujourd\'hui', rvEur(td.ttc), 'Hier (journée entière) : ' + rvEur(yd.ttc))
+        + rvStat('CA TTC ce mois', rvEur(m.ttc), 'Net : ' + rvEur(m.net))
         + rvStat('Part agence ce mois', rvEur(m.agency), null, 'var(--accent-green)')
         + rvStat('Nouveaux abonnés aujourd\'hui', rvNum(td.new_subs), rvNum(m.subs) + ' ce mois')
         + '</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;align-items:start">'
-        + (modelsMonth ? col('Modèles ce mois', 'overview', modelsMonth.filter(function(x) { return Number(x.net) > 0; }).slice(0, 5).map(function(x) {
-            return row(rvEsc(x.display_name || x.user_name), rvNum(x.new_subs) + ' nouveaux abonnés', rvEur(x.net));
+        + (modelsMonth ? col('Modèles ce mois', 'overview', modelsMonth.filter(function(x) { return Number(x.ttc) > 0; }).sort(function(a, b) { return Number(b.ttc) - Number(a.ttc); }).slice(0, 5).map(function(x) {
+            return row(rvEsc(x.display_name || x.user_name), rvNum(x.new_subs) + ' nouveaux abonnés', rvEur(x.ttc));
           }).join('') || empty) : '')
         + col('Top chatteurs du mois', 'chatters', chatters.map(function(c, i) {
-            return row((i < 3 ? ['🥇', '🥈', '🥉'][i] + ' ' : '') + rvEsc((c.first_name || '') + ' ' + (c.last_name || '')), rvNum(c.ppv_purchased) + ' PPV · ' + rvNum(c.tips) + ' pourboires', rvEur(c.net));
+            return row((i < 3 ? ['🥇', '🥈', '🥉'][i] + ' ' : '') + rvEsc((c.first_name || '') + ' ' + (c.last_name || '')), rvNum(c.ppv_purchased) + ' PPV · ' + rvNum(c.tips) + ' pourboires', rvEur(c.ttc));
           }).join('') || empty)
         + (s.sales_enabled === false ? '' : col('Dernières ventes', 'sales', r[2].sales.map(function(x) {
             var when = new Date(x.sale_created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
