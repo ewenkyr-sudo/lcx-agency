@@ -78,6 +78,8 @@ router.get('/subs', wrap(async (req, res) => {
      FROM reveal_models rm LEFT JOIN reveal_api_state st ON st.agency_id = rm.agency_id
      WHERE rm.agency_id = $1 AND rm.crm_model_id IS NOT NULL GROUP BY rm.crm_model_id`, [req.agencyId]).catch(() => ({ rows: [] }));
   const manual = await pool.query(`SELECT * FROM model_platform_subs WHERE model_id = ANY($1::int[])`, [models.map(m => m.id)]);
+  // MyM : comptes connectés au CRM (Stats MyM) -> chiffres lus sur MyM, pas modifiables à la main
+  const mymLive = await pool.query(`SELECT model_id FROM mym_accounts WHERE model_id = ANY($1::int[]) AND session_enc IS NOT NULL AND status = 'ok'`, [models.map(m => m.id)]).catch(() => ({ rows: [] }));
   res.json(models.map(m => {
     const r = rv.rows.find(x => x.crm_model_id === m.id);
     const man = p => manual.rows.find(x => x.model_id === m.id && x.platform === p);
@@ -86,7 +88,7 @@ router.get('/subs', wrap(async (req, res) => {
       ...m,
       reveal: r ? { subscribers: r.subscribers, new_30: r.new_30, source: 'api', updated_at: r.updated_at }
         : (mr ? { subscribers: mr.subscribers, new_30: mr.new_subs_30, source: 'manual', updated_at: mr.updated_at } : null),
-      mym: mm ? { subscribers: mm.subscribers, new_30: mm.new_subs_30, source: 'manual', updated_at: mm.updated_at } : null,
+      mym: mm ? { subscribers: mm.subscribers, new_30: mm.new_subs_30, source: mymLive.rows.some(x => x.model_id === m.id) ? 'api' : 'manual', updated_at: mm.updated_at } : null,
     };
   }));
 }));

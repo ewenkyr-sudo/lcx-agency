@@ -65,7 +65,7 @@ function sfsLoadSubs() {
     });
     var block = function(m, p) {
       var d = m[p];
-      var edit = (p === 'mym' || !d || d.source === 'manual') ? ' onclick="sfsEditSubs(' + m.id + ',\'' + p + '\')" style="cursor:pointer" title="Modifier"' : ' title="Chiffres de l\'API Reveal"';
+      var edit = (!d || d.source === 'manual') ? ' onclick="sfsEditSubs(' + m.id + ',\'' + p + '\')" style="cursor:pointer" title="Modifier"' : ' title="' + (p === 'mym' ? 'Chiffres lus sur MyM (Stats MyM)' : 'Chiffres de l\'API Reveal') + '"';
       return '<div' + edit + ' class="sfs-plat"><div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;display:flex;gap:6px;align-items:center">' + SFS_PLAT[p]
         + (d && d.source === 'api' ? '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(34,197,94,.12);color:var(--accent-green)">API</span>' : '<span style="font-size:10px;opacity:.7">✎</span>') + '</div>'
         + '<div style="font-size:22px;font-weight:800;font-family:var(--font-mono, monospace);margin-top:2px">' + sfsNum(d && d.subscribers) + '</div>'

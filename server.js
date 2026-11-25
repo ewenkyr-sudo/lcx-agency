@@ -4989,6 +4989,7 @@ app.use('/api/autopost', require('./routes/autopost'));
 // ============ API REVEAL (stats, chatteurs, liens, ventes) ============
 app.use('/api/reveal', require('./routes/reveal'));
 app.use('/api/wysper', require('./routes/wysper'));
+app.use('/api/mym', require('./routes/mym'));
 app.use('/api/sfs', require('./routes/sfs'));
 
 // ============ CATCH-ALL (must be last route) ============
@@ -5005,9 +5006,11 @@ async function start() {
   await require('./db/autopost-schema').initAutopostDB();
   await require('./db/reveal-api-schema').initRevealApiDB();
   await require('./db/wysper-schema').initWysperDB();
+  await require('./db/mym-schema').initMymDB();
   await require('./db/sfs-schema').initSfsDB();
   if (process.env.REVEAL_API_SYNC !== 'false') require('./services/reveal-api/sync').start();
   if (process.env.WYSPER_SYNC !== 'false') require('./services/wysper/sync').start();
+  if (process.env.MYM_SYNC !== 'false') require('./services/mym/sync').start();
   // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
   if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();
 
