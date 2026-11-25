@@ -145,6 +145,7 @@ function rvOverview(b) {
       + rvStat('Nouveaux abonnés', rvNum(t.new_subs), rvNum(t.unsubs) + ' fins d\'abonnement')
       + rvStat('PPV vendus', rvNum(t.ppv_purchased), (t.ppv_sent ? rvNum(t.ppv_sent) + ' envoyés · ' + Math.round(t.ppv_purchased / t.ppv_sent * 100) + ' %' : rvEur(t.ppv_net) + ' net'))
       + rvStat('Pourboires', rvNum(t.tips), rvEur(t.tips_net) + ' net')
+      + rvLtvStat(o.ltv)
       + (Number(t.messages_sent) || Number(t.messages_received) ? rvStat('Messages', rvNum(t.messages_sent), rvNum(t.messages_received) + ' reçus des fans') : '')
       + '</div>'
       + '<div class="panel" style="padding:16px;margin:14px 0"><div style="font-weight:700;font-size:15px">Revenu journalier</div><div id="rv-daily-sub" style="font-size:12px;color:var(--text-tertiary);margin:2px 0 8px"></div><div style="position:relative;height:240px"><canvas id="rv-daily-chart"></canvas></div></div>'
@@ -154,16 +155,24 @@ function rvOverview(b) {
             + '<div style="flex:1;height:8px;background:var(--bg-subtle);border-radius:4px"><div style="height:100%;width:' + pct + '%;background:var(--accent-blue);border-radius:4px"></div></div>'
             + '<div style="width:120px;text-align:right">' + rvEur(x[1]) + ' <span style="color:var(--text-muted)">' + pct + ' %</span></div></div>';
         }).join('') + '</div>' : '')
-      + (cm ? '' : '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Modèle</th><th>CA TTC</th><th>Net</th><th>Agence</th><th>Nouv. abonnés</th><th>Abonnés</th><th>PPV vendus</th><th>Pourboires</th></tr></thead><tbody>'
+      + (cm ? '' : '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Modèle</th><th>CA TTC</th><th>Net</th><th>Agence</th><th>Nouv. abonnés</th><th>Abonnés</th><th title="CA TTC total ÷ abonnés gagnés, sur tout l\'historique">LTV</th><th>PPV vendus</th><th>Pourboires</th></tr></thead><tbody>'
       + o.models.map(function(m) {
+        var lv = (o.ltv && o.ltv.by_model[m.reveal_model_id]) || {};
         return '<tr style="cursor:pointer" title="Voir les stats de ' + rvEsc(m.display_name || m.user_name) + '" onclick="rvSetModel(\'' + m.reveal_model_id + '\')"><td style="text-align:left"><div style="display:flex;align-items:center;gap:8px">' + rvAvatar(m)
           + '<div><div style="font-weight:600">' + rvEsc(m.display_name || m.user_name) + '</div><div style="font-size:11px;color:var(--text-tertiary)">' + (m.crm_name ? 'CRM : ' + rvEsc(m.crm_name) : '<span style="color:var(--accent-yellow)">pas reliée au CRM</span>') + '</div></div></div></td>'
-          + '<td>' + rvEur(m.ttc) + '</td><td>' + rvEur(m.net) + '</td><td style="color:var(--accent-green)">' + rvEur(m.agency) + '</td><td>' + rvNum(m.new_subs) + '</td><td>' + rvNum(m.subscribers_count) + '</td><td>' + rvNum(m.ppv_purchased) + '</td><td>' + rvNum(m.tips) + '</td></tr>';
+          + '<td>' + rvEur(m.ttc) + '</td><td>' + rvEur(m.net) + '</td><td style="color:var(--accent-green)">' + rvEur(m.agency) + '</td><td>' + rvNum(m.new_subs) + '</td><td>' + rvNum(m.subscribers_count) + '</td><td style="font-weight:600" title="' + (lv.payer != null ? 'Fan payeur : ' + rvEur(lv.payer) : '') + '">' + (lv.ltv != null ? rvEur(lv.ltv) : '–') + '</td><td>' + rvNum(m.ppv_purchased) + '</td><td>' + rvNum(m.tips) + '</td></tr>';
       }).join('') + '</tbody></table><div style="font-size:12px;color:var(--text-tertiary);padding:10px 14px">Clique sur une modèle pour voir ses stats en détail.</div></div>');
     rvDailyCompare();
   }).catch(function(e) { b.innerHTML = '<div class="empty-state"><div class="empty-state-title">' + rvEsc(e.message) + '</div></div>'; });
 }
 
+// LTV : ce que rapporte un abonné en moyenne (CA TTC ÷ abonnés gagnés), sur tout l'historique
+function rvLtvStat(l) {
+  if (!l) return '';
+  var mois = function(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : ''; };
+  var sub = (l.payer != null ? 'Fan payeur : ' + rvEur(l.payer) + ' (' + rvNum(l.payers) + ')' : 'Pas encore de ventes') + (l.since ? ' · depuis ' + mois(l.since) : '');
+  return rvStat('LTV par abonné', l.ltv != null ? rvEur(l.ltv) : '–', sub, 'var(--accent-blue)');
+}
 function rvDailyCompare() {
   var today = rvParis(0);
   var canvas = document.getElementById('rv-daily-chart'), sub = document.getElementById('rv-daily-sub');
@@ -210,12 +219,13 @@ function rvMapChatter(id, uid) {
 function rvTracking(b) {
   rvApi('GET', '/tracking' + rvQs()).then(function(o) {
     if (!o.links.length) { b.innerHTML = '<div class="empty-state"><div class="empty-state-title">Aucun lien de suivi</div><div style="color:var(--text-tertiary);font-size:13px">Ils se créent dans le dashboard Reveal (Liens de suivi).</div></div>'; return; }
-    b.innerHTML = '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Lien</th><th>Modèle</th><th>Clics</th><th>Abonnés</th><th>CA TTC</th><th>€ / clic</th><th style="border-left:1px solid var(--border-default)">Depuis la création</th></tr></thead><tbody>'
+    b.innerHTML = '<div class="panel" style="padding:0;overflow:auto"><table class="table" style="width:100%"><thead><tr><th style="text-align:left">Lien</th><th>Modèle</th><th>Clics</th><th>Abonnés</th><th>CA TTC</th><th>€ / clic</th><th title="CA TTC du lien ÷ abonnés venus par le lien, depuis sa création">LTV</th><th style="border-left:1px solid var(--border-default)">Depuis la création</th></tr></thead><tbody>'
       + o.links.map(function(l) {
         return '<tr><td style="text-align:left"><div style="font-weight:600">' + rvEsc(l.name || l.tracking_code) + '</div><div style="font-size:11px"><a href="' + rvEsc(l.url) + '" target="_blank" rel="noopener" style="color:var(--text-tertiary)">' + rvEsc(l.url) + '</a> '
           + '<button class="btn btn-ghost" style="padding:0 4px;font-size:11px" onclick="navigator.clipboard.writeText(\'' + rvEsc(l.url) + '\');rvToast(\'Lien copié\',\'success\')">copier</button></div></td>'
           + '<td>' + rvEsc(l.model_name || '') + '</td><td>' + rvNum(l.p_clicks) + '</td><td>' + rvNum(l.p_subs) + '</td><td style="font-weight:600">' + rvEur(l.p_revenue) + '</td>'
           + '<td>' + (l.p_clicks ? rvEur(Math.round(l.p_revenue / l.p_clicks)) : '–') + '</td>'
+          + '<td style="font-weight:600">' + (Number(l.new_subscribers) ? rvEur(Math.round(Number(l.revenue_ttc) / Number(l.new_subscribers))) : '–') + '</td>'
           + '<td style="border-left:1px solid var(--border-default);font-size:12px;color:var(--text-secondary)">' + rvNum(l.clicks) + ' clics · ' + rvNum(l.new_subscribers) + ' abonnés (' + rvNum(l.paid_subscribers) + ' payants) · ' + rvEur(l.revenue_ttc) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }).catch(function(e) { b.innerHTML = '<div class="empty-state"><div class="empty-state-title">' + rvEsc(e.message) + '</div></div>'; });

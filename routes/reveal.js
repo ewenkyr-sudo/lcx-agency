@@ -127,7 +127,32 @@ router.get('/overview', wrap(async (req, res) => {
      FROM reveal_models rm LEFT JOIN models m ON m.id = rm.crm_model_id
      LEFT JOIN reveal_stats_daily s ON s.reveal_model_id = rm.reveal_model_id AND s.date BETWEEN $2 AND $3
      WHERE rm.agency_id = $1 AND ($4::text IS NULL OR rm.reveal_model_id = $4) AND ($5::text[] IS NULL OR rm.reveal_model_id = ANY($5::text[])) GROUP BY rm.reveal_model_id, m.name ORDER BY net DESC`, [a, from, to, mid, rs])).rows;
-  res.json({ from, to, totals, daily, models });
+  // LTV : sur tout l'historique synchronisé (jusqu'à 12 mois), pas sur la période choisie
+  const hist = (await pool.query(
+    `SELECT reveal_model_id, COALESCE(SUM(revenue_ttc),0)::bigint ttc, COALESCE(SUM(new_subscribers),0)::int subs, to_char(MIN(date),'YYYY-MM-DD') since
+     FROM reveal_stats_daily WHERE agency_id = $1 AND ($2::text IS NULL OR reveal_model_id = $2) AND ($3::text[] IS NULL OR reveal_model_id = ANY($3::text[]))
+     GROUP BY reveal_model_id`, [a, mid, rs])).rows;
+  const payers = (await pool.query(
+    `SELECT reveal_model_id, COUNT(DISTINCT COALESCE(fan_member_id, LOWER(fan_username)))::int fans, COALESCE(SUM(amount_ttc),0)::bigint ttc,
+            to_char(MIN(sale_created_at) AT TIME ZONE 'Europe/Paris','YYYY-MM-DD') since
+     FROM reveal_sales WHERE agency_id = $1 AND COALESCE(status,'') <> 'refunded' AND (fan_member_id IS NOT NULL OR fan_username IS NOT NULL)
+       AND ($2::text IS NULL OR reveal_model_id = $2) AND ($3::text[] IS NULL OR reveal_model_id = ANY($3::text[]))
+     GROUP BY reveal_model_id`, [a, mid, rs])).rows;
+  const ltvOf = (h, p) => ({
+    ltv: h && h.subs > 0 ? Math.round(Number(h.ttc) / h.subs) : null,          // CA TTC / abonnés gagnés
+    payer: p && p.fans > 0 ? Math.round(Number(p.ttc) / p.fans) : null,         // dépense moyenne d'un fan qui a payé
+    payers: p ? p.fans : 0,
+  });
+  const sum = (rows, k) => rows.reduce((x, r) => x + Number(r[k] || 0), 0);
+  const minOf = (rows) => rows.map(r => r.since).filter(Boolean).sort()[0] || null;
+  const ltv = {
+    ...ltvOf({ ttc: sum(hist, 'ttc'), subs: sum(hist, 'subs') }, null),
+    // fans distincts : les sommes par modèle comptent 2 fois un fan qui paie 2 modèles, c'est voulu (une LTV par compte)
+    ...(() => { const f = sum(payers, 'fans'); return { payer: f ? Math.round(sum(payers, 'ttc') / f) : null, payers: f }; })(),
+    since: minOf(hist), sales_since: minOf(payers),
+    by_model: Object.fromEntries(models.map(m => [m.reveal_model_id, ltvOf(hist.find(h => h.reveal_model_id === m.reveal_model_id), payers.find(p => p.reveal_model_id === m.reveal_model_id))])),
+  };
+  res.json({ from, to, totals, daily, models, ltv });
 }));
 
 router.get('/models/:id/daily', wrap(async (req, res) => {
