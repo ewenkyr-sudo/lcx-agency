@@ -398,7 +398,7 @@ function modelDailyChart(canvas, rows, today, opts) {
   var models = {};
   (rows || []).forEach(function(r) {
     if (String(r.d).slice(0, 7) !== cur) return;
-    var m = models[r.key] = models[r.key] || { name: r.name, crmId: r.crmId, days: {}, total: 0 };
+    var m = models[r.key] = models[r.key] || { name: r.name, crmId: r.crmId, color: r.color, days: {}, total: 0 };
     m.days[+String(r.d).slice(8, 10)] = (m.days[+String(r.d).slice(8, 10)] || 0) + (Number(r.v) || 0);
     m.total += Number(r.v) || 0;
   });
@@ -411,7 +411,7 @@ function modelDailyChart(canvas, rows, today, opts) {
     data: {
       labels: Array.from({ length: n }, function(_, i) { return pad(i + 1); }),
       datasets: list.map(function(m) {
-        var c = modelColor(m.crmId, m.name);
+        var c = m.color || modelColor(m.crmId, m.name);
         return { label: m.name, keepColor: true, backgroundColor: c, hoverBackgroundColor: c, borderRadius: 3, borderSkipped: false,
           maxBarThickness: 6, categoryPercentage: 0.82, barPercentage: 0.92,
           data: Array.from({ length: n }, function(_, i) { return i + 1 <= todayDay ? (m.days[i + 1] || 0) : null; }) };

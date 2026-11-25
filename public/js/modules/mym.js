@@ -72,7 +72,7 @@ function myOverview(b) {
     var t = o.totals;
     var types = (o.byType || []).map(function(x) { return rvEsc(x.type) + ' ' + rvEur(x.amount); }).join(' · ');
     b.innerHTML = '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">'
-      + rvStat('CA net', rvEur(t.net), types || 'Ce que touche la modèle (après la part de MyM)')
+      + rvStat('CA net', rvEur(t.net), '≈ ' + rvEur(Math.round(t.net / 0.6107)) + ' TTC payés par les fans (estimé)' + (types ? '<br>' + types : ''))
       + rvStat('Nouveaux abonnés', rvNum(t.new_subs), rvNum(t.subscribers) + ' abonnés au total')
       + rvStat('Ventes', rvNum(t.sales), rvNum(t.buyers) + ' acheteur' + (t.buyers > 1 ? 's' : '') + (t.sales ? ' · panier ' + rvEur(Math.round(t.tx_net / t.sales)) : ''))
       + rvStat('LTV par abonné', o.ltv != null ? rvEur(o.ltv) : '–', 'Revenus depuis la création divisés par le nombre d\'abonnés', 'var(--accent-blue)')

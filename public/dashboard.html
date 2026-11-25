@@ -1734,6 +1734,7 @@ function renderDashboard() {
     </div>
 
     <!-- Reveal (API officielle) -->
+    <div id="dashboard-platforms"></div>
     <div id="dashboard-reveal"></div>
 
     <div class="two-col">
@@ -1792,6 +1793,7 @@ function renderDashboard() {
 
   // Load stats in dashboard for admin
   if (isAdmin()) {
+    if (typeof platDashWidget === 'function') platDashWidget();
     if (typeof rvDashWidget === 'function') rvDashWidget();
     loadDashActiveShifts();
     loadDashboardChatterStats();
@@ -1968,6 +1970,7 @@ var origSwitchSection = typeof switchSection === 'function' ? switchSection : nu
 <script src="/js/modules/reveal.js"></script>
 <script src="/js/modules/telegram.js"></script>
 <script src="/js/modules/mym.js"></script>
+<script src="/js/modules/platforms.js"></script>
 <script src="/js/modules/sfs.js"></script>
 <script src="/js/modules/autopost.js"></script>
 <script src="/js/modules/finances.js"></script>

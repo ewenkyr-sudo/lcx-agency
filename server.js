@@ -4990,6 +4990,7 @@ app.use('/api/autopost', require('./routes/autopost'));
 app.use('/api/reveal', require('./routes/reveal'));
 app.use('/api/wysper', require('./routes/wysper'));
 app.use('/api/mym', require('./routes/mym'));
+app.use('/api/platforms', require('./routes/platforms'));
 app.use('/api/sfs', require('./routes/sfs'));
 
 // ============ CATCH-ALL (must be last route) ============
