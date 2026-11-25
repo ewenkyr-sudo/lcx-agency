@@ -80,6 +80,9 @@ const RULES = [
   ['GET', /^\/api\/reveal\/(me|status|overview|daily-by-model|models|chatters|tracking|sales)$/, OK],
   ['GET', /^\/api\/reveal\/models\/([\w-]+)\/daily$/, byRevealId],
 
+  // Stats Telegram / Wysper (lecture, filtrée sur leurs modèles par les routes)
+  ['GET', /^\/api\/wysper\/(status|overview|daily-by-model|accounts|sales|team|tracking)$/, OK],
+
   // SFS (les routes filtrent et vérifient la modèle elles-mêmes)
   ['GET|POST|PUT|DELETE', /^\/api\/sfs\//, OK],
 
