@@ -32,6 +32,17 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
+// Wysper (Telegram) : événements signés, corps brut nécessaire pour vérifier la signature
+app.post('/api/wysper/webhook/:token', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  try {
+    const code = await require('./services/wysper/sync').handleWebhook(req.params.token, req.headers, Buffer.isBuffer(req.body) ? req.body : Buffer.from(''));
+    res.status(code).json(code === 200 ? { ok: true } : { error: code === 401 ? 'Signature invalide' : 'Refusé' });
+  } catch (e) {
+    console.error('[WYSPER] webhook :', e.message);
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
 // Stripe webhook needs raw body — must be before express.json
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   console.log('[STRIPE WEBHOOK] Requête reçue');
@@ -4977,6 +4988,7 @@ app.post('/api/admin/student-agencies/:agencyId/transfer', authMiddleware, admin
 app.use('/api/autopost', require('./routes/autopost'));
 // ============ API REVEAL (stats, chatteurs, liens, ventes) ============
 app.use('/api/reveal', require('./routes/reveal'));
+app.use('/api/wysper', require('./routes/wysper'));
 app.use('/api/sfs', require('./routes/sfs'));
 
 // ============ CATCH-ALL (must be last route) ============
@@ -4992,8 +5004,10 @@ async function start() {
   await migrateToMultiMembership();
   await require('./db/autopost-schema').initAutopostDB();
   await require('./db/reveal-api-schema').initRevealApiDB();
+  await require('./db/wysper-schema').initWysperDB();
   await require('./db/sfs-schema').initSfsDB();
   if (process.env.REVEAL_API_SYNC !== 'false') require('./services/reveal-api/sync').start();
+  if (process.env.WYSPER_SYNC !== 'false') require('./services/wysper/sync').start();
   // Worker auto-post dans le même process (optionnel, sinon service Render séparé)
   if (process.env.AUTOPOST_INLINE_WORKER === 'true') require('./worker/inline').start();
 
