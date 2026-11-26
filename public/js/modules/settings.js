@@ -431,7 +431,7 @@ function openModelScope(userId) {
   div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px';
   div.innerHTML = '<div class="panel" style="max-width:420px;width:100%;padding:20px">'
     + '<div style="font-weight:700;font-size:16px;margin-bottom:4px">Accès de ' + esc(u.display_name) + '</div>'
-    + '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Associé : il ne verra que ces modèles (fiche, cockpit, Stats Reveal, Stats Telegram, Stats MyM, Finances, Auto-post, shifts). Il n\'aura pas accès aux réglages de l\'agence ni à l\'équipe.</div>'
+    + '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Associé : il ne verra que ces modèles (fiche, cockpit, Stats Reveal, Stats OnlyFans, Stats Telegram, Stats MyM, Finances, Auto-post, shifts). Il n\'aura pas accès aux réglages de l\'agence ni à l\'équipe.</div>'
     + '<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-weight:600"><input type="radio" name="scope-mode" value="all"' + (scope ? '' : ' checked') + '> Toutes les modèles (admin complet)</label>'
     + '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-weight:600"><input type="radio" name="scope-mode" value="some"' + (scope ? ' checked' : '') + '> Seulement :</label>'
     + '<div style="display:grid;gap:6px;padding-left:24px;margin-bottom:16px">' + allModels.map(function(m) {

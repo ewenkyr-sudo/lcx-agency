@@ -80,6 +80,9 @@ const RULES = [
   ['GET', /^\/api\/reveal\/(me|status|overview|daily-by-model|models|chatters|tracking|sales)$/, OK],
   ['GET', /^\/api\/reveal\/models\/([\w-]+)\/daily$/, byRevealId],
 
+  // Stats OnlyFans (lecture, filtrée sur leurs modèles par les routes)
+  ['GET', /^\/api\/onlyfans\/(accounts|overview|daily-by-model)$/, OK],
+
   // Stats MyM (lecture, filtrée sur leurs modèles par les routes)
   ['GET', /^\/api\/mym\/(accounts|overview|daily-by-model|monthly|transactions)$/, OK],
 
