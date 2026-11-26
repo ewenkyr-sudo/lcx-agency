@@ -4990,6 +4990,7 @@ app.use('/api/autopost', require('./routes/autopost'));
 app.use('/api/reveal', require('./routes/reveal'));
 app.use('/api/wysper', require('./routes/wysper'));
 app.use('/api/mym', require('./routes/mym'));
+app.use('/api/onlyfans', require('./routes/onlyfans'));
 app.use('/api/platforms', require('./routes/platforms'));
 app.use('/api/sfs', require('./routes/sfs'));
 
@@ -5008,6 +5009,7 @@ async function start() {
   await require('./db/reveal-api-schema').initRevealApiDB();
   await require('./db/wysper-schema').initWysperDB();
   await require('./db/mym-schema').initMymDB();
+  await require('./db/onlyfans-schema').initOnlyfansDB();
   await require('./db/sfs-schema').initSfsDB();
   if (process.env.REVEAL_API_SYNC !== 'false') require('./services/reveal-api/sync').start();
   if (process.env.WYSPER_SYNC !== 'false') require('./services/wysper/sync').start();

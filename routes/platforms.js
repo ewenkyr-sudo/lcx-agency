@@ -7,6 +7,7 @@ const express = require('express');
 const pool = require('../db/pool');
 const { authMiddleware, adminOnly } = require('../middlewares/auth');
 const { netToTtc, MYM_TTC_NOTE } = require('../services/mym/ttc');
+const { toEurRate } = require('../services/fx');
 
 const router = express.Router();
 const parisDate = (off = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + off * 86400000));
@@ -56,13 +57,25 @@ router.get('/summary', authMiddleware, adminOnly, async (req, res) => {
        GROUP BY 1,2,3`, [a, from, today, sc]);
     const mym = mymRaw.map(r => ({ ...r, net: Number(r.net), v: netToTtc(r.net) })).concat(mymSubsOnly.map(r => ({ ...r, net: 0, v: 0 })));
 
+    // OnlyFans compte en dollars : brut (net ÷ 0,8) + TVA payée par les fans (taux relevé sur les ventes), converti en euros
+    const usdEur = await toEurRate('USD');
+    const onlyfans = await safe(
+      `SELECT to_char(d.date,'YYYY-MM-DD') d, d.model_id, m.name,
+              ROUND(d.net_cents / 0.8 * (1 + COALESCE((SELECT SUM(t.vat_cents)::numeric / NULLIF(SUM(t.amount_cents), 0) FROM of_transactions t
+                 WHERE t.model_id = d.model_id AND t.created_at > NOW() - INTERVAL '60 days'), 0)) * $5)::bigint v,
+              COALESCE((SELECT s.sales FROM of_daily s WHERE s.model_id = d.model_id AND s.date = d.date AND s.type = 'subscribes'), 0)::int subs
+       FROM of_daily d JOIN models m ON m.id = d.model_id
+       WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND d.type = 'total' AND d.date BETWEEN $2::date AND $3::date AND ($4::int[] IS NULL OR d.model_id = ANY($4::int[]))`,
+      [a, from, today, sc, usdEur]);
+
     const connected = {
       reveal: (await safe(`SELECT 1 FROM reveal_api_state WHERE agency_id = $1 AND key_enc IS NOT NULL`, [a])).length > 0,
       telegram: (await safe(`SELECT 1 FROM wysper_state WHERE agency_id = $1 AND key_enc IS NOT NULL`, [a])).length > 0,
+      onlyfans: (await safe(`SELECT 1 FROM of_accounts a JOIN models m ON m.id = a.model_id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND a.session_enc IS NOT NULL`, [a])).length > 0,
       mym: (await safe(`SELECT 1 FROM mym_accounts a JOIN models m ON m.id = a.model_id WHERE (m.agency_id = $1 OR m.agency_id IS NULL) AND a.session_enc IS NOT NULL`, [a])).length > 0,
     };
 
-    const P = { reveal, telegram, mym };
+    const P = { reveal, onlyfans, telegram, mym };
     const sum = (rows, test, k = 'v') => rows.filter(test).reduce((s, r) => s + Number(r[k] || 0), 0);
     const platforms = {};
     for (const [k, rows] of Object.entries(P)) {
@@ -84,7 +97,7 @@ router.get('/summary', authMiddleware, adminOnly, async (req, res) => {
       for (const r of rows) {
         if (r.d < month) continue;
         const key = r.model_id ? 'm' + r.model_id : k + ':' + r.name;
-        const m = models[key] = models[key] || { model_id: r.model_id, name: r.name || 'Sans modèle', reveal: 0, telegram: 0, mym: 0, total: 0, subs: 0 };
+        const m = models[key] = models[key] || { model_id: r.model_id, name: r.name || 'Sans modèle', reveal: 0, onlyfans: 0, telegram: 0, mym: 0, total: 0, subs: 0 };
         m[k] += Number(r.v || 0); m.total += Number(r.v || 0); m.subs += Number(r.subs || 0);
       }
     }
@@ -98,7 +111,7 @@ router.get('/summary', authMiddleware, adminOnly, async (req, res) => {
     res.json({
       today, yesterday: yest, month, platforms, total, daily,
       models: Object.values(models).filter(m => m.total > 0 || m.subs > 0).sort((x, y) => y.total - x.total),
-      mym_note: MYM_TTC_NOTE,
+      mym_note: MYM_TTC_NOTE, usd_eur: usdEur,
     });
   } catch (e) {
     console.error('[PLATFORMS]', e);

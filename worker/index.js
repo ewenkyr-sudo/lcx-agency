@@ -494,6 +494,8 @@ async function tick() {
     if (!state.stopping) await keepSessionsAlive().catch(e => log('Session :', e.message));
     // SFS : programme / retire / vérifie les mass DM chez Reveal
     if (!state.stopping) await sfsSync().catch(e => log('SFS :', e.message));
+    // OnlyFans : relevé des stats (lecture seule, ~toutes les 6 h par modèle)
+    if (!state.stopping && process.env.OF_DISABLE !== '1') await require('./onlyfans').ofSync({ browserType, notify, log, stopping: () => state.stopping }).catch(e => log('OnlyFans :', e.message));
     // publie tout ce qui est dû
     for (let i = 0; i < 10; i++) {
       if (state.stopping) break; // arrêt demandé (mise à jour) : on ne prend plus rien
@@ -528,6 +530,7 @@ async function tick() {
 async function init() {
   await initAutopostDB();
   await require('../db/sfs-schema').initSfsDB().catch(e => log('SFS : tables', e.message));
+  await require('../db/onlyfans-schema').initOnlyfansDB().catch(e => log('OnlyFans : tables', e.message));
   // un créneau resté "running" après un crash repasse en attente
   await pool.query(`UPDATE autopost_jobs SET status = 'pending' WHERE status = 'running' AND started_at < NOW() - INTERVAL '30 minutes'`);
   // évite de renvoyer le rapport/les stats en double si le worker redémarre
@@ -555,4 +558,4 @@ if (require.main === module) {
   main().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { keepSessionsAlive, markSession, withBrowser, init, tick, claimJob, runJob, collectStats, sfsSync, state };
+module.exports = { browserType, notify, log, keepSessionsAlive, markSession, withBrowser, init, tick, claimJob, runJob, collectStats, sfsSync, state };

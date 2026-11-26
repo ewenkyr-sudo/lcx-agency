@@ -3,6 +3,7 @@
 
 var PLAT = {
   reveal: { label: 'Reveal', color: '#1449E6', section: 'reveal' },
+  onlyfans: { label: 'OnlyFans', color: '#0EA5E9', section: 'onlyfans' },
   telegram: { label: 'Telegram', color: '#0D9488', section: 'telegram' },
   mym: { label: 'MyM', color: '#EA580C', section: 'mym' },
 };
@@ -23,7 +24,7 @@ function platDashWidget() {
     var split = function(field) {
       return keys.map(function(k) { return '<span style="white-space:nowrap"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + PLAT[k].color + ';margin-right:4px"></span>' + PLAT[k].label + ' ' + (k === 'mym' ? '≈ ' : '') + rvEur(p[k][field]) + '</span>'; }).join(' · ');
     };
-    var subsSub = (p.reveal && p.reveal.connected ? 'Reveal ' + rvNum(p.reveal.subs_month) : '') + (p.mym && p.mym.connected ? (p.reveal && p.reveal.connected ? ' · ' : '') + 'MyM ' + rvNum(p.mym.subs_month) : '')
+    var subsSub = ['reveal', 'onlyfans', 'mym'].filter(function(k) { return p[k] && p[k].connected; }).map(function(k) { return PLAT[k].label + ' ' + rvNum(p[k].subs_month); }).join(' · ')
       + (p.telegram && p.telegram.connected ? ' · ' + rvNum(p.telegram.contacts_month) + ' nouveaux contacts Telegram' : '');
     var cell = function(v, k) { return '<td style="white-space:nowrap">' + (v ? (k === 'mym' ? '≈ ' : '') + rvEur(v) : '<span style="color:var(--text-tertiary)">–</span>') + '</td>'; };
     box.innerHTML = '<div style="margin-bottom:20px">'
