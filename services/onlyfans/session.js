@@ -86,6 +86,6 @@ function findSubscribers(json) {
 }
 
 // favori : copie cookies visibles + localStorage + sessionStorage
-const BOOKMARKLET = "javascript:(()=>{if(!/(^|\\.)onlyfans\\.com$/.test(location.hostname)){alert('Ouvre onlyfans.com d\\'abord');return}const d={v:1,site:'onlyfans',cookies:document.cookie,local:{...localStorage},session:{...sessionStorage},ua:navigator.userAgent};if(!/(^|; )auth_id=/.test(d.cookies)){alert('Connecte-toi d\\'abord au compte OnlyFans de la modèle');return}const t=JSON.stringify(d);navigator.clipboard.writeText(t).then(()=>alert('Session OnlyFans copiée ✅ Colle-la dans le CRM (Stats OnlyFans > Connexion).'),()=>prompt('Copie ce texte :',t))})()";
+const BOOKMARKLET = "javascript:(()=>{if(!/(^|\\.)onlyfans\\.com$/.test(location.hostname)){alert('Ouvre onlyfans.com d\\'abord');return}const d={v:1,site:'onlyfans',cookies:document.cookie,local:{...localStorage},session:{...sessionStorage},ua:navigator.userAgent};if(!/(^|; )auth_id=/.test(d.cookies)){alert('OnlyFans cache ses cookies de connexion au favori. Utilise l\\'extension Cookie-Editor : Export > JSON, puis colle le texte dans le CRM (Stats OnlyFans > Connexion).');return}const t=JSON.stringify(d);navigator.clipboard.writeText(t).then(()=>alert('Session OnlyFans copiée ✅ Colle-la dans le CRM (Stats OnlyFans > Connexion).'),()=>prompt('Copie ce texte :',t))})()";
 
 module.exports = { ORIGIN, OF_PERIOD_NET, normalize, toPlaywright, parseChart, parseTransactions, findSubscribers, BOOKMARKLET };
