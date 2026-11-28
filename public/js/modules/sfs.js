@@ -1,6 +1,6 @@
 // SFS : abonnés par modèle (Reveal + MyM) et planning des SFS en mass DM
 
-var sfs = { week: null, platform: '', model: '', subs: [], pushes: [], partners: [] };
+var sfs = { week: null, platform: '', model: '', subs: [], pushes: [], partners: [], kits: [], kitModel: '' };
 var SFS_PLAT = { reveal: 'Reveal', mym: 'MyM' };
 
 function sfsEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -21,7 +21,14 @@ function renderSfs() {
   if (!sfs.week) sfs.week = sfsMonday(new Date());
   if (!c.dataset.ready) {
     c.dataset.ready = '1';
-    c.innerHTML = '<div id="sfs-subs"><div class="skeleton-card" style="height:160px"></div></div>'
+    c.innerHTML = ''
+      + '<div class="panel" style="padding:16px;margin-bottom:16px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+      + '<div><div style="font-weight:700;font-size:15px">Kits SFS</div><div style="font-size:12px;color:var(--text-tertiary)">Photos + description de chaque modèle, prêtes à copier pour le partenaire</div></div>'
+      + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><div id="sfs-kit-chips" style="display:flex;gap:4px;flex-wrap:wrap"></div>'
+      + '<button class="btn btn-primary" onclick="sfsKitOpen()">+ Nouveau kit</button></div></div>'
+      + '<div id="sfs-kits"><div class="skeleton-card" style="height:120px"></div></div></div>'
+      + '<div id="sfs-subs"><div class="skeleton-card" style="height:160px"></div></div>'
       + '<div id="sfs-late"></div>'
       + '<div class="panel" style="padding:16px;margin-top:16px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
@@ -41,6 +48,7 @@ function renderSfs() {
   sfsLoadSubs();
   sfsLoadPushes();
   sfsLoadPartners();
+  sfsLoadKits();
 }
 
 function sfsRenderFilters() {
@@ -217,6 +225,8 @@ function sfsOpen(id, ymd) {
     body += '<div id="sfs-auto-box" class="panel" style="padding:12px;margin:4px 0 12px;background:var(--bg-base)">'
       + '<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="sfs-f-auto"' + (auto ? ' checked' : '') + (sent ? ' disabled' : '') + ' onchange="sfsAutoToggle()"> 🤖 Le bot envoie le mass DM (Reveal)</label>'
       + '<div id="sfs-auto-fields" style="margin-top:10px">'
+      + (sent ? '' : '<div class="form-group"><label class="form-label">Partir d\'un kit SFS</label><select class="form-input" id="sfs-f-kit" onchange="sfsUseKit(this.value)"><option value="">—</option>'
+        + sfs.kits.map(function(k) { return '<option value="' + k.id + '">' + sfsEsc(k.model_name + ' · ' + sfsKitName(k)) + '</option>'; }).join('') + '</select></div>')
       + '<div class="form-group"><label class="form-label">Message du mass DM (gratuit)</label><textarea class="form-input" id="sfs-f-msg" rows="4"' + (sent ? ' disabled' : '') + ' placeholder="Ex. Allez voir ma copine @jade, elle est trop mignonne 😍 reveal.me/jade">' + sfsEsc(p ? p.message : '') + '</textarea>'
       + '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">%NAME% est remplacé par le prénom du fan.</div></div>'
       + '<div class="form-group"><label class="form-label">Photos / vidéos (4 max)</label>'
@@ -261,18 +271,20 @@ function sfsPaintMedia() {
   if (!el) return;
   el.innerHTML = (sfs.media || []).map(function(m, i) {
     var name = m.file ? m.file.name : m.filename, vid = /^video/.test(m.file ? m.file.type : m.mime);
-    var thumb = m.file && !vid ? '<img src="' + URL.createObjectURL(m.file) + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px">' : '<span>' + (vid ? '🎬' : '🖼️') + '</span>';
+    var src = !vid ? (m.file ? URL.createObjectURL(m.file) : sfsFileUrl(m.key)) : null;
+    var thumb = src ? '<img src="' + src + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px">' : '<span>🎬</span>';
     return '<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px solid var(--border-default);border-radius:6px;font-size:12px;max-width:220px">' + thumb
       + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + sfsEsc(name) + '</span>'
       + (sfs.mediaLocked ? '' : '<button class="btn btn-ghost" style="padding:0 4px" title="Retirer" onclick="sfsRemoveMedia(' + i + ')">✕</button>') + '</span>';
   }).join('') || '<span style="font-size:12px;color:var(--text-tertiary)">Aucune — texte seul</span>';
 }
-function sfsAddMedia(input) {
+function sfsAddMedia(input, max) {
+  max = max || 4;
   var files = Array.prototype.slice.call(input.files || []);
   input.value = '';
   files.forEach(function(f) {
     if (!/^(image|video)\//.test(f.type)) return sfsToast(f.name + ' : seulement des photos ou des vidéos', 'error');
-    if ((sfs.media || []).length >= 4) return sfsToast('4 photos ou vidéos maximum', 'error');
+    if ((sfs.media || []).length >= max) return sfsToast(max + ' photos ou vidéos maximum', 'error');
     sfs.media.push({ file: f });
   });
   sfsPaintMedia();
@@ -347,3 +359,133 @@ function sfsModal(title, body, actions) {
   document.body.appendChild(d);
 }
 function sfsCloseModal() { var m = document.getElementById('sfs-modal'); if (m) m.remove(); }
+
+// ---------- kits SFS ----------
+var SFS_KIT_PLAT = { reveal: 'Reveal', mym: 'MyM', onlyfans: 'OnlyFans' };
+function sfsKitName(k) { return k.title || (k.platform ? SFS_KIT_PLAT[k.platform] : 'Kit'); }
+function sfsFileUrl(key, dl, name) { return '/api/sfs/file?key=' + encodeURIComponent(key) + (dl ? '&dl=1&name=' + encodeURIComponent(name || '') : ''); }
+function sfsLoadKits() {
+  sfsApi('GET', '/kits').then(function(rows) { sfs.kits = rows; sfsRenderKits(); })
+    .catch(function(e) { var el = document.getElementById('sfs-kits'); if (el) el.innerHTML = '<div class="empty-state">' + sfsEsc(e.message) + '</div>'; });
+}
+function sfsRenderKits() {
+  var chips = document.getElementById('sfs-kit-chips'), el = document.getElementById('sfs-kits');
+  if (!el) return;
+  var ids = []; sfs.kits.forEach(function(k) { if (ids.indexOf(k.model_id) < 0) ids.push(k.model_id); });
+  if (chips) chips.innerHTML = ids.length > 1 ? [['', 'Toutes']].concat(ids.map(function(id) { return [String(id), (sfs.kits.find(function(k) { return k.model_id === id; }) || {}).model_name]; })).map(function(c) {
+    return '<button class="filter-chip' + (String(sfs.kitModel) === c[0] ? ' active' : '') + '" onclick="sfs.kitModel=\'' + c[0] + '\';sfsRenderKits()">' + sfsEsc(c[1]) + '</button>';
+  }).join('') : '';
+  var list = sfs.kits.filter(function(k) { return !sfs.kitModel || String(k.model_id) === String(sfs.kitModel); });
+  if (!list.length) { el.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0">Pas encore de kit. Crée-en un par modèle avec ses photos SFS et sa description : tu n\'auras plus qu\'à copier et envoyer au partenaire.</div>'; return; }
+  el.innerHTML = '<div class="sfs-kit-grid">' + list.map(function(k) {
+    var col = typeof modelColor === 'function' ? modelColor(k.model_id, k.model_name) : 'var(--accent)';
+    var media = k.media || [];
+    return '<div class="sfs-kit" style="border-top-color:' + col + '">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">'
+      + '<div style="display:flex;align-items:center;gap:8px;min-width:0">' + (typeof modelAvatarHtml === 'function' ? modelAvatarHtml({ id: k.model_id, name: k.model_name }, 28, false) : '')
+      + '<div style="min-width:0"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sfsEsc(k.model_name) + '</div>'
+      + '<div style="font-size:12px;color:var(--text-tertiary)">' + sfsEsc(sfsKitName(k)) + (k.title && k.platform ? ' · ' + SFS_KIT_PLAT[k.platform] : '') + '</div></div></div>'
+      + '<button class="btn btn-ghost" style="padding:2px 8px" title="Modifier" onclick="sfsKitOpen(' + k.id + ')">✎</button></div>'
+      + (media.length ? '<div class="sfs-kit-media">' + media.map(function(m, i) {
+          var vid = /^video/.test(m.mime);
+          return '<div class="sfs-kit-thumb" title="' + (vid ? 'Vidéo : clique pour la télécharger' : 'Clique pour copier la photo') + '" onclick="' + (vid ? 'sfsKitDownload(' + k.id + ',' + i + ')' : 'sfsKitCopyPhoto(' + k.id + ',' + i + ',this)') + '">'
+            + (vid ? '<video src="' + sfsFileUrl(m.key) + '#t=0.5" preload="metadata" muted></video><span class="sfs-kit-badge">🎬</span>' : '<img loading="lazy" src="' + sfsFileUrl(m.key) + '" alt="">')
+            + '<a class="sfs-kit-dl" title="Télécharger" href="' + sfsFileUrl(m.key, 1, m.filename) + '" onclick="event.stopPropagation()">⬇</a></div>';
+        }).join('') + '</div>' : '')
+      + (k.description ? '<div class="sfs-kit-desc">' + sfsEsc(k.description) + '</div>' : '')
+      + (k.link ? '<div style="font-size:12px;margin-top:6px;word-break:break-all"><a href="' + sfsEsc(/^https?:/.test(k.link) ? k.link : 'https://' + k.link) + '" target="_blank" rel="noopener" style="color:var(--accent-blue)">' + sfsEsc(k.link) + '</a></div>' : '')
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'
+      + (k.description || k.link ? '<button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="sfsKitCopyText(' + k.id + ',this)">📋 Copier le texte</button>' : '')
+      + (media.length ? '<button class="btn btn-secondary" style="padding:5px 12px;font-size:12px" onclick="sfsKitDownloadAll(' + k.id + ')">⬇ Tout télécharger (' + media.length + ')</button>' : '')
+      + '</div></div>';
+  }).join('') + '</div>'
+  + '<div style="font-size:12px;color:var(--text-tertiary);margin-top:8px">Clique sur une photo pour la copier, puis colle-la (Cmd/Ctrl + V) dans la conversation avec le partenaire. Les vidéos se téléchargent.</div>';
+}
+function sfsKitText(k) { return [k.description, k.link].filter(Boolean).join('\n\n'); }
+function sfsFlash(btn, txt) { if (!btn) return; var o = btn.innerHTML; btn.innerHTML = txt; setTimeout(function() { btn.innerHTML = o; }, 1500); }
+function sfsKitCopyText(id, btn) {
+  var k = sfs.kits.find(function(x) { return x.id === id; }); if (!k) return;
+  var t = sfsKitText(k);
+  var done = function() { sfsFlash(btn, '✓ Copié'); sfsToast('Texte copié', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function() { sfsCopyFallback(t); done(); });
+  else { sfsCopyFallback(t); done(); }
+}
+function sfsCopyFallback(t) { var a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); }
+// copie une photo dans le presse-papiers (convertie en PNG : seul format accepté partout)
+function sfsKitCopyPhoto(id, i, el) {
+  var k = sfs.kits.find(function(x) { return x.id === id; }); if (!k) return;
+  var m = k.media[i];
+  if (!navigator.clipboard || typeof ClipboardItem === 'undefined') { sfsToast('Ton navigateur ne permet pas de copier une photo : télécharge-la avec ⬇', 'error'); return; }
+  var png = fetch(sfsFileUrl(m.key), { credentials: 'include' }).then(function(r) { if (!r.ok) throw new Error('Photo introuvable'); return r.blob(); }).then(function(b) {
+    if (b.type === 'image/png') return b;
+    return new Promise(function(res, rej) {
+      var img = new Image(), u = URL.createObjectURL(b);
+      img.onload = function() {
+        var c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(u);
+        c.toBlob(function(x) { x ? res(x) : rej(new Error('Conversion impossible')); }, 'image/png');
+      };
+      img.onerror = function() { URL.revokeObjectURL(u); rej(new Error('Format de photo non lisible par le navigateur : télécharge-la avec ⬇')); };
+      img.src = u;
+    });
+  });
+  navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]).then(function() {
+    if (el) { el.classList.add('copied'); setTimeout(function() { el.classList.remove('copied'); }, 1200); }
+    sfsToast('Photo copiée : colle-la dans la conversation', 'success');
+  }).catch(function(e) { sfsToast(e && e.message && !/NotAllowed/.test(e.name) ? e.message : 'Copie refusée par le navigateur : télécharge la photo avec ⬇', 'error'); });
+}
+function sfsKitDownload(id, i) {
+  var k = sfs.kits.find(function(x) { return x.id === id; }); if (!k) return;
+  var m = k.media[i], a = document.createElement('a');
+  a.href = sfsFileUrl(m.key, 1, m.filename); a.download = m.filename || ''; document.body.appendChild(a); a.click(); a.remove();
+}
+function sfsKitDownloadAll(id) {
+  var k = sfs.kits.find(function(x) { return x.id === id; }); if (!k) return;
+  k.media.forEach(function(m, i) { setTimeout(function() { sfsKitDownload(id, i); }, i * 400); });
+  if (k.media.length > 1) sfsToast('Si Chrome demande « télécharger plusieurs fichiers », clique sur Autoriser', 'info');
+}
+function sfsKitOpen(id) {
+  var k = id ? sfs.kits.find(function(x) { return x.id === id; }) : null;
+  var models = typeof allModels !== 'undefined' ? allModels : [];
+  var cur = k ? k.model_id : Number(sfs.kitModel) || (models[0] || {}).id;
+  sfsModal(k ? 'Kit SFS · ' + sfsEsc(k.model_name) : 'Nouveau kit SFS',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="sfs-k-model">' + models.map(function(m) { return '<option value="' + m.id + '"' + (m.id === cur ? ' selected' : '') + '>' + sfsEsc(m.name) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Plateforme</label><select class="form-input" id="sfs-k-plat"><option value="">Toutes</option>'
+      + Object.keys(SFS_KIT_PLAT).map(function(p) { return '<option value="' + p + '"' + (k && k.platform === p ? ' selected' : '') + '>' + SFS_KIT_PLAT[p] + '</option>'; }).join('') + '</select></div></div>'
+    + '<div class="form-group"><label class="form-label">Nom du kit (facultatif)</label><input class="form-input" id="sfs-k-title" maxlength="120" placeholder="Ex. Kit Noël, Kit soft…" value="' + sfsEsc(k ? k.title : '') + '"></div>'
+    + '<div class="form-group"><label class="form-label">Description à envoyer</label><textarea class="form-input" id="sfs-k-desc" rows="5" placeholder="Ex. Allez voir ma copine Chloé 😍 elle poste tous les jours, abonnez-vous 👉">' + sfsEsc(k ? k.description : '') + '</textarea></div>'
+    + '<div class="form-group"><label class="form-label">Lien du profil</label><input class="form-input" id="sfs-k-link" placeholder="reveal.me/… ou onlyfans.com/…" value="' + sfsEsc(k ? k.link : '') + '"></div>'
+    + '<div class="form-group"><label class="form-label">Photos / vidéos (10 max)</label><div id="sfs-media-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>'
+    + '<label class="btn btn-secondary" style="padding:4px 12px;font-size:12px;cursor:pointer">📎 Ajouter<input type="file" accept="image/*,video/*" multiple style="display:none" onchange="sfsAddMedia(this,10)"></label></div>',
+    (k ? '<button class="btn btn-ghost" style="color:var(--accent-red);margin-right:auto" onclick="sfsKitDelete(' + k.id + ')">Supprimer</button>' : '')
+    + '<button class="btn btn-primary" onclick="sfsKitSave(' + (k ? k.id : 'null') + ')">Enregistrer</button>');
+  sfs.media = (k ? k.media || [] : []).map(function(m) { return Object.assign({}, m); });
+  sfs.mediaLocked = false;
+  sfsPaintMedia();
+}
+function sfsKitSave(id) {
+  var g = function(x) { return document.getElementById('sfs-k-' + x).value; };
+  var body = { model_id: g('model'), platform: g('plat'), title: g('title'), description: g('desc'), link: g('link') };
+  if (!String(body.description).trim() && !(sfs.media || []).length) return sfsToast('Ajoute une description ou une photo', 'error');
+  var btn = document.querySelector('#sfs-modal button.btn-primary');
+  if (btn) { btn.disabled = true; if ((sfs.media || []).some(function(m) { return m.file; })) btn.textContent = 'Envoi des photos…'; }
+  sfsUploadMedia().then(function(media) {
+    body.media = media;
+    return sfsApi(id ? 'PUT' : 'POST', id ? '/kits/' + id : '/kits', body);
+  }).then(function() { sfsCloseModal(); sfsToast('Kit enregistré', 'success'); sfsLoadKits(); })
+    .catch(function(e) { if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; } sfsToast(e.message, 'error'); });
+}
+function sfsKitDelete(id) {
+  if (!confirm('Supprimer ce kit et ses photos ?')) return;
+  sfsApi('DELETE', '/kits/' + id).then(function() { sfsCloseModal(); sfsToast('Kit supprimé', 'success'); sfsLoadKits(); })
+    .catch(function(e) { sfsToast(e.message, 'error'); });
+}
+// remplit le mass DM avec un kit (texte + 4 premières photos)
+function sfsUseKit(id) {
+  var k = sfs.kits.find(function(x) { return String(x.id) === String(id); }); if (!k) return;
+  var msg = document.getElementById('sfs-f-msg'); if (msg) msg.value = sfsKitText(k);
+  sfs.media = (k.media || []).slice(0, 4).map(function(m) { return Object.assign({}, m); });
+  sfsPaintMedia();
+  if ((k.media || []).length > 4) sfsToast('Reveal accepte 4 médias max : les 4 premiers sont repris', 'info');
+}
