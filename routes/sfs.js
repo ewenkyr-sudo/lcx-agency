@@ -45,9 +45,9 @@ function clean(b) {
 }
 
 // photos / vidéos du mass DM : déjà envoyées dans le stockage du CRM (clé « a<agence>/sfs/… »)
-function cleanMedia(list, agencyId) {
+function cleanMedia(list, agencyId, max = 4) {
   if (!Array.isArray(list)) throw fail(400, 'Médias invalides');
-  if (list.length > 4) throw fail(400, '4 photos ou vidéos maximum');
+  if (list.length > max) throw fail(400, max + ' photos ou vidéos maximum');
   return JSON.stringify(list.map(m => {
     const key = String(m && m.key || '');
     if (!key.startsWith(`a${agencyId}/sfs/`) || key.includes('..')) throw fail(403, 'Fichier refusé');
@@ -221,6 +221,84 @@ router.post('/pushes/:id/retry', wrap(async (req, res) => {
   checkAuto(cur.message, cur.scheduled_at);
   await pool.query(`UPDATE sfs_pushes SET bot_status = $2, bot_error = NULL, status = 'planned', updated_at = NOW() WHERE id = $1`, [cur.id, cur.reveal_mass_dm_id ? 'requeue' : 'queued']);
   res.json({ ok: true });
+}));
+
+// ---------- kits SFS (photos + description à envoyer aux partenaires) ----------
+const KIT_PLATFORMS = ['reveal', 'mym', 'onlyfans'];
+async function ownKit(req, id) {
+  const { rows } = await pool.query('SELECT * FROM sfs_kits WHERE id = $1 AND agency_id = $2', [id, req.agencyId]);
+  if (!rows[0] || (req.modelScope && !req.modelScope.includes(rows[0].model_id))) throw fail(404, 'Kit introuvable');
+  return rows[0];
+}
+function cleanKit(b, agencyId) {
+  const v = {};
+  if (b.platform !== undefined) { v.platform = b.platform || null; if (v.platform && !KIT_PLATFORMS.includes(v.platform)) throw fail(400, 'Plateforme invalide'); }
+  if (b.title !== undefined) v.title = String(b.title || '').trim().slice(0, 120) || null;
+  if (b.description !== undefined) v.description = String(b.description || '').slice(0, 4000) || null;
+  if (b.link !== undefined) v.link = String(b.link || '').trim().slice(0, 500) || null;
+  if (b.media !== undefined) v.media = cleanMedia(b.media, agencyId, 10);
+  return v;
+}
+router.get('/kits', wrap(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT k.*, m.name AS model_name FROM sfs_kits k JOIN models m ON m.id = k.model_id
+     WHERE k.agency_id = $1 AND ($2::int[] IS NULL OR k.model_id = ANY($2::int[]))
+     ORDER BY m.name, k.platform NULLS FIRST, k.id`, [req.agencyId, scopeIds(req)]);
+  res.json(rows);
+}));
+router.post('/kits', wrap(async (req, res) => {
+  const b = req.body || {};
+  await ownModel(req, b.model_id);
+  const v = cleanKit(b, req.agencyId);
+  if (!v.description && !(b.media || []).length) throw fail(400, 'Ajoute au moins une description ou une photo');
+  const { rows } = await pool.query(
+    `INSERT INTO sfs_kits (agency_id, model_id, platform, title, description, link, media, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::jsonb,'[]'::jsonb),$8) RETURNING id`,
+    [req.agencyId, b.model_id, v.platform || null, v.title || null, v.description || null, v.link || null, v.media || null, req.user && req.user.id]);
+  res.json({ id: rows[0].id });
+}));
+router.put('/kits/:id', wrap(async (req, res) => {
+  const cur = await ownKit(req, req.params.id);
+  const b = req.body || {};
+  if (b.model_id !== undefined && Number(b.model_id) !== cur.model_id) await ownModel(req, b.model_id);
+  const v = cleanKit(b, req.agencyId);
+  if (b.model_id !== undefined) v.model_id = Number(b.model_id);
+  const keys = Object.keys(v);
+  if (keys.length) await pool.query(
+    `UPDATE sfs_kits SET ${keys.map((k, i) => `${k} = $${i + 2}${k === 'media' ? '::jsonb' : ''}`).join(', ')}, updated_at = NOW() WHERE id = $1`,
+    [cur.id, ...keys.map(k => v[k])]);
+  // fichiers retirés du kit (et utilisés nulle part ailleurs) : supprimés du stockage
+  if (v.media) {
+    const kept = new Set(JSON.parse(v.media).map(m => m.key));
+    for (const m of cur.media || []) if (!kept.has(m.key)) await dropIfUnused(req.agencyId, m.key);
+  }
+  res.json({ ok: true });
+}));
+router.delete('/kits/:id', wrap(async (req, res) => {
+  const cur = await ownKit(req, req.params.id);
+  await pool.query('DELETE FROM sfs_kits WHERE id = $1', [cur.id]);
+  for (const m of cur.media || []) await dropIfUnused(req.agencyId, m.key);
+  res.json({ ok: true });
+}));
+async function dropIfUnused(agencyId, key) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM sfs_kits WHERE agency_id = $1 AND media @> $2::jsonb
+     UNION ALL SELECT 1 FROM sfs_pushes WHERE agency_id = $1 AND media @> $2::jsonb LIMIT 1`, [agencyId, JSON.stringify([{ key }])]);
+  if (!rows.length) await storage.remove(key);
+}
+// photo / vidéo servie par le CRM (même domaine : on peut la copier dans le presse-papiers)
+router.get('/file', wrap(async (req, res) => {
+  const key = String(req.query.key || '');
+  if (!key.startsWith(`a${req.agencyId}/sfs/`) || key.includes('..')) throw fail(403, 'Clé refusée');
+  const f = await storage.readStream(key);
+  if (!f) throw fail(404, 'Fichier introuvable');
+  const ext = path.extname(key).toLowerCase();
+  const type = f.type || { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.heic': 'image/heic', '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm' }[ext] || 'application/octet-stream';
+  res.setHeader('Content-Type', type);
+  if (f.size) res.setHeader('Content-Length', f.size);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  if (req.query.dl) res.setHeader('Content-Disposition', `attachment; filename="${String(req.query.name || path.basename(key)).replace(/[^\w.\- ]/g, '_')}"`);
+  f.stream.pipe(res);
 }));
 
 // partenaires déjà utilisés (pour l'autocomplétion et l'historique)

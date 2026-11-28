@@ -45,6 +45,22 @@ async function initSfsDB() {
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS sent_count INTEGER;
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS income_cents INTEGER;
     ALTER TABLE sfs_pushes ADD COLUMN IF NOT EXISTS media JSONB DEFAULT '[]'::jsonb;        -- photos / vidéos jointes [{key, filename, mime, size}]
+
+    -- kits SFS : photos + description prêtes à envoyer aux partenaires
+    CREATE TABLE IF NOT EXISTS sfs_kits (
+      id SERIAL PRIMARY KEY,
+      agency_id INTEGER NOT NULL,
+      model_id INTEGER REFERENCES models(id) ON DELETE CASCADE,
+      platform TEXT,                                       -- reveal | mym | onlyfans | null (toutes)
+      title TEXT,
+      description TEXT,
+      link TEXT,
+      media JSONB DEFAULT '[]'::jsonb,
+      created_by INTEGER,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS sfs_kits_agency ON sfs_kits (agency_id, model_id);
   `);
 }
 
